@@ -4,12 +4,10 @@ import * as React from "react"
 import { 
   Menu, 
   Search, 
-  Mic, 
   X, 
   Plus, 
   Minus, 
   Locate, 
-  Layers, 
   Map as MapIcon, 
   Navigation,
   Utensils,
@@ -19,7 +17,9 @@ import {
   ShoppingBag,
   MoreHorizontal,
   Star,
-  Clock
+  Clock,
+  Compass,
+  Maximize
 } from "lucide-react"
 
 import { Map, useMap } from "@/components/ui/map"
@@ -32,29 +32,64 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import { cn } from "@/lib/utils"
 
-// Filter categories for the top bar
+// Helper to get approximate location based on timezone
+const getInitialLocation = () => {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  const locations: Record<string, [number, number]> = {
+    "America/Los_Angeles": [-122.4194, 37.7749],
+    "America/New_York": [-74.006, 40.7128],
+    "Europe/London": [-0.1278, 51.5074],
+    "Asia/Tokyo": [139.6917, 35.6895],
+    "Asia/Manila": [120.9842, 14.5995],
+    "Europe/Paris": [2.3522, 48.8566],
+    "Australia/Sydney": [151.2093, -33.8688],
+  };
+
+  return locations[tz] || [-122.4194, 37.7749]; // Default to SF
+};
+
 const CATEGORIES = [
   { label: "Restaurants", icon: Utensils },
   { label: "Gas", icon: Fuel },
   { label: "Coffee", icon: Coffee },
   { label: "Hotels", icon: Hotel },
   { label: "Shopping", icon: ShoppingBag },
-  { label: "Groceries", icon: ShoppingBag }, // Reusing icon for simplicity
+  { label: "Groceries", icon: ShoppingBag },
   { label: "More", icon: MoreHorizontal },
 ]
 
 export default function GoogleMapsClone() {
   const [searchValue, setSearchValue] = React.useState("")
+  const [viewState, setViewState] = React.useState<{ center: [number, number]; zoom: number }>(() => {
+    if (typeof window === "undefined") return { center: [-122.4194, 37.7749], zoom: 12 };
+    const saved = localStorage.getItem("map-view-state");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // ignore
+      }
+    }
+    return { center: getInitialLocation(), zoom: 12 };
+  });
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-background">
-      {/* Map Component as Background */}
       <Map
-        center={[-122.4, 37.8]}
-        zoom={12}
+        center={viewState.center}
+        zoom={viewState.zoom}
       >
+        <MapStateSync setViewState={setViewState} />
         <MapOverlayUI 
           searchValue={searchValue} 
           setSearchValue={setSearchValue} 
@@ -62,6 +97,30 @@ export default function GoogleMapsClone() {
       </Map>
     </div>
   )
+}
+
+function MapStateSync({ setViewState }: { setViewState: (s: any) => void }) {
+  const { map } = useMap()
+
+  React.useEffect(() => {
+    if (!map) return
+
+    const handleMoveEnd = () => {
+      const newState = {
+        center: [map.getCenter().lng, map.getCenter().lat] as [number, number],
+        zoom: map.getZoom()
+      }
+      setViewState(newState)
+      localStorage.setItem("map-view-state", JSON.stringify(newState))
+    }
+
+    map.on("moveend", handleMoveEnd)
+    return () => {
+      map.off("moveend", handleMoveEnd)
+    }
+  }, [map, setViewState])
+
+  return null
 }
 
 function MapOverlayUI({ 
@@ -77,11 +136,38 @@ function MapOverlayUI({
       <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-10">
         
         {/* Search Bar Container */}
-        <div className="relative w-full md:w-[400px] flex items-center bg-background rounded-2xl shadow-md border border-border/50 transition-all focus-within:shadow-lg focus-within:ring-1 focus-within:ring-ring">
+        <div className="relative w-full md:w-100 flex items-center bg-background rounded-2xl shadow-md border border-border/50 transition-all focus-within:shadow-lg focus-within:ring-1 focus-within:ring-ring">
           
-          <Button variant="ghost" size="icon" className="rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted" aria-label="Menu">
-            <Menu className="size-5" />
-          </Button>
+          <Drawer direction="left">
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <DrawerTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted" aria-label="Menu">
+                      <Menu className="size-5" />
+                    </Button>
+                  </TooltipTrigger>
+                </DrawerTrigger>
+                <TooltipContent side="bottom">Menu</TooltipContent>
+                <DrawerContent className="h-full w-75 rounded-none rounded-r-xl border-y-0 border-l-0">
+                  <DrawerHeader className="border-b">
+                    <DrawerTitle className="flex items-center gap-2">
+                       <MapIcon className="size-5 text-primary" />
+                       Naero Maps
+                    </DrawerTitle>
+                  </DrawerHeader>
+                  <div className="p-4 flex flex-col gap-2">
+                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Star className="size-4" /> Your places</Button>
+                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Clock className="size-4" /> Your timeline</Button>
+                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Navigation className="size-4" /> Your contributions</Button>
+                     <Separator className="my-2" />
+                     <Button variant="ghost" className="justify-start gap-3 rounded-xl">Settings</Button>
+                     <Button variant="ghost" className="justify-start gap-3 rounded-xl">Help & Feedback</Button>
+                  </div>
+                </DrawerContent>
+              </Tooltip>
+            </TooltipProvider>
+          </Drawer>
 
           <Input 
             className="border-0 shadow-none focus-visible:ring-0 px-2 h-12 text-base placeholder:text-muted-foreground"
@@ -113,19 +199,6 @@ function MapOverlayUI({
                 <X className="size-5" />
               </Button>
             )}
-            
-            <Separator orientation="vertical" className="h-6 mx-1" />
-
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 text-blue-600 hover:bg-blue-50" aria-label="Voice Search">
-                    <Mic className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Voice Search</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
         </div>
 
@@ -145,39 +218,15 @@ function MapOverlayUI({
       </div>
 
       {/* Bottom Section: Controls & Info */}
-      <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-between sm:items-end w-full mt-auto">
+      <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
         
-        {/* Bottom Left: Layers (Desktop) / Info */}
-        <div className="hidden sm:flex pb-2 pl-2">
-          {/* Often Google Maps puts a "Layers" widget here or bottom left */}
-           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="group relative size-16 bg-background rounded-xl shadow-md border overflow-hidden cursor-pointer hover:ring-2 ring-primary transition-all">
-                  <div className="absolute inset-0 bg-muted/50 flex items-center justify-center">
-                    <Layers className="size-6 text-muted-foreground group-hover:text-primary" />
-                  </div>
-                  <span className="absolute bottom-1 w-full text-center text-[10px] font-medium bg-background/80 backdrop-blur-sm">Layers</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right">Layers</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
         {/* Bottom Right: Map Controls */}
         <div className="flex flex-col gap-4 items-end w-full sm:w-auto">
-          
-          {/* In mobile, layers is often top right or floating. For Design consistency, let's keep controls grouped bottom right for desktop */}
-          
-          <div className="flex flex-col gap-2">
-            <CustomMapControls />
-          </div>
-
+          <CustomMapControls />
         </div>
       </div>
       
-      {/* Mobile Bottom Bar (Optional, Google Maps often has Explore, Go, Saved, Contribute, Updates) */}
+      {/* Mobile Bottom Bar */}
       <div className="md:hidden bg-background border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] grid grid-cols-5 p-2 pb-6 pointer-events-auto">
          <BottomNavItem icon={MapIcon} label="Explore" active />
          <BottomNavItem icon={Star} label="Saved" />
@@ -203,31 +252,82 @@ function CustomMapControls() {
   const { map } = useMap()
 
   const handleZoomIn = () => {
-    map?.zoomIn()
+    map?.zoomIn({ duration: 300 })
   }
 
   const handleZoomOut = () => {
-    map?.zoomOut()
+    map?.zoomOut({ duration: 300 })
   }
 
   const handleLocate = () => {
-    // Mock location functionality or request browser permission
     if (navigator.geolocation && map) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 map.flyTo({
                     center: [position.coords.longitude, position.coords.latitude],
-                    zoom: 14
+                    zoom: 14,
+                    duration: 1500
                 });
             }
         );
     }
   }
 
+  const handleResetBearing = () => {
+    map?.resetNorthPitch({ duration: 300 })
+  }
+
+  const handleFullscreen = () => {
+    const container = map?.getContainer()
+    if (!container) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      container.requestFullscreen()
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-4 items-end">
-        {/* Floating Action Buttons */}
+    <div className="flex flex-col gap-3 items-end">
+       
        <div className="flex flex-col gap-2">
+            {/* Fullscreen Tooltip */}
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button 
+                        onClick={handleFullscreen}
+                        variant="secondary" 
+                        size="icon" 
+                        className="size-10 rounded-full bg-background shadow-md hover:bg-muted text-foreground border"
+                        aria-label="Fullscreen"
+                    >
+                    <Maximize className="size-5" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Toggle Fullscreen</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Compass (Reset Bearing) Tooltip */}
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button 
+                        onClick={handleResetBearing}
+                        variant="secondary" 
+                        size="icon" 
+                        className="size-10 rounded-full bg-background shadow-md hover:bg-muted text-foreground border"
+                        aria-label="Reset North"
+                    >
+                    <Compass className="size-5" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Reset North</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Locate Tooltip */}
             <TooltipProvider delayDuration={0}>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -248,7 +348,7 @@ function CustomMapControls() {
        </div>
        
       {/* Zoom Controls Group */}
-      <div className="flex flex-col bg-background rounded-full shadow-md border overflow-hidden">
+      <div className="flex flex-col bg-background rounded-2xl shadow-md border overflow-hidden">
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -286,3 +386,4 @@ function CustomMapControls() {
     </div>
   )
 }
+
