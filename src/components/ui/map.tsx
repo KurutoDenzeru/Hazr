@@ -56,7 +56,7 @@ type MapProps = {
 type MapRef = MapLibreGL.Map;
 
 const DefaultLoader = () => (
-  <div className="absolute inset-0 flex items-center justify-center">
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
     <div className="flex gap-1">
       <span className="size-1.5 rounded-full bg-muted-foreground/60 animate-pulse" />
       <span className="size-1.5 rounded-full bg-muted-foreground/60 animate-pulse [animation-delay:150ms]" />
