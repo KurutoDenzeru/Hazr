@@ -1,7 +1,7 @@
-import { ComponentExample } from "@/components/component-example";
+import GoogleMapsClone from "@/components/google-maps-clone";
 
 export function App() {
-return <ComponentExample />;
+  return <GoogleMapsClone />;
 }
 
 export default App;
