@@ -318,7 +318,7 @@ function CustomMapControls({
   setUserLocation: (l: [number, number]) => void 
 }) {
   const { map } = useMap()
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [is3D, setIs3D] = React.useState(false)
   const [waitingForLocation, setWaitingForLocation] = React.useState(false)
   const compassRef = React.useRef<SVGSVGElement>(null)
@@ -379,7 +379,10 @@ function CustomMapControls({
     map?.easeTo({ pitch: new3D ? 60 : 0, duration: 300 })
   }
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark")
+  const toggleTheme = () => {
+    const current = resolvedTheme ?? "light"
+    setTheme(current === "dark" ? "light" : "dark")
+  }
 
   return (
     <div className="flex flex-col gap-2 items-end">
@@ -390,7 +393,7 @@ function CustomMapControls({
             <Tooltip>
               <TooltipTrigger asChild>
                 <ControlButton onClick={toggleTheme} label="Toggle theme">
-                  {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
                 </ControlButton>
               </TooltipTrigger>
               <TooltipContent side="left">Theme</TooltipContent>
