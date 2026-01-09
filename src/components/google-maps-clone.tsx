@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { 
-  Menu, 
-  Search, 
-  X, 
-  Plus, 
-  Minus, 
-  Locate, 
-  Map as MapIcon, 
+import {
+  Menu,
+  Search,
+  X,
+  Plus,
+  Minus,
+  Locate,
+  Map as MapIcon,
   Navigation,
   Utensils,
   Fuel,
@@ -25,16 +25,16 @@ import {
   Loader2
 } from "lucide-react"
 
-import { Map, useMap, MapMarker, MarkerContent } from "@/components/ui/map"
+import { Map as MapComponent, useMap, MapMarker, MarkerContent } from "@/components/ui/map"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useTheme } from "next-themes"
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from "@/components/ui/tooltip"
 import {
   Drawer,
@@ -48,7 +48,7 @@ import { cn } from "@/lib/utils"
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
+
   const locations: Record<string, [number, number]> = {
     "America/Los_Angeles": [-122.4194, 37.7749],
     "America/New_York": [-74.006, 40.7128],
@@ -72,17 +72,23 @@ const CATEGORIES = [
   { label: "More", icon: MoreHorizontal },
 ]
 
+type MapViewState = {
+  center: [number, number]
+  zoom: number
+}
+
 export default function GoogleMapsClone() {
   const [searchValue, setSearchValue] = React.useState("")
   const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null)
-  
-  const [viewState, setViewState] = React.useState<{ center: [number, number]; zoom: number }>(() => {
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true)
+
+  const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined") return { center: [-122.4194, 37.7749], zoom: 12 };
     const saved = localStorage.getItem("map-view-state");
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -90,40 +96,114 @@ export default function GoogleMapsClone() {
   });
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-background">
-      <Map
-        center={viewState.center}
-        zoom={viewState.zoom}
-        scrollZoom={true} // Explicitly ensure scroll zoom is enabled
-      >
-        <MapStateSync setViewState={setViewState} />
-        
-        {userLocation && (
-          <MapMarker longitude={userLocation[0]} latitude={userLocation[1]}>
-            <MarkerContent>
-              <div className="relative flex items-center justify-center pointer-events-none">
-                {/* Outer pulsing ring */}
-                <span className="absolute size-10 rounded-full bg-blue-500/30 animate-ping shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                {/* Smaller fixed pulse */}
-                <span className="absolute size-6 rounded-full bg-blue-500/20" />
-                {/* Inner white border */}
-                <div className="relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-lg" />
-              </div>
-            </MarkerContent>
-          </MapMarker>
-        )}
+    <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
+      {/* Persistent Sidebar */}
+      <Sidebar isOpen={isDesktopSidebarOpen} />
 
-        <MapOverlayUI 
-          searchValue={searchValue} 
-          setSearchValue={setSearchValue}
-          setUserLocation={setUserLocation}
-        />
-      </Map>
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
+        <div className="relative flex-1 bg-background rounded-md border border-border/50 shadow-xl overflow-hidden group">
+          <MapComponent
+            center={viewState.center}
+            zoom={viewState.zoom}
+            scrollZoom={true}
+          >
+            <MapStateSync setViewState={setViewState} />
+
+            {userLocation && (
+              <MapMarker longitude={userLocation[0]} latitude={userLocation[1]}>
+                <MarkerContent>
+                  <div className="relative flex items-center justify-center pointer-events-none">
+                    <span className="absolute size-10 rounded-full bg-blue-500/30 animate-ping shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                    <span className="absolute size-6 rounded-full bg-blue-500/20" />
+                    <div className="relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-lg" />
+                  </div>
+                </MarkerContent>
+              </MapMarker>
+            )}
+
+            <MapOverlayUI
+              searchValue={searchValue}
+              setSearchValue={setSearchValue}
+              setUserLocation={setUserLocation}
+              onToggleDesktopSidebar={() => setIsDesktopSidebarOpen((prev) => !prev)}
+            />
+          </MapComponent>
+        </div>
+      </main>
     </div>
   )
 }
 
-function MapStateSync({ setViewState }: { setViewState: (s: any) => void }) {
+type NaeroMenuItem = {
+  label: string
+  icon?: React.ComponentType<{ className?: string }>
+}
+
+const NAERO_MENU_PRIMARY_ITEMS: NaeroMenuItem[] = [
+  { label: "Your places", icon: Star },
+  { label: "Your timeline", icon: Clock },
+  { label: "Your contributions", icon: Navigation },
+]
+
+const NAERO_MENU_SECONDARY_ITEMS: NaeroMenuItem[] = [
+  { label: "Settings" },
+  { label: "Help & Feedback" },
+]
+
+const NaeroMenuPanel = ({ onSelect }: { onSelect?: () => void }) => {
+  const handleItemClick = () => onSelect?.()
+
+  return (
+    <div className="p-4 flex flex-col gap-2">
+      {NAERO_MENU_PRIMARY_ITEMS.map(({ label, icon: Icon }) => (
+        <Button
+          key={label}
+          variant="ghost"
+          className="justify-start gap-3 rounded-xl"
+          onClick={handleItemClick}
+        >
+          {Icon ? <Icon className="size-4" /> : null}
+          {label}
+        </Button>
+      ))}
+
+      <Separator className="my-2" />
+
+      {NAERO_MENU_SECONDARY_ITEMS.map(({ label }) => (
+        <Button
+          key={label}
+          variant="ghost"
+          className="justify-start rounded-xl"
+          onClick={handleItemClick}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function Sidebar({ isOpen }: { isOpen: boolean }) {
+  if (!isOpen) return null
+
+  return (
+    <aside className="w-72 hidden md:flex flex-col border-r bg-background shrink-0">
+      <div className="p-4 border-b">
+        <div className="flex items-center gap-3">
+          <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
+            <MapIcon className="size-5" />
+          </div>
+          <span className="font-semibold text-lg tracking-tight">Naero Maps</span>
+        </div>
+      </div>
+
+      <NaeroMenuPanel />
+    </aside>
+  )
+}
+
+function MapStateSync({ setViewState }: { setViewState: (s: MapViewState) => void }) {
   const { map } = useMap()
 
   React.useEffect(() => {
@@ -147,29 +227,58 @@ function MapStateSync({ setViewState }: { setViewState: (s: any) => void }) {
   return null
 }
 
-function MapOverlayUI({ 
-  searchValue, 
+function MapOverlayUI({
+  searchValue,
   setSearchValue,
-  setUserLocation
-}: { 
-  searchValue: string, 
+  setUserLocation,
+  onToggleDesktopSidebar,
+}: {
+  searchValue: string,
   setSearchValue: (v: string) => void,
   setUserLocation: (l: [number, number]) => void
+  onToggleDesktopSidebar: () => void
 }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false)
+
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
       {/* Top Section: Search & Filters */}
       <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-10">
-        
+
         {/* Search Bar Container */}
         <div className="relative w-full md:w-100 flex items-center bg-background rounded-2xl shadow-md border border-border/50 transition-all focus-within:shadow-lg focus-within:ring-1 focus-within:ring-ring">
-          
-          <Drawer direction="left">
+
+          {/* Desktop: toggle persistent sidebar */}
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden md:inline-flex rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
+                  aria-label="Toggle sidebar menu"
+                  onClick={onToggleDesktopSidebar}
+                >
+                  <Menu className="size-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Menu</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Mobile: open drawer menu */}
+          <Drawer direction="left" open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <DrawerTrigger asChild>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted" aria-label="Menu">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="md:hidden rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
+                      aria-label="Menu"
+                    >
                       <Menu className="size-5" />
                     </Button>
                   </TooltipTrigger>
@@ -178,24 +287,17 @@ function MapOverlayUI({
                 <DrawerContent className="h-full w-75 rounded-none rounded-r-xl border-y-0 border-l-0">
                   <DrawerHeader className="border-b">
                     <DrawerTitle className="flex items-center gap-2">
-                       <MapIcon className="size-5 text-primary" />
-                       Naero Maps
+                      <MapIcon className="size-5 text-primary" />
+                      Naero Maps
                     </DrawerTitle>
                   </DrawerHeader>
-                  <div className="p-4 flex flex-col gap-2">
-                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Star className="size-4" /> Your places</Button>
-                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Clock className="size-4" /> Your timeline</Button>
-                     <Button variant="ghost" className="justify-start gap-3 rounded-xl"><Navigation className="size-4" /> Your contributions</Button>
-                     <Separator className="my-2" />
-                     <Button variant="ghost" className="justify-start gap-3 rounded-xl">Settings</Button>
-                     <Button variant="ghost" className="justify-start gap-3 rounded-xl">Help & Feedback</Button>
-                  </div>
+                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} />
                 </DrawerContent>
               </Tooltip>
             </TooltipProvider>
           </Drawer>
 
-          <Input 
+          <Input
             className="border-0 shadow-none focus-visible:ring-0 px-2 h-12 text-base placeholder:text-muted-foreground"
             placeholder="Search Naero Maps"
             value={searchValue}
@@ -215,11 +317,11 @@ function MapOverlayUI({
             </TooltipProvider>
 
             {searchValue && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setSearchValue("")}
-                className="rounded-full h-10 w-10 text-muted-foreground hover:bg-muted" 
+                className="rounded-full h-10 w-10 text-muted-foreground hover:bg-muted"
                 aria-label="Clear"
               >
                 <X className="size-5" />
@@ -231,9 +333,9 @@ function MapOverlayUI({
         {/* Filter Pills */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:w-auto w-screen -mx-2 px-2 md:m-0 md:p-0">
           {CATEGORIES.map((cat) => (
-            <Button 
-              key={cat.label} 
-              variant="secondary" 
+            <Button
+              key={cat.label}
+              variant="secondary"
               className="rounded-full bg-background shadow-sm border hover:bg-muted/80 shrink-0 h-8 px-4 text-sm font-normal"
             >
               <cat.icon className="mr-2 size-4" />
@@ -245,27 +347,35 @@ function MapOverlayUI({
 
       {/* Bottom Section: Controls & Info */}
       <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        
+
         {/* Bottom Right: Map Controls */}
         <div className="flex flex-col gap-4 items-end w-full sm:w-auto">
           <CustomMapControls setUserLocation={setUserLocation} />
         </div>
       </div>
-      
+
       {/* Mobile Bottom Bar */}
       <div className="md:hidden bg-background border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] grid grid-cols-5 p-2 pb-6 pointer-events-auto">
-         <BottomNavItem icon={MapIcon} label="Explore" active />
-         <BottomNavItem icon={Star} label="Saved" />
-         <BottomNavItem icon={Navigation} label="Go" />
-         <BottomNavItem icon={Plus} label="Contribute" />
-         <BottomNavItem icon={Clock} label="Updates" />
+        <BottomNavItem icon={MapIcon} label="Explore" active />
+        <BottomNavItem icon={Star} label="Saved" />
+        <BottomNavItem icon={Navigation} label="Go" />
+        <BottomNavItem icon={Plus} label="Contribute" />
+        <BottomNavItem icon={Clock} label="Updates" />
       </div>
 
     </div>
   )
 }
 
-function BottomNavItem({ icon: Icon, label, active }: { icon: any, label: string, active?: boolean }) {
+function BottomNavItem({
+  icon: Icon,
+  label,
+  active
+}: {
+  icon: React.ComponentType<{ className?: string }>,
+  label: string,
+  active?: boolean
+}) {
   return (
     <div className={cn("flex flex-col items-center justify-center gap-1 p-1 rounded-full", active ? "text-blue-600" : "text-muted-foreground")}>
       <Icon className={cn("size-6", active && "fill-current")} />
@@ -312,10 +422,10 @@ function ControlButton({
   );
 }
 
-function CustomMapControls({ 
-  setUserLocation 
-}: { 
-  setUserLocation: (l: [number, number]) => void 
+function CustomMapControls({
+  setUserLocation
+}: {
+  setUserLocation: (l: [number, number]) => void
 }) {
   const { map } = useMap()
   const { resolvedTheme, setTheme } = useTheme()
@@ -345,23 +455,23 @@ function CustomMapControls({
 
   const handleZoomIn = () => map?.zoomTo(map.getZoom() + 1, { duration: 300 })
   const handleZoomOut = () => map?.zoomTo(map.getZoom() - 1, { duration: 300 })
-  
+
   const handleLocate = () => {
     if (navigator.geolocation && map) {
-        setWaitingForLocation(true)
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
-                setUserLocation(coords)
-                map.flyTo({
-                    center: coords,
-                    zoom: 14,
-                    duration: 1500
-                });
-                setWaitingForLocation(false)
-            },
-            () => setWaitingForLocation(false)
-        );
+      setWaitingForLocation(true)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
+          setUserLocation(coords)
+          map.flyTo({
+            center: coords,
+            zoom: 14,
+            duration: 1500
+          });
+          setWaitingForLocation(false)
+        },
+        () => setWaitingForLocation(false)
+      );
     }
   }
 
@@ -386,78 +496,79 @@ function CustomMapControls({
 
   return (
     <div className="flex flex-col gap-2 items-end">
-       
-       {/* Utility Controls (Theme, 3D, Fullscreen) */}
-       <ControlGroup>
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={toggleTheme} label="Toggle theme">
-                  {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left">Theme</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={toggle3D} label="Toggle 3D" active={is3D}>
-                  <Box className="size-4" />
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left">Toggle 3D</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      {/* Utility Controls (Theme, 3D, Fullscreen) */}
+      <ControlGroup>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ControlButton onClick={toggleTheme} label="Toggle theme">
+                {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              </ControlButton>
+            </TooltipTrigger>
+            <TooltipContent side="left">Theme</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={handleFullscreen} label="Fullscreen">
-                  <Maximize className="size-4" />
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left">Fullscreen</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-       </ControlGroup>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ControlButton onClick={toggle3D} label="Toggle 3D" active={is3D}>
+                <Box className="size-4" />
+              </ControlButton>
+            </TooltipTrigger>
+            <TooltipContent side="left">Toggle 3D</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-       {/* Compass/Locate */}
-       <ControlGroup>
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={handleResetBearing} label="Reset bearing">
-                  <svg
-                    ref={compassRef}
-                    viewBox="0 0 24 24"
-                    className="size-5 transition-transform duration-200"
-                    style={{ transformStyle: "preserve-3d" }}
-                  >
-                    <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
-                    <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
-                    <path d="M12 22L16 12H12V22Z" className="fill-muted-foreground/60" />
-                    <path d="M12 22L8 12H12V22Z" className="fill-muted-foreground/30" />
-                  </svg>
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left">Reset North</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ControlButton onClick={handleFullscreen} label="Fullscreen">
+                <Maximize className="size-4" />
+              </ControlButton>
+            </TooltipTrigger>
+            <TooltipContent side="left">Fullscreen</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </ControlGroup>
 
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={handleLocate} label="Find my location" disabled={waitingForLocation}>
-                  {waitingForLocation ? <Loader2 className="size-4 animate-spin" /> : <Locate className="size-4" />}
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left">Your location</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-       </ControlGroup>
-       
+      {/* Compass/Locate */}
+      <ControlGroup>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ControlButton onClick={handleResetBearing} label="Reset bearing">
+                <svg
+                  ref={compassRef}
+                  viewBox="0 0 24 24"
+                  className="size-5 transition-transform duration-200"
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  <title>Compass</title>
+                  <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
+                  <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
+                  <path d="M12 22L16 12H12V22Z" className="fill-muted-foreground/60" />
+                  <path d="M12 22L8 12H12V22Z" className="fill-muted-foreground/30" />
+                </svg>
+              </ControlButton>
+            </TooltipTrigger>
+            <TooltipContent side="left">Reset North</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ControlButton onClick={handleLocate} label="Find my location" disabled={waitingForLocation}>
+                {waitingForLocation ? <Loader2 className="size-4 animate-spin" /> : <Locate className="size-4" />}
+              </ControlButton>
+            </TooltipTrigger>
+            <TooltipContent side="left">Your location</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </ControlGroup>
+
       {/* Zoom Controls Group */}
       <ControlGroup>
         <TooltipProvider delayDuration={0}>
@@ -485,5 +596,3 @@ function CustomMapControls({
     </div>
   )
 }
-
-
