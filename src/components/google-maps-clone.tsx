@@ -28,7 +28,6 @@ import {
 import { Map as MapComponent, useMap, MapMarker, MarkerContent } from "@/components/ui/map"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { useTheme } from "next-themes"
 import {
   Tooltip,
@@ -43,7 +42,10 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
+import { NaeroMenuPanel } from "@/components/naero-menu-panel"
+import { NaeroSidebar } from "@/components/naero-sidebar"
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -96,110 +98,43 @@ export default function GoogleMapsClone() {
   });
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
-      {/* Persistent Sidebar */}
-      <Sidebar isOpen={isDesktopSidebarOpen} />
+    <SidebarProvider open={isDesktopSidebarOpen} onOpenChange={setIsDesktopSidebarOpen}>
+      <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
+        <NaeroSidebar />
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
-        <div className="relative flex-1 bg-background rounded-md border border-border/50 shadow-xl overflow-hidden group">
-          <MapComponent
-            center={viewState.center}
-            zoom={viewState.zoom}
-            scrollZoom={true}
-          >
-            <MapStateSync setViewState={setViewState} />
+        <SidebarInset>
+          <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
+            <div className="relative flex-1 bg-background rounded-md border border-border/50 shadow-xl overflow-hidden group">
+              <MapComponent
+                center={viewState.center}
+                zoom={viewState.zoom}
+                scrollZoom={true}
+              >
+                <MapStateSync setViewState={setViewState} />
 
-            {userLocation && (
-              <MapMarker longitude={userLocation[0]} latitude={userLocation[1]}>
-                <MarkerContent>
-                  <div className="relative flex items-center justify-center pointer-events-none">
-                    <span className="absolute size-10 rounded-full bg-blue-500/30 animate-ping shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                    <span className="absolute size-6 rounded-full bg-blue-500/20" />
-                    <div className="relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-lg" />
-                  </div>
-                </MarkerContent>
-              </MapMarker>
-            )}
+                {userLocation && (
+                  <MapMarker longitude={userLocation[0]} latitude={userLocation[1]}>
+                    <MarkerContent>
+                      <div className="relative flex items-center justify-center pointer-events-none">
+                        <span className="absolute size-10 rounded-full bg-blue-500/30 animate-ping shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                        <span className="absolute size-6 rounded-full bg-blue-500/20" />
+                        <div className="relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-lg" />
+                      </div>
+                    </MarkerContent>
+                  </MapMarker>
+                )}
 
-            <MapOverlayUI
-              searchValue={searchValue}
-              setSearchValue={setSearchValue}
-              setUserLocation={setUserLocation}
-              onToggleDesktopSidebar={() => setIsDesktopSidebarOpen((prev) => !prev)}
-            />
-          </MapComponent>
-        </div>
-      </main>
-    </div>
-  )
-}
-
-type NaeroMenuItem = {
-  label: string
-  icon?: React.ComponentType<{ className?: string }>
-}
-
-const NAERO_MENU_PRIMARY_ITEMS: NaeroMenuItem[] = [
-  { label: "Your places", icon: Star },
-  { label: "Your timeline", icon: Clock },
-  { label: "Your contributions", icon: Navigation },
-]
-
-const NAERO_MENU_SECONDARY_ITEMS: NaeroMenuItem[] = [
-  { label: "Settings" },
-  { label: "Help & Feedback" },
-]
-
-const NaeroMenuPanel = ({ onSelect }: { onSelect?: () => void }) => {
-  const handleItemClick = () => onSelect?.()
-
-  return (
-    <div className="p-4 flex flex-col gap-2">
-      {NAERO_MENU_PRIMARY_ITEMS.map(({ label, icon: Icon }) => (
-        <Button
-          key={label}
-          variant="ghost"
-          className="justify-start gap-3 rounded-xl"
-          onClick={handleItemClick}
-        >
-          {Icon ? <Icon className="size-4" /> : null}
-          {label}
-        </Button>
-      ))}
-
-      <Separator className="my-2" />
-
-      {NAERO_MENU_SECONDARY_ITEMS.map(({ label }) => (
-        <Button
-          key={label}
-          variant="ghost"
-          className="justify-start rounded-xl"
-          onClick={handleItemClick}
-        >
-          {label}
-        </Button>
-      ))}
-    </div>
-  )
-}
-
-function Sidebar({ isOpen }: { isOpen: boolean }) {
-  if (!isOpen) return null
-
-  return (
-    <aside className="w-72 hidden md:flex flex-col border-r bg-background shrink-0">
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-3">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-            <MapIcon className="size-5" />
-          </div>
-          <span className="font-semibold text-lg tracking-tight">Naero Maps</span>
-        </div>
+                <MapOverlayUI
+                  searchValue={searchValue}
+                  setSearchValue={setSearchValue}
+                  setUserLocation={setUserLocation}
+                />
+              </MapComponent>
+            </div>
+          </main>
+        </SidebarInset>
       </div>
-
-      <NaeroMenuPanel />
-    </aside>
+    </SidebarProvider>
   )
 }
 
@@ -231,12 +166,10 @@ function MapOverlayUI({
   searchValue,
   setSearchValue,
   setUserLocation,
-  onToggleDesktopSidebar,
 }: {
   searchValue: string,
   setSearchValue: (v: string) => void,
   setUserLocation: (l: [number, number]) => void
-  onToggleDesktopSidebar: () => void
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const handleCloseMobileMenu = () => setIsMobileMenuOpen(false)
@@ -253,15 +186,16 @@ function MapOverlayUI({
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hidden md:inline-flex rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
-                  aria-label="Toggle sidebar menu"
-                  onClick={onToggleDesktopSidebar}
-                >
-                  <Menu className="size-5" />
-                </Button>
+                <SidebarTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hidden md:inline-flex rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
+                    aria-label="Toggle sidebar menu"
+                  >
+                    <Menu className="size-5" />
+                  </Button>
+                </SidebarTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom">Menu</TooltipContent>
             </Tooltip>
