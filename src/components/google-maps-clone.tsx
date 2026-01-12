@@ -88,6 +88,12 @@ const CATEGORIES = [
   { label: "More", icon: MoreHorizontal },
 ];
 
+const HIDDEN_SCROLLBAR_CLASS =
+  "scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+
+const FLOATING_SURFACE_CLASS =
+  "rounded-2xl border border-border/60 bg-background/80 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
+
 type MapViewState = {
   center: [number, number];
   zoom: number;
@@ -250,7 +256,7 @@ function MapOverlayUI({
       <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
         {/* Floating Search (Desktop) */}
         <div className="hidden md:block w-full md:max-w-xl">
-          <InputGroup className="h-12 rounded-xl border-border/60 bg-background/85 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-xl">
+          <InputGroup className={cn("h-12", FLOATING_SURFACE_CLASS)}>
             <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
@@ -259,7 +265,7 @@ function MapOverlayUI({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="hidden md:inline-flex size-10 rounded-xl text-muted-foreground hover:bg-muted"
+                        className="hidden md:inline-flex size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
                         aria-label="Toggle sidebar"
                       >
                         <Menu className="size-5" />
@@ -298,7 +304,7 @@ function MapOverlayUI({
                   variant="ghost"
                   aria-label="Clear search"
                   onClick={() => setSearchValue("")}
-                  className="rounded-xl text-muted-foreground hover:bg-muted"
+                  className="rounded-2xl text-muted-foreground hover:bg-muted/70"
                 >
                   <X className="size-4" />
                 </InputGroupButton>
@@ -311,7 +317,7 @@ function MapOverlayUI({
                       size="icon-sm"
                       variant="ghost"
                       aria-label="Search"
-                      className="rounded-xl text-muted-foreground hover:bg-muted"
+                      className="rounded-2xl text-muted-foreground hover:bg-muted/70"
                     >
                       <Search className="size-4" />
                     </InputGroupButton>
@@ -324,7 +330,12 @@ function MapOverlayUI({
         </div>
 
         {/* Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide w-screen -mx-2 px-2 md:w-auto md:mx-0 md:px-0">
+        <div
+          className={cn(
+            "hidden md:flex gap-2 overflow-x-auto pb-2 md:pb-0 w-screen -mx-2 px-2 md:w-auto md:mx-0 md:px-0",
+            HIDDEN_SCROLLBAR_CLASS
+          )}
+        >
           {CATEGORIES.map((cat) => (
             <Button
               key={cat.label}
@@ -350,20 +361,39 @@ function MapOverlayUI({
         </div>
       </div>
 
-      {/* Mobile Floating Search */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2">
+      {/* Mobile Filter Pills + Floating Search */}
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 flex flex-col gap-2">
+        <div
+          className={cn(
+            "flex gap-2 overflow-x-auto px-0",
+            HIDDEN_SCROLLBAR_CLASS
+          )}
+        >
+          {CATEGORIES.map((cat) => (
+            <Button
+              key={cat.label}
+              variant="outline"
+              size="sm"
+              className="shrink-0 rounded-full border-border/60 bg-background/80 shadow-sm shadow-black/5 hover:bg-muted/70 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl"
+            >
+              <cat.icon className="mr-2 size-4" />
+              {cat.label}
+            </Button>
+          ))}
+        </div>
+
         <Drawer
           direction="left"
           open={isMobileMenuOpen}
           onOpenChange={setIsMobileMenuOpen}
         >
-          <InputGroup className="h-12 rounded-2xl border-border/60 bg-background/85 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-xl">
+          <InputGroup className={cn("h-12", FLOATING_SURFACE_CLASS)}>
             <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
               <DrawerTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-10 rounded-2xl text-muted-foreground hover:bg-muted"
+                  className="size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
                   aria-label="Open menu"
                 >
                   <Menu className="size-5" />
@@ -398,7 +428,7 @@ function MapOverlayUI({
                   variant="ghost"
                   aria-label="Clear search"
                   onClick={() => setSearchValue("")}
-                  className="rounded-2xl text-muted-foreground hover:bg-muted"
+                  className="rounded-2xl text-muted-foreground hover:bg-muted/70"
                 >
                   <X className="size-4" />
                 </InputGroupButton>
@@ -408,7 +438,7 @@ function MapOverlayUI({
                 size="icon-sm"
                 variant="ghost"
                 aria-label="Search"
-                className="rounded-2xl text-muted-foreground hover:bg-muted"
+                className="rounded-2xl text-muted-foreground hover:bg-muted/70"
               >
                 <Search className="size-4" />
               </InputGroupButton>
@@ -594,10 +624,10 @@ function CustomMapControls({
   };
 
   return (
-    <div className="flex flex-col gap-2 items-end">
-      {/* Utility Controls (Theme, 3D, Fullscreen) */}
-      <ControlGroup>
-        <TooltipProvider delayDuration={0}>
+    <TooltipProvider delayDuration={0}>
+      <div className="flex flex-col gap-2 items-end">
+        {/* Utility Controls (Theme, 3D, Fullscreen) */}
+        <ControlGroup>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={toggleTheme} label="Toggle theme">
@@ -610,9 +640,7 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Theme</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
 
-        <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={toggle3D} label="Toggle 3D" active={is3D}>
@@ -621,9 +649,7 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Toggle 3D</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
 
-        <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={handleFullscreen} label="Fullscreen">
@@ -632,12 +658,10 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Fullscreen</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
-      </ControlGroup>
+        </ControlGroup>
 
-      {/* Compass/Locate */}
-      <ControlGroup>
-        <TooltipProvider delayDuration={0}>
+        {/* Compass/Locate */}
+        <ControlGroup>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={handleResetBearing} label="Reset bearing">
@@ -663,9 +687,7 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Reset North</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
 
-        <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton
@@ -682,12 +704,10 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Your location</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
-      </ControlGroup>
+        </ControlGroup>
 
-      {/* Zoom Controls Group */}
-      <ControlGroup>
-        <TooltipProvider delayDuration={0}>
+        {/* Zoom Controls Group */}
+        <ControlGroup>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={handleZoomIn} label="Zoom In">
@@ -696,9 +716,7 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Zoom In</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
 
-        <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={handleZoomOut} label="Zoom Out">
@@ -707,8 +725,8 @@ function CustomMapControls({
             </TooltipTrigger>
             <TooltipContent side="left">Zoom Out</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
-      </ControlGroup>
-    </div>
+        </ControlGroup>
+      </div>
+    </TooltipProvider>
   );
 }
