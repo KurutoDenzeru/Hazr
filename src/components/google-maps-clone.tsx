@@ -27,7 +27,12 @@ import {
 
 import { Map as MapComponent, useMap, MapMarker, MarkerContent } from "@/components/ui/map"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import { useTheme } from "next-themes"
 import {
   Tooltip,
@@ -177,100 +182,123 @@ function MapOverlayUI({
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
       {/* Top Section: Search & Filters */}
-      <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-10">
-
-        {/* Search Bar Container */}
-        <div className="relative w-full md:w-100 flex items-center bg-background rounded-2xl shadow-md border border-border/50 transition-all focus-within:shadow-lg focus-within:ring-1 focus-within:ring-ring">
-
-          {/* Desktop: toggle persistent sidebar */}
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <SidebarTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hidden md:inline-flex rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
-                    aria-label="Toggle sidebar menu"
-                  >
-                    <Menu className="size-5" />
-                  </Button>
-                </SidebarTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Menu</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Mobile: open drawer menu */}
-          <Drawer direction="left" open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <DrawerTrigger asChild>
+      <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
+        {/* Floating Search */}
+        <div className="w-full md:max-w-xl">
+          <InputGroup className="h-12 rounded-2xl border-border/60 bg-background/85 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-xl">
+            <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
+              {/* Desktop: toggle icon-rail sidebar */}
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="md:hidden rounded-full shrink-0 ml-1 h-10 w-10 text-muted-foreground hover:bg-muted"
-                      aria-label="Menu"
-                    >
-                      <Menu className="size-5" />
-                    </Button>
+                    <SidebarTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hidden md:inline-flex size-10 rounded-xl text-muted-foreground hover:bg-muted"
+                        aria-label="Toggle sidebar"
+                      >
+                        <Menu className="size-5" />
+                      </Button>
+                    </SidebarTrigger>
                   </TooltipTrigger>
-                </DrawerTrigger>
-                <TooltipContent side="bottom">Menu</TooltipContent>
-                <DrawerContent className="h-full w-75 rounded-none rounded-r-xl border-y-0 border-l-0">
-                  <DrawerHeader className="border-b">
-                    <DrawerTitle className="flex items-center gap-2">
-                      <MapIcon className="size-5 text-primary" />
-                      Naero Maps
-                    </DrawerTitle>
-                  </DrawerHeader>
-                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} />
-                </DrawerContent>
-              </Tooltip>
-            </TooltipProvider>
-          </Drawer>
+                  <TooltipContent side="bottom">Menu</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-          <Input
-            className="border-0 shadow-none focus-visible:ring-0 px-2 h-12 text-base placeholder:text-muted-foreground"
-            placeholder="Search Naero Maps"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
+              {/* Mobile: open drawer menu */}
+              <Drawer direction="left" open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <DrawerTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="md:hidden size-10 rounded-xl text-muted-foreground hover:bg-muted"
+                          aria-label="Open menu"
+                        >
+                          <Menu className="size-5" />
+                        </Button>
+                      </TooltipTrigger>
+                    </DrawerTrigger>
+                    <TooltipContent side="bottom">Menu</TooltipContent>
+                    <DrawerContent className="h-full w-[18.5rem] rounded-none rounded-r-2xl border-y-0 border-l-0">
+                      <DrawerHeader className="border-b">
+                        <DrawerTitle className="flex items-center gap-2">
+                          <MapIcon className="size-5 text-primary" />
+                          Naero Maps
+                        </DrawerTitle>
+                      </DrawerHeader>
+                      <NaeroMenuPanel onSelect={handleCloseMobileMenu} />
+                    </DrawerContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Drawer>
 
-          <div className="flex items-center gap-1 pr-2">
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 text-muted-foreground hover:bg-muted" aria-label="Search">
-                    <Search className="size-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Search</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+            </InputGroupAddon>
 
-            {searchValue && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchValue("")}
-                className="rounded-full h-10 w-10 text-muted-foreground hover:bg-muted"
-                aria-label="Clear"
-              >
-                <X className="size-5" />
-              </Button>
-            )}
-          </div>
+            <InputGroupInput
+              placeholder="Search Naero Maps"
+              aria-label="Search Naero Maps"
+              value={searchValue}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setSearchValue(event.target.value)
+              }
+              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                if (event.key === "Escape") {
+                  setSearchValue("")
+                  return
+                }
+
+                if (event.key === "Enter") {
+                  event.currentTarget.blur()
+                }
+              }}
+              className="h-12 text-base"
+            />
+
+            <InputGroupAddon align="inline-end" className="gap-1 pr-1.5">
+              {searchValue ? (
+                <InputGroupButton
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Clear search"
+                  onClick={() => setSearchValue("")}
+                  className="rounded-xl text-muted-foreground hover:bg-muted"
+                >
+                  <X className="size-4" />
+                </InputGroupButton>
+              ) : null}
+
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InputGroupButton
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Search"
+                      className="rounded-xl text-muted-foreground hover:bg-muted"
+                    >
+                      <Search className="size-4" />
+                    </InputGroupButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Search</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </InputGroupAddon>
+          </InputGroup>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:w-auto w-screen -mx-2 px-2 md:m-0 md:p-0">
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide w-screen -mx-2 px-2 md:w-auto md:mx-0 md:px-0">
           {CATEGORIES.map((cat) => (
             <Button
               key={cat.label}
-              variant="secondary"
-              className="rounded-full bg-background shadow-sm border hover:bg-muted/80 shrink-0 h-8 px-4 text-sm font-normal"
+              variant="outline"
+              size="sm"
+              className="shrink-0 rounded-full border-border/60 bg-background/80 shadow-sm shadow-black/5 hover:bg-muted/70 supports-backdrop-filter:bg-background/70 supports-backdrop-filter:backdrop-blur-xl"
             >
               <cat.icon className="mr-2 size-4" />
               {cat.label}
@@ -289,7 +317,7 @@ function MapOverlayUI({
       </div>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden bg-background border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)] grid grid-cols-5 p-2 pb-6 pointer-events-auto">
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-5 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
         <BottomNavItem icon={MapIcon} label="Explore" active />
         <BottomNavItem icon={Star} label="Saved" />
         <BottomNavItem icon={Navigation} label="Go" />
@@ -304,17 +332,33 @@ function MapOverlayUI({
 function BottomNavItem({
   icon: Icon,
   label,
-  active
+  active = false,
 }: {
-  icon: React.ComponentType<{ className?: string }>,
-  label: string,
+  icon: React.ComponentType<{ className?: string }>
+  label: string
   active?: boolean
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-1 p-1 rounded-full", active ? "text-blue-600" : "text-muted-foreground")}>
-      <Icon className={cn("size-6", active && "fill-current")} />
-      <span className="text-[10px] font-medium">{label}</span>
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {active ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 rounded-2xl bg-muted/70"
+        />
+      ) : null}
+      <Icon className="size-6" />
+      <span className="text-[10px] font-medium leading-none">{label}</span>
+    </button>
   )
 }
 
