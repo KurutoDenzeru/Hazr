@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { Map as MapIcon } from "lucide-react"
 
 import { NaeroMenuPanel } from "@/components/naero-menu-panel"
