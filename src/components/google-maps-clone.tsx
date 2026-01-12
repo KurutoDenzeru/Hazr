@@ -92,11 +92,10 @@ const CATEGORIES = [
 const HIDDEN_SCROLLBAR_CLASS =
   "scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
-const FLOATING_SURFACE_CLASS =
+const BAR_SURFACE_CLASS =
   "rounded-2xl border border-border/60 bg-background/80 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
 
-const MOBILE_BAR_SURFACE_CLASS =
-  "rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
+const MOBILE_BAR_SURFACE_CLASS = cn(BAR_SURFACE_CLASS, "p-2");
 
 type MapViewState = {
   center: [number, number];
@@ -270,7 +269,7 @@ function MapOverlayUI({
       <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
         {/* Floating Search (Desktop) */}
         <div className="hidden md:block w-full md:max-w-xl">
-          <InputGroup className={cn("h-12", FLOATING_SURFACE_CLASS)}>
+          <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
             <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
@@ -346,16 +345,17 @@ function MapOverlayUI({
         {/* Filter Pills */}
         <div
           className={cn(
-            "hidden md:flex gap-2 overflow-x-auto pb-2 md:pb-0 w-screen -mx-2 px-2 md:w-auto md:mx-0 md:px-0",
+            "hidden md:flex w-full md:max-w-xl items-center gap-1.5 overflow-x-auto p-2",
+            BAR_SURFACE_CLASS,
             HIDDEN_SCROLLBAR_CLASS,
           )}
         >
           {CATEGORIES.map((cat) => (
             <Button
               key={cat.label}
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="shrink-0 rounded-full border-border/60 bg-background/80 shadow-sm shadow-black/5 hover:bg-muted/70 supports-backdrop-filter:bg-background/70 supports-backdrop-filter:backdrop-blur-xl"
+              className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
             >
               <cat.icon className="mr-2 size-4" />
               {cat.label}
@@ -502,7 +502,7 @@ function MapOverlayUI({
               </DrawerHeader>
 
               <div className="px-4 pb-4 [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)]">
-                <InputGroup className={cn("h-12", FLOATING_SURFACE_CLASS)}>
+                <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
                   <InputGroupAddon
                     align="inline-start"
                     className="gap-1.5 pl-1.5"
@@ -613,21 +613,22 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ControlButton({
-  onClick,
-  label,
-  children,
-  disabled = false,
-  active = false,
-}: {
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
-  disabled?: boolean;
-  active?: boolean;
-}) {
+const ControlButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    onClick: () => void;
+    label: string;
+    children: React.ReactNode;
+    disabled?: boolean;
+    active?: boolean;
+  }
+>(function ControlButton(
+  { onClick, label, children, disabled = false, active = false },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       onClick={onClick}
       aria-label={label}
       type="button"
@@ -643,7 +644,7 @@ function ControlButton({
       {children}
     </button>
   );
-}
+});
 
 function CustomMapControls({
   setUserLocation,
