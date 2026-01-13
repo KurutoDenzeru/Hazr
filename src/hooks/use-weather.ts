@@ -2,88 +2,42 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type {
   WeatherResponse,
   ProcessedWeather,
+  ProcessedHourlyForecast,
+  ProcessedDailyForecast,
+  LocationInfo,
   WeatherCode,
 } from "@/types/api";
+import { WEATHER_CODE_DESCRIPTIONS } from "@/types/api";
 
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
-
-// Import the descriptions from api.ts
-const WEATHER_DESCRIPTIONS: Record<WeatherCode, string> = {
-  0: "Clear sky",
-  1: "Mainly clear",
-  2: "Partly cloudy",
-  3: "Overcast",
-  45: "Fog",
-  48: "Depositing rime fog",
-  51: "Light drizzle",
-  53: "Moderate drizzle",
-  55: "Dense drizzle",
-  56: "Light freezing drizzle",
-  57: "Dense freezing drizzle",
-  61: "Slight rain",
-  63: "Moderate rain",
-  65: "Heavy rain",
-  66: "Light freezing rain",
-  67: "Heavy freezing rain",
-  71: "Slight snow",
-  73: "Moderate snow",
-  75: "Heavy snow",
-  77: "Snow grains",
-  80: "Slight rain showers",
-  81: "Moderate rain showers",
-  82: "Violent rain showers",
-  85: "Slight snow showers",
-  86: "Heavy snow showers",
-  95: "Thunderstorm",
-  96: "Thunderstorm with slight hail",
-  99: "Thunderstorm with heavy hail",
-};
+const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 
 type UseWeatherOptions = {
   latitude: number | null;
   longitude: number | null;
   autoRefresh?: boolean;
   refreshInterval?: number; // in milliseconds
-};
-
-type HourlyForecast = {
-  time: Date;
-  temperature: number;
-  precipitation: number;
-  precipitationProbability: number;
-  weatherCode: WeatherCode;
-  windSpeed: number;
-};
-
-type DailyForecast = {
-  date: Date;
-  tempMax: number;
-  tempMin: number;
-  weatherCode: WeatherCode;
-  precipitationSum: number;
-  precipitationProbability: number;
-  sunrise: Date;
-  sunset: Date;
-  windSpeedMax: number;
+  forecastHours?: number; // how many hours to fetch (default 48)
 };
 
 type UseWeatherReturn = {
   current: ProcessedWeather | null;
-  hourly: HourlyForecast[];
-  daily: DailyForecast[];
+  hourly: ProcessedHourlyForecast[];
+  daily: ProcessedDailyForecast[];
   isLoading: boolean;
   error: Error | null;
   lastUpdated: Date | null;
   refetch: () => Promise<void>;
-  location: {
-    latitude: number;
-    longitude: number;
-    elevation: number;
-    timezone: string;
-  } | null;
+  locationInfo: LocationInfo | null;
+  selectedHourIndex: number;
+  setSelectedHourIndex: (index: number) => void;
+  canGoNext: boolean;
+  canGoPrev: boolean;
+  goNextHour: () => void;
+  goPrevHour: () => void;
 };
 
-const buildWeatherUrl = (lat: number, lng: number): string => {
+const buildWeatherUrl = (lat: number, lng: number, forecastDays: number = 7): string => {
   const params = new URLSearchParams({
     latitude: lat.toString(),
     longitude: lng.toString(),
@@ -101,6 +55,7 @@ const buildWeatherUrl = (lat: number, lng: number): string => {
       "wind_speed_10m",
       "wind_direction_10m",
       "wind_gusts_10m",
+      "uv_index",
     ].join(","),
     hourly: [
       "temperature_2m",
@@ -110,6 +65,11 @@ const buildWeatherUrl = (lat: number, lng: number): string => {
       "precipitation",
       "weather_code",
       "wind_speed_10m",
+      "uv_index",
+      "is_day",
+      "visibility",
+      "surface_pressure",
+      "dew_point_2m",
     ].join(","),
     daily: [
       "weather_code",
@@ -122,12 +82,59 @@ const buildWeatherUrl = (lat: number, lng: number): string => {
       "precipitation_sum",
       "precipitation_probability_max",
       "wind_speed_10m_max",
+      "uv_index_max",
     ].join(","),
     timezone: "auto",
-    forecast_days: "7",
+    forecast_days: forecastDays.toString(),
   });
 
   return `${OPEN_METEO_BASE_URL}?${params.toString()}`;
+};
+
+const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo | null> => {
+  try {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      format: "json",
+      zoom: "10",
+    });
+
+    const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "Naero Weather App",
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const address = data.address || {};
+
+    const city = address.city || address.town || address.village || address.municipality || address.county || "";
+    const region = address.state || address.region || "";
+    const country = address.country || "";
+    const countryCode = address.country_code?.toUpperCase() || "";
+
+    // Build display name
+    const parts = [city, region, country].filter(Boolean);
+    const displayName = parts.join(", ");
+
+    return {
+      city,
+      region,
+      country,
+      countryCode,
+      displayName: displayName || "Unknown Location",
+      latitude: lat,
+      longitude: lng,
+      elevation: 0,
+      timezone: "",
+    };
+  } catch {
+    return null;
+  }
 };
 
 const processCurrentWeather = (data: WeatherResponse): ProcessedWeather | null => {
@@ -140,46 +147,56 @@ const processCurrentWeather = (data: WeatherResponse): ProcessedWeather | null =
     humidity: current.relative_humidity_2m,
     windSpeed: current.wind_speed_10m,
     windDirection: current.wind_direction_10m,
+    windGusts: current.wind_gusts_10m,
     precipitation: current.precipitation,
     cloudCover: current.cloud_cover,
     weatherCode: current.weather_code,
     isDay: current.is_day === 1,
-    description: WEATHER_DESCRIPTIONS[current.weather_code] || "Unknown",
+    description: WEATHER_CODE_DESCRIPTIONS[current.weather_code] || "Unknown",
+    uvIndex: current.uv_index,
   };
 };
 
-const processHourlyForecast = (data: WeatherResponse): HourlyForecast[] => {
+const processHourlyForecast = (data: WeatherResponse, maxHours: number = 48): ProcessedHourlyForecast[] => {
   if (!data.hourly) return [];
 
   const hourly = data.hourly;
-  const forecasts: HourlyForecast[] = [];
-
-  // Get next 24 hours
+  const forecasts: ProcessedHourlyForecast[] = [];
   const now = new Date();
-  for (let i = 0; i < Math.min(24, hourly.time.length); i++) {
+
+  for (let i = 0; i < Math.min(maxHours, hourly.time.length); i++) {
     const time = new Date(hourly.time[i]);
-    if (time < now) continue;
+    
+    // Include current hour and future hours
+    if (time.getTime() < now.getTime() - 3600000) continue; // Skip past hours (allow 1 hour buffer)
 
     forecasts.push({
       time,
       temperature: hourly.temperature_2m[i],
+      feelsLike: hourly.apparent_temperature[i],
+      humidity: hourly.relative_humidity_2m[i],
       precipitation: hourly.precipitation[i],
       precipitationProbability: hourly.precipitation_probability[i],
       weatherCode: hourly.weather_code[i],
       windSpeed: hourly.wind_speed_10m[i],
+      uvIndex: hourly.uv_index[i],
+      isDay: hourly.is_day[i] === 1,
+      visibility: hourly.visibility?.[i] ?? 0,
+      pressure: hourly.surface_pressure?.[i] ?? 0,
+      dewPoint: hourly.dew_point_2m?.[i] ?? 0,
     });
 
-    if (forecasts.length >= 12) break;
+    if (forecasts.length >= maxHours) break;
   }
 
   return forecasts;
 };
 
-const processDailyForecast = (data: WeatherResponse): DailyForecast[] => {
+const processDailyForecast = (data: WeatherResponse): ProcessedDailyForecast[] => {
   if (!data.daily) return [];
 
   const daily = data.daily;
-  const forecasts: DailyForecast[] = [];
+  const forecasts: ProcessedDailyForecast[] = [];
 
   for (let i = 0; i < daily.time.length; i++) {
     forecasts.push({
@@ -192,6 +209,7 @@ const processDailyForecast = (data: WeatherResponse): DailyForecast[] => {
       sunrise: new Date(daily.sunrise[i]),
       sunset: new Date(daily.sunset[i]),
       windSpeedMax: daily.wind_speed_10m_max[i],
+      uvIndexMax: daily.uv_index_max[i],
     });
   }
 
@@ -204,15 +222,17 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     longitude,
     autoRefresh = true,
     refreshInterval = 300000, // 5 minutes default
+    forecastHours = 48,
   } = options;
 
   const [current, setCurrent] = useState<ProcessedWeather | null>(null);
-  const [hourly, setHourly] = useState<HourlyForecast[]>([]);
-  const [daily, setDaily] = useState<DailyForecast[]>([]);
+  const [hourly, setHourly] = useState<ProcessedHourlyForecast[]>([]);
+  const [daily, setDaily] = useState<ProcessedDailyForecast[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [location, setLocation] = useState<UseWeatherReturn["location"]>(null);
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
+  const [selectedHourIndex, setSelectedHourIndex] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -232,26 +252,50 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     setError(null);
 
     try {
-      const url = buildWeatherUrl(latitude, longitude);
-      const response = await fetch(url, {
-        signal: abortControllerRef.current.signal,
-      });
+      // Fetch weather and location in parallel
+      const [weatherResponse, locationData] = await Promise.all([
+        fetch(buildWeatherUrl(latitude, longitude), {
+          signal: abortControllerRef.current.signal,
+        }),
+        fetchLocationName(latitude, longitude),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch weather: ${response.statusText}`);
+      if (!weatherResponse.ok) {
+        throw new Error(`Failed to fetch weather: ${weatherResponse.statusText}`);
       }
 
-      const data: WeatherResponse = await response.json();
+      const data: WeatherResponse = await weatherResponse.json();
 
-      setCurrent(processCurrentWeather(data));
-      setHourly(processHourlyForecast(data));
-      setDaily(processDailyForecast(data));
-      setLocation({
-        latitude: data.latitude,
-        longitude: data.longitude,
-        elevation: data.elevation,
-        timezone: data.timezone,
-      });
+      const processedCurrent = processCurrentWeather(data);
+      const processedHourly = processHourlyForecast(data, forecastHours);
+      const processedDaily = processDailyForecast(data);
+
+      setCurrent(processedCurrent);
+      setHourly(processedHourly);
+      setDaily(processedDaily);
+      setSelectedHourIndex(0); // Reset to current hour
+      
+      // Merge location data with weather location info
+      if (locationData) {
+        setLocationInfo({
+          ...locationData,
+          elevation: data.elevation,
+          timezone: data.timezone,
+        });
+      } else {
+        setLocationInfo({
+          city: "",
+          region: "",
+          country: "",
+          countryCode: "",
+          displayName: `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          elevation: data.elevation,
+          timezone: data.timezone,
+        });
+      }
+
       setLastUpdated(new Date());
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -261,7 +305,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [latitude, longitude]);
+  }, [latitude, longitude, forecastHours]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
@@ -269,7 +313,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
       setCurrent(null);
       setHourly([]);
       setDaily([]);
-      setLocation(null);
+      setLocationInfo(null);
       return;
     }
 
@@ -287,6 +331,22 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     };
   }, [fetchWeather, autoRefresh, refreshInterval, latitude, longitude]);
 
+  // Navigation helpers
+  const canGoNext = selectedHourIndex < hourly.length - 1;
+  const canGoPrev = selectedHourIndex > 0;
+
+  const goNextHour = useCallback(() => {
+    if (canGoNext) {
+      setSelectedHourIndex((prev) => prev + 1);
+    }
+  }, [canGoNext]);
+
+  const goPrevHour = useCallback(() => {
+    if (canGoPrev) {
+      setSelectedHourIndex((prev) => prev - 1);
+    }
+  }, [canGoPrev]);
+
   return {
     current,
     hourly,
@@ -295,7 +355,13 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     error,
     lastUpdated,
     refetch: fetchWeather,
-    location,
+    locationInfo,
+    selectedHourIndex,
+    setSelectedHourIndex,
+    canGoNext,
+    canGoPrev,
+    goNextHour,
+    goPrevHour,
   };
 };
 

@@ -90,6 +90,7 @@ export type WeatherCurrentUnits = {
   wind_speed_10m: string;
   wind_direction_10m: string;
   wind_gusts_10m: string;
+  uv_index: string;
 };
 
 export type WeatherCurrent = {
@@ -108,6 +109,7 @@ export type WeatherCurrent = {
   wind_speed_10m: number;
   wind_direction_10m: number;
   wind_gusts_10m: number;
+  uv_index: number;
 };
 
 export type WeatherHourlyUnits = {
@@ -119,6 +121,10 @@ export type WeatherHourlyUnits = {
   precipitation: string;
   weather_code: string;
   wind_speed_10m: string;
+  uv_index: string;
+  visibility: string;
+  surface_pressure: string;
+  dew_point_2m: string;
 };
 
 export type WeatherHourly = {
@@ -130,6 +136,11 @@ export type WeatherHourly = {
   precipitation: number[];
   weather_code: WeatherCode[];
   wind_speed_10m: number[];
+  uv_index: number[];
+  is_day: (0 | 1)[];
+  visibility: number[];
+  surface_pressure: number[];
+  dew_point_2m: number[];
 };
 
 export type WeatherDailyUnits = {
@@ -144,6 +155,7 @@ export type WeatherDailyUnits = {
   precipitation_sum: string;
   precipitation_probability_max: string;
   wind_speed_10m_max: string;
+  uv_index_max: string;
 };
 
 export type WeatherDaily = {
@@ -158,6 +170,7 @@ export type WeatherDaily = {
   precipitation_sum: number[];
   precipitation_probability_max: number[];
   wind_speed_10m_max: number[];
+  uv_index_max: number[];
 };
 
 export type WeatherResponse = {
@@ -174,6 +187,35 @@ export type WeatherResponse = {
   hourly?: WeatherHourly;
   daily_units?: WeatherDailyUnits;
   daily?: WeatherDaily;
+};
+
+// Open-Meteo Geocoding API Types
+export type GeocodingResult = {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  elevation: number;
+  feature_code: string;
+  country_code: string;
+  admin1_id?: number;
+  admin2_id?: number;
+  admin3_id?: number;
+  admin4_id?: number;
+  timezone: string;
+  population?: number;
+  postcodes?: string[];
+  country_id: number;
+  country: string;
+  admin1?: string;
+  admin2?: string;
+  admin3?: string;
+  admin4?: string;
+};
+
+export type GeocodingResponse = {
+  results?: GeocodingResult[];
+  generationtime_ms: number;
 };
 
 // Earthquake feed time ranges
@@ -203,11 +245,57 @@ export type ProcessedWeather = {
   humidity: number;
   windSpeed: number;
   windDirection: number;
+  windGusts: number;
   precipitation: number;
   cloudCover: number;
   weatherCode: WeatherCode;
   isDay: boolean;
   description: string;
+  uvIndex: number;
+};
+
+// Helper type for processed hourly forecast
+export type ProcessedHourlyForecast = {
+  time: Date;
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  precipitation: number;
+  precipitationProbability: number;
+  weatherCode: WeatherCode;
+  windSpeed: number;
+  uvIndex: number;
+  isDay: boolean;
+  visibility: number;
+  pressure: number;
+  dewPoint: number;
+};
+
+// Helper type for processed daily forecast
+export type ProcessedDailyForecast = {
+  date: Date;
+  tempMax: number;
+  tempMin: number;
+  weatherCode: WeatherCode;
+  precipitationSum: number;
+  precipitationProbability: number;
+  sunrise: Date;
+  sunset: Date;
+  windSpeedMax: number;
+  uvIndexMax: number;
+};
+
+// Location info from reverse geocoding
+export type LocationInfo = {
+  city: string;
+  region: string;
+  country: string;
+  countryCode: string;
+  displayName: string;
+  latitude: number;
+  longitude: number;
+  elevation: number;
+  timezone: string;
 };
 
 // Weather code to description mapping
@@ -242,6 +330,45 @@ export const WEATHER_CODE_DESCRIPTIONS: Record<WeatherCode, string> = {
   99: "Thunderstorm with heavy hail",
 };
 
+// UV Index risk levels and descriptions
+export type UVRiskLevel = "low" | "moderate" | "high" | "very-high" | "extreme";
+
+export const getUVRiskLevel = (uvIndex: number): UVRiskLevel => {
+  if (uvIndex < 3) return "low";
+  if (uvIndex < 6) return "moderate";
+  if (uvIndex < 8) return "high";
+  if (uvIndex < 11) return "very-high";
+  return "extreme";
+};
+
+export const UV_RISK_INFO: Record<UVRiskLevel, { label: string; color: string; description: string }> = {
+  low: {
+    label: "Low",
+    color: "#22c55e",
+    description: "No protection needed. Safe for most skin types.",
+  },
+  moderate: {
+    label: "Moderate",
+    color: "#eab308",
+    description: "Some protection recommended. Wear sunglasses on bright days.",
+  },
+  high: {
+    label: "High",
+    color: "#f97316",
+    description: "Protection essential. Reduce sun exposure between 10am-4pm.",
+  },
+  "very-high": {
+    label: "Very High",
+    color: "#ef4444",
+    description: "Extra protection needed. Avoid being outside during midday hours.",
+  },
+  extreme: {
+    label: "Extreme",
+    color: "#7f1d1d",
+    description: "Maximum protection essential. Avoid sun exposure if possible.",
+  },
+};
+
 // Get magnitude color based on Richter scale
 export const getMagnitudeColor = (magnitude: number): string => {
   if (magnitude < 2) return "#22c55e"; // green-500 - micro
@@ -262,4 +389,11 @@ export const getMagnitudeLabel = (magnitude: number): string => {
   if (magnitude < 7) return "Strong";
   if (magnitude < 8) return "Major";
   return "Great";
+};
+
+// Wind direction to compass label
+export const getWindDirection = (degrees: number): string => {
+  const directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
 };

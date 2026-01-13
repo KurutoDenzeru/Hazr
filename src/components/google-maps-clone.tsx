@@ -3,17 +3,13 @@
 import * as React from "react";
 import {
   Menu,
-  Search,
   X,
   Plus,
   Minus,
   Locate,
   Map as MapIcon,
   Activity,
-  Waves,
-  AlertTriangle,
   Cloud,
-  Radio,
   Maximize,
   Sun,
   Moon,
@@ -28,12 +24,6 @@ import {
   MarkerContent,
 } from "@/components/ui/map";
 import { Button } from "@/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import { useTheme } from "next-themes";
 import {
   Tooltip,
@@ -47,7 +37,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   SidebarInset,
@@ -57,9 +46,10 @@ import {
 import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
+import { WeatherDock } from "@/components/map/weather-dock";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
-import { getMagnitudeColor } from "@/types/api";
+import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -78,21 +68,8 @@ const getInitialLocation = () => {
   return locations[tz] || [-122.4194, 37.7749]; // Default to SF
 };
 
-const FILTER_CATEGORIES = [
-  { label: "Earthquakes", icon: Activity, id: "earthquakes" },
-  { label: "Weather", icon: Cloud, id: "weather" },
-  { label: "Tsunami", icon: Waves, id: "tsunami" },
-  { label: "Alerts", icon: AlertTriangle, id: "alerts" },
-  { label: "Live Feed", icon: Radio, id: "live" },
-];
-
-const HIDDEN_SCROLLBAR_CLASS =
-  "scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
-
 const BAR_SURFACE_CLASS =
   "rounded-2xl border border-border/60 bg-background/80 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
-
-const MOBILE_BAR_SURFACE_CLASS = cn(BAR_SURFACE_CLASS, "p-2");
 
 type MapViewState = {
   center: [number, number];
@@ -100,13 +77,40 @@ type MapViewState = {
 };
 
 export default function GoogleMapsClone() {
-  const [searchValue, setSearchValue] = React.useState("");
-  const [userLocation, setUserLocation] = React.useState<
+  const [userLocation, setUserLocationState] = React.useState<
     [number, number] | null
-  >(null);
+  >(() => {
+    if (typeof window === "undefined") return null;
+    const saved = localStorage.getItem("user-location");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length === 2 &&
+          typeof parsed[0] === "number" &&
+          typeof parsed[1] === "number"
+        ) {
+          return parsed as [number, number];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  });
+
+  // Wrapper to persist user location to localStorage
+  const setUserLocation = React.useCallback((coords: [number, number]) => {
+    setUserLocationState(coords);
+    localStorage.setItem("user-location", JSON.stringify(coords));
+  }, []);
+
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
+  const [selectedEarthquake, setSelectedEarthquake] =
+    React.useState<ProcessedEarthquake | null>(null);
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
@@ -114,14 +118,18 @@ export default function GoogleMapsClone() {
     range: "day",
   });
 
-  // Handle flying to earthquake location
+  // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
-      // This will be handled by the map via context
-      console.log("Selected earthquake:", earthquake.id);
+      setSelectedEarthquake(earthquake);
     },
     []
   );
+
+  // Close the earthquake popover
+  const handleCloseEarthquakePopover = React.useCallback(() => {
+    setSelectedEarthquake(null);
+  }, []);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -250,12 +258,21 @@ export default function GoogleMapsClone() {
                   </MapMarker>
                 ))}
 
+                {/* Fly to selected earthquake */}
+                <EarthquakeFlyTo earthquake={selectedEarthquake} />
+
+                {/* Earthquake detail popover */}
+                <EarthquakePopover
+                  earthquake={selectedEarthquake}
+                  onClose={handleCloseEarthquakePopover}
+                />
+
                 <MapOverlayUI
-                  searchValue={searchValue}
-                  setSearchValue={setSearchValue}
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
                   userLocation={userLocation}
+                  earthquakes={earthquakes}
+                  onEarthquakeSelect={handleEarthquakeSelect}
                 />
               </MapComponent>
             </div>
@@ -294,136 +311,218 @@ function MapStateSync({
   return null;
 }
 
+// Component to fly to earthquake location when selected
+function EarthquakeFlyTo({
+  earthquake,
+}: {
+  earthquake: ProcessedEarthquake | null;
+}) {
+  const { map } = useMap();
+  const prevEarthquakeId = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!map || !earthquake) return;
+    
+    // Only fly if it's a new earthquake selection
+    if (prevEarthquakeId.current === earthquake.id) return;
+    prevEarthquakeId.current = earthquake.id;
+
+    map.flyTo({
+      center: [earthquake.coordinates[0], earthquake.coordinates[1]],
+      zoom: 8,
+      duration: 2000,
+      curve: 1.42,
+      essential: true,
+    });
+  }, [map, earthquake]);
+
+  return null;
+}
+
+// Format relative time for display
+const formatRelativeTime = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+};
+
+// Earthquake detail popover
+function EarthquakePopover({
+  earthquake,
+  onClose,
+}: {
+  earthquake: ProcessedEarthquake | null;
+  onClose: () => void;
+}) {
+  if (!earthquake) return null;
+
+  const magColor = getMagnitudeColor(earthquake.magnitude);
+  const getMagnitudeLabel = (mag: number): string => {
+    if (mag < 3) return "Minor";
+    if (mag < 4) return "Light";
+    if (mag < 5) return "Moderate";
+    if (mag < 6) return "Strong";
+    if (mag < 7) return "Major";
+    return "Great";
+  };
+
+  return (
+    <div className="absolute top-4 right-4 z-30 pointer-events-auto max-w-xs w-full">
+      <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/95 shadow-xl supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur-xl">
+        {/* Header */}
+        <div className="flex items-start gap-3 p-4 border-b border-border/30">
+          <div
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-lg"
+            style={{
+              backgroundColor: magColor,
+              boxShadow: `0 4px 14px ${magColor}40`,
+            }}
+          >
+            {earthquake.magnitude.toFixed(1)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-foreground leading-tight">
+              {earthquake.place}
+            </h3>
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <span>{getMagnitudeLabel(earthquake.magnitude)}</span>
+              <span className="opacity-50">•</span>
+              <span>{formatRelativeTime(earthquake.time)}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Details */}
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Depth</p>
+              <p className="text-sm font-medium">{earthquake.depth.toFixed(1)} km</p>
+            </div>
+            <div className="rounded-lg bg-muted/30 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Time</p>
+              <p className="text-sm font-medium">
+                {earthquake.time.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+          </div>
+
+          {earthquake.tsunami && (
+            <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-amber-600 dark:text-amber-400">
+              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-xs font-medium">Tsunami Warning</span>
+            </div>
+          )}
+
+          {earthquake.alert && (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium border",
+                earthquake.alert === "red" && "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400",
+                earthquake.alert === "orange" && "bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400",
+                earthquake.alert === "yellow" && "bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400",
+                earthquake.alert === "green" && "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400",
+              )}
+            >
+              PAGER Alert: {earthquake.alert.charAt(0).toUpperCase() + earthquake.alert.slice(1)}
+            </div>
+          )}
+
+          <a
+            href={earthquake.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full rounded-xl bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
+          >
+            View on USGS
+            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
+
+        {/* Footer with coordinates */}
+        <div className="px-4 pb-3">
+          <p className="text-[10px] text-muted-foreground/60">
+            {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MapOverlayUI({
-  searchValue,
-  setSearchValue,
   setUserLocation,
   onLocateAnimation,
   userLocation,
+  earthquakes,
+  onEarthquakeSelect,
 }: {
-  searchValue: string;
-  setSearchValue: (v: string) => void;
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
   userLocation: [number, number] | null;
+  earthquakes: ProcessedEarthquake[];
+  onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
-  const mobileSearchInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
+  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
   const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
 
-  React.useEffect(() => {
-    if (!isMobileSearchOpen) return;
-    const id = window.setTimeout(() => {
-      mobileSearchInputRef.current?.focus();
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [isMobileSearchOpen]);
+  const handleQuakeClick = (eq: ProcessedEarthquake) => {
+    setIsQuakesDrawerOpen(false);
+    onEarthquakeSelect(eq);
+  };
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
-      {/* Top Section: Search & Filters */}
-      <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
-        {/* Floating Search (Desktop) */}
-        <div className="hidden md:block w-full md:max-w-xl">
-          <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
-            <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="hidden md:inline-flex size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
-                        aria-label="Toggle sidebar"
-                      >
-                        <Menu className="size-5" />
-                      </Button>
-                    </SidebarTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Menu</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </InputGroupAddon>
-
-            <InputGroupInput
-              placeholder="Search Hazr Maps"
-              aria-label="Search Hazr Maps"
-              value={searchValue}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setSearchValue(event.target.value)
-              }
-              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Escape") {
-                  setSearchValue("");
-                  return;
-                }
-
-                if (event.key === "Enter") {
-                  event.currentTarget.blur();
-                }
-              }}
-              className="h-12 text-base"
-            />
-
-            <InputGroupAddon align="inline-end" className="gap-1 pr-1.5">
-              {searchValue ? (
-                <InputGroupButton
-                  size="icon-sm"
+      {/* Top Section: Desktop Sidebar Toggle */}
+      <div className="hidden md:flex p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarTrigger asChild>
+                <Button
                   variant="ghost"
-                  aria-label="Clear search"
-                  onClick={() => setSearchValue("")}
-                  className="rounded-2xl text-muted-foreground hover:bg-muted/70"
+                  size="icon"
+                  className={cn(
+                    "size-10 rounded-2xl text-muted-foreground hover:bg-muted/70",
+                    BAR_SURFACE_CLASS
+                  )}
+                  aria-label="Toggle sidebar"
                 >
-                  <X className="size-4" />
-                </InputGroupButton>
-              ) : null}
-
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InputGroupButton
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Search"
-                      className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                    >
-                      <Search className="size-4" />
-                    </InputGroupButton>
-                  </TooltipTrigger>
-                  <TooltipContent>Search</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </InputGroupAddon>
-          </InputGroup>
-        </div>
-
-        {/* Filter Pills */}
-        <div
-          className={cn(
-            "hidden md:flex w-full md:max-w-xl items-center gap-1.5 overflow-x-auto p-2",
-            BAR_SURFACE_CLASS,
-            HIDDEN_SCROLLBAR_CLASS,
-          )}
-        >
-          {FILTER_CATEGORIES.map((cat) => (
-            <Button
-              key={cat.id}
-              variant="ghost"
-              size="sm"
-              className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <cat.icon className="mr-2 size-4" />
-              {cat.label}
-            </Button>
-          ))}
-        </div>
+                  <Menu className="size-5" />
+                </Button>
+              </SidebarTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Menu</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
-      {/* Bottom Section: Controls & Info */}
+      {/* Bottom Section: Controls */}
       <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        {/* Bottom Right: Map Controls */}
         <div className="flex flex-col gap-4 items-end w-full sm:w-auto">
           <CustomMapControls
             setUserLocation={setUserLocation}
@@ -432,197 +531,165 @@ function MapOverlayUI({
         </div>
       </div>
 
-      {/* Mobile Filter Pills + Floating Search */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 flex flex-col gap-2">
-        <div
-          className={cn(
-            MOBILE_BAR_SURFACE_CLASS,
-            "flex overflow-x-auto px-2 py-1.5",
-            HIDDEN_SCROLLBAR_CLASS,
-          )}
-        >
-          {FILTER_CATEGORIES.map((cat) => (
-            <Button
-              key={cat.id}
-              variant="ghost"
-              size="sm"
-              className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <cat.icon className="mr-2 size-4" />
-              {cat.label}
-            </Button>
-          ))}
-        </div>
-
-        <div
-          className={cn(MOBILE_BAR_SURFACE_CLASS, "flex items-center gap-2")}
-        >
-          <Drawer
-            direction="left"
-            open={isMobileMenuOpen}
-            onOpenChange={setIsMobileMenuOpen}
-          >
-            <DrawerTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
-                aria-label="Open menu"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </DrawerTrigger>
-
-            <DrawerContent className="h-full w-[18.5rem] rounded-none rounded-r-2xl border-y-0 border-l-0 bg-sidebar text-sidebar-foreground supports-backdrop-filter:bg-sidebar/85 supports-backdrop-filter:backdrop-blur-xl">
-              <div className="flex h-full flex-col">
-                <div className="flex items-center gap-2 border-b px-3 py-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20">
-                      <Activity className="size-5" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-none tracking-tight">
-                        Hazr
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Live Quakes & Weather
-                      </p>
-                    </div>
-                  </div>
-
-                  <DrawerClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="rounded-xl text-muted-foreground hover:bg-muted/70"
-                      aria-label="Close menu"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </DrawerClose>
+      {/* Mobile Menu Drawer (left slide) */}
+      <Drawer
+        direction="left"
+        open={isMobileMenuOpen}
+        onOpenChange={setIsMobileMenuOpen}
+      >
+        <DrawerContent className="h-full w-[18.5rem] rounded-none rounded-r-2xl border-y-0 border-l-0 bg-sidebar text-sidebar-foreground supports-backdrop-filter:bg-sidebar/85 supports-backdrop-filter:backdrop-blur-xl">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center gap-2 border-b px-3 py-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20">
+                  <Activity className="size-5" />
                 </div>
 
-                <div className="flex-1 overflow-auto py-2">
-                  <HazrMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-none tracking-tight">
+                    Hazr
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Live Quakes & Weather
+                  </p>
                 </div>
               </div>
-            </DrawerContent>
-          </Drawer>
 
-          <Drawer
-            direction="bottom"
-            open={isMobileSearchOpen}
-            onOpenChange={setIsMobileSearchOpen}
-          >
-            <DrawerTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open search"
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                <Search className="size-4 shrink-0" />
-                <span className="truncate">
-                  {searchValue ? searchValue : "Search Hazr Maps"}
-                </span>
-              </button>
-            </DrawerTrigger>
+              <DrawerClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-xl text-muted-foreground hover:bg-muted/70"
+                  aria-label="Close menu"
+                >
+                  <X className="size-4" />
+                </Button>
+              </DrawerClose>
+            </div>
 
-            {searchValue ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Clear search"
-                className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                onClick={() => setSearchValue("")}
-              >
-                <X className="size-4" />
-              </Button>
-            ) : null}
+            <div className="flex-1 overflow-auto py-2">
+              <HazrMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
-            <DrawerContent className="px-2 pb-2">
-              <DrawerHeader className="px-4 pt-4 pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <DrawerTitle>Search</DrawerTitle>
-                  <DrawerClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="rounded-xl text-muted-foreground hover:bg-muted/70"
-                      aria-label="Close search"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </DrawerClose>
+      {/* Mobile Quakes Drawer (bottom) */}
+      <Drawer
+        open={isQuakesDrawerOpen}
+        onOpenChange={setIsQuakesDrawerOpen}
+      >
+        <DrawerContent className="max-h-[80vh]">
+          <DrawerHeader className="border-b border-border/30 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg shadow-red-500/20">
+                  <Activity className="size-5 text-white" />
                 </div>
-              </DrawerHeader>
-
-              <div className="px-4 pb-4 [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)]">
-                <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
-                  <InputGroupAddon
-                    align="inline-start"
-                    className="gap-1.5 pl-1.5"
+                <div>
+                  <DrawerTitle>Live Earthquakes</DrawerTitle>
+                  <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
+                </div>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="icon-sm" className="rounded-xl" aria-label="Close">
+                  <X className="size-4" />
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+          <div className="overflow-y-auto max-h-[60vh] p-2">
+            {earthquakes.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No recent earthquakes
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {earthquakes.map((eq) => (
+                  <button
+                    key={eq.id}
+                    type="button"
+                    onClick={() => handleQuakeClick(eq)}
+                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-muted/70"
+                    aria-label={eq.title}
                   >
-                    <InputGroupButton
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Search"
-                      className="rounded-2xl text-muted-foreground hover:bg-muted/70"
+                    <div
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg"
+                      style={{
+                        backgroundColor: getMagnitudeColor(eq.magnitude),
+                        boxShadow: `0 4px 14px ${getMagnitudeColor(eq.magnitude)}40`,
+                      }}
                     >
-                      <Search className="size-4" />
-                    </InputGroupButton>
-                  </InputGroupAddon>
-
-                  <InputGroupInput
-                    ref={mobileSearchInputRef}
-                    placeholder="Search Hazr Maps"
-                    aria-label="Search Hazr Maps"
-                    value={searchValue}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      setSearchValue(event.target.value)
-                    }
-                    onKeyDown={(
-                      event: React.KeyboardEvent<HTMLInputElement>,
-                    ) => {
-                      if (event.key === "Escape") {
-                        setIsMobileSearchOpen(false);
-                        return;
-                      }
-
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur();
-                      }
-                    }}
-                    className="h-12 text-base"
-                  />
-
-                  <InputGroupAddon align="inline-end" className="gap-1 pr-1.5">
-                    {searchValue ? (
-                      <InputGroupButton
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Clear search"
-                        onClick={() => setSearchValue("")}
-                        className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                      >
-                        <X className="size-4" />
-                      </InputGroupButton>
-                    ) : null}
-                  </InputGroupAddon>
-                </InputGroup>
+                      {eq.magnitude.toFixed(1)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{eq.place}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{getMagnitudeLabel(eq.magnitude)}</span>
+                        <span className="opacity-50">•</span>
+                        <span>{formatRelativeTime(eq.time)}</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </DrawerContent>
-          </Drawer>
-        </div>
-      </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Mobile Weather Drawer (bottom) */}
+      <Drawer
+        open={isWeatherDrawerOpen}
+        onOpenChange={setIsWeatherDrawerOpen}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="border-b border-border/30 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 shadow-lg shadow-sky-500/20">
+                  <Cloud className="size-5 text-white" />
+                </div>
+                <DrawerTitle>Weather</DrawerTitle>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="icon-sm" className="rounded-xl" aria-label="Close">
+                  <X className="size-4" />
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+          <div className="p-4 overflow-y-auto max-h-[70vh]">
+            <WeatherDock
+              latitude={userLocation?.[1] ?? null}
+              longitude={userLocation?.[0] ?? null}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Mobile Bottom Bar */}
       <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
-        <BottomNavItem icon={MapIcon} label="Explore" active />
-        <BottomNavItem icon={Activity} label="Quakes" />
-        <BottomNavItem icon={Cloud} label="Weather" />
-        <BottomNavItem icon={AlertTriangle} label="Alerts" />
+        <BottomNavItem
+          icon={MapIcon}
+          label="Explore"
+          active
+        />
+        <BottomNavItem
+          icon={Activity}
+          label="Quakes"
+          onClick={() => setIsQuakesDrawerOpen(true)}
+        />
+        <BottomNavItem
+          icon={Cloud}
+          label="Weather"
+          onClick={() => setIsWeatherDrawerOpen(true)}
+        />
+        <BottomNavItem
+          icon={Menu}
+          label="Menu"
+          onClick={() => setIsMobileMenuOpen(true)}
+        />
       </div>
     </div>
   );
@@ -632,16 +699,19 @@ function BottomNavItem({
   icon: Icon,
   label,
   active = false,
+  onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       aria-current={active ? "page" : undefined}
+      onClick={onClick}
       className={cn(
         "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors",
         active
