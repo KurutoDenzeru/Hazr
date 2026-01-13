@@ -613,38 +613,41 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ControlButton = React.forwardRef<
-  HTMLButtonElement,
-  {
-    onClick: () => void;
-    label: string;
-    children: React.ReactNode;
-    disabled?: boolean;
-    active?: boolean;
-  }
->(function ControlButton(
-  { onClick, label, children, disabled = false, active = false },
-  ref,
-) {
-  return (
-    <button
-      ref={ref}
-      onClick={onClick}
-      aria-label={label}
-      type="button"
-      className={cn(
-        "flex items-center justify-center size-8 transition-colors",
-        active
-          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-          : "hover:bg-accent hover:text-accent-foreground text-foreground",
-        disabled && "opacity-50 pointer-events-none cursor-not-allowed",
-      )}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-});
+type ControlButtonProps = Omit<
+  React.ComponentPropsWithoutRef<"button">,
+  "children" | "aria-label"
+> & {
+  label: string;
+  children: React.ReactNode;
+  active?: boolean;
+};
+
+const ControlButton = React.forwardRef<HTMLButtonElement, ControlButtonProps>(
+  function ControlButton(
+    { label, children, active = false, className, type, disabled, ...props },
+    ref,
+  ) {
+    return (
+      <button
+        ref={ref}
+        type={type ?? "button"}
+        aria-label={label}
+        className={cn(
+          "flex items-center justify-center size-8 transition-colors",
+          active
+            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "hover:bg-accent hover:text-accent-foreground text-foreground",
+          disabled && "opacity-50 pointer-events-none cursor-not-allowed",
+          className,
+        )}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  },
+);
 
 function CustomMapControls({
   setUserLocation,
@@ -742,7 +745,7 @@ function CustomMapControls({
                 )}
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Theme</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Theme</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -751,7 +754,7 @@ function CustomMapControls({
                 <Box className="size-4" />
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Toggle 3D</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Toggle 3D</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -760,7 +763,7 @@ function CustomMapControls({
                 <Maximize className="size-4" />
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Fullscreen</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
           </Tooltip>
         </ControlGroup>
 
@@ -789,7 +792,7 @@ function CustomMapControls({
                 </svg>
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Reset North</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Reset North</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -806,7 +809,7 @@ function CustomMapControls({
                 )}
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Your location</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
           </Tooltip>
         </ControlGroup>
 
@@ -818,7 +821,7 @@ function CustomMapControls({
                 <Plus className="size-4" />
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Zoom In</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Zoom In</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -827,7 +830,7 @@ function CustomMapControls({
                 <Minus className="size-4" />
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left">Zoom Out</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>Zoom Out</TooltipContent>
           </Tooltip>
         </ControlGroup>
       </div>

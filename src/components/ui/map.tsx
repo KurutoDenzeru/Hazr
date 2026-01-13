@@ -103,9 +103,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       container: containerRef.current,
       style: initialStyle,
       renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
+      attributionControl: false,
       ...props,
     });
 
@@ -553,34 +551,37 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ControlButton = forwardRef<
-  HTMLButtonElement,
-  {
-    onClick: () => void;
-    label: string;
-    children: React.ReactNode;
-    disabled?: boolean;
+type ControlButtonProps = Omit<
+  React.ComponentPropsWithoutRef<"button">,
+  "children" | "aria-label"
+> & {
+  label: string;
+  children: React.ReactNode;
+};
+
+const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
+  function ControlButton(
+    { label, children, className, type, disabled, ...props },
+    ref
+  ) {
+    return (
+      <button
+        ref={ref}
+        type={type ?? "button"}
+        aria-label={label}
+        className={cn(
+          "flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors",
+          disabled && "opacity-50 pointer-events-none cursor-not-allowed",
+          className
+        )}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </button>
+    );
   }
->(function ControlButton(
-  { onClick, label, children, disabled = false },
-  ref
-) {
-  return (
-    <button
-      ref={ref}
-      onClick={onClick}
-      aria-label={label}
-      type="button"
-      className={cn(
-        "flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors",
-        disabled && "opacity-50 pointer-events-none cursor-not-allowed"
-      )}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-});
+);
 
 function MapControls({
   position = "bottom-right",
@@ -663,7 +664,7 @@ function MapControls({
                   <Plus className="size-4" />
                 </ControlButton>
               </TooltipTrigger>
-              <TooltipContent side="left">Zoom in</TooltipContent>
+              <TooltipContent side="left" sideOffset={8}>Zoom in</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -672,7 +673,7 @@ function MapControls({
                   <Minus className="size-4" />
                 </ControlButton>
               </TooltipTrigger>
-              <TooltipContent side="left">Zoom out</TooltipContent>
+              <TooltipContent side="left" sideOffset={8}>Zoom out</TooltipContent>
             </Tooltip>
           </ControlGroup>
         )}
@@ -699,7 +700,7 @@ function MapControls({
                   )}
                 </ControlButton>
               </TooltipTrigger>
-              <TooltipContent side="left">Your location</TooltipContent>
+              <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
             </Tooltip>
           </ControlGroup>
         )}
@@ -712,7 +713,7 @@ function MapControls({
                   <Maximize className="size-4" />
                 </ControlButton>
               </TooltipTrigger>
-              <TooltipContent side="left">Fullscreen</TooltipContent>
+              <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
             </Tooltip>
           </ControlGroup>
         )}
@@ -769,7 +770,7 @@ function CompassButton({ onClick }: { onClick: () => void }) {
           </svg>
         </ControlButton>
       </TooltipTrigger>
-      <TooltipContent side="left">Reset north</TooltipContent>
+      <TooltipContent side="left" sideOffset={8}>Reset north</TooltipContent>
     </Tooltip>
   );
 }
