@@ -45,7 +45,7 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
 
               <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                 <p className="text-sm font-semibold leading-none tracking-tight">
-                  Naero
+                  Hazr
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Live Quakes & Weather
@@ -67,7 +67,7 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
 
                   <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                     <p className="text-sm font-semibold leading-none tracking-tight">
-                      Naero
+                      Hazr
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Live Quakes & Weather

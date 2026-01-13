@@ -348,8 +348,8 @@ function MapOverlayUI({
             </InputGroupAddon>
 
             <InputGroupInput
-              placeholder="Search Naero Maps"
-              aria-label="Search Naero Maps"
+              placeholder="Search Hazr Maps"
+              aria-label="Search Hazr Maps"
               value={searchValue}
               onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                 setSearchValue(event.target.value)
@@ -483,7 +483,7 @@ function MapOverlayUI({
 
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-none tracking-tight">
-                        Naero
+                        Hazr
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Live Quakes & Weather
@@ -523,7 +523,7 @@ function MapOverlayUI({
               >
                 <Search className="size-4 shrink-0" />
                 <span className="truncate">
-                  {searchValue ? searchValue : "Search Naero Maps"}
+                  {searchValue ? searchValue : "Search Hazr Maps"}
                 </span>
               </button>
             </DrawerTrigger>
@@ -576,8 +576,8 @@ function MapOverlayUI({
 
                   <InputGroupInput
                     ref={mobileSearchInputRef}
-                    placeholder="Search Naero Maps"
-                    aria-label="Search Naero Maps"
+                    placeholder="Search Hazr Maps"
+                    aria-label="Search Hazr Maps"
                     value={searchValue}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                       setSearchValue(event.target.value)
