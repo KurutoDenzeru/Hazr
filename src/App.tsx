@@ -1,7 +1,7 @@
-import GoogleMapsClone from "@/components/google-maps-clone";
+import OpenStreetMap from "@/components/openstreet-map";
 
 export function App() {
-  return <GoogleMapsClone />;
+  return <OpenStreetMap />;
 }
 
 export default App;

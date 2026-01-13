@@ -5,25 +5,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Cloud,
-  CloudDrizzle,
-  CloudFog,
-  CloudLightning,
-  CloudMoon,
-  CloudRain,
-  CloudSnow,
-  CloudSun,
   Droplets,
   Eye,
   Gauge,
   Loader2,
   MapPin,
-  Moon,
   RefreshCw,
   Sun,
   Thermometer,
   Wind,
 } from "lucide-react";
 
+import { WeatherIcon } from "@/components/hazr-weather-icon";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -32,8 +25,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useWeather, getWeatherIcon } from "@/hooks/use-weather";
-import type { WeatherCode, ProcessedHourlyForecast } from "@/types/api";
+import { useWeather } from "@/hooks/use-weather";
+import type { ProcessedHourlyForecast } from "@/types/api";
 import { getUVRiskLevel, UV_RISK_INFO, getWindDirection } from "@/types/api";
 
 type WeatherDockProps = {
@@ -41,35 +34,6 @@ type WeatherDockProps = {
   longitude: number | null;
   className?: string;
   collapsed?: boolean;
-};
-
-// Weather icon component based on weather code
-const WeatherIcon = ({
-  code,
-  isDay,
-  className,
-}: {
-  code: WeatherCode;
-  isDay: boolean;
-  className?: string;
-}) => {
-  const iconName = getWeatherIcon(code, isDay);
-
-  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-    sun: Sun,
-    moon: Moon,
-    "cloud-sun": CloudSun,
-    "cloud-moon": CloudMoon,
-    cloud: Cloud,
-    "cloud-fog": CloudFog,
-    "cloud-drizzle": CloudDrizzle,
-    "cloud-rain": CloudRain,
-    "cloud-snow": CloudSnow,
-    "cloud-lightning": CloudLightning,
-  };
-
-  const Icon = iconMap[iconName] || Cloud;
-  return <Icon className={className} />;
 };
 
 // Format time for display
@@ -283,7 +247,7 @@ export const WeatherDock = ({
 
   if (isLoading && !current) {
     return (
-      <div className={cn("rounded-2xl border border-border/50 bg-gradient-to-br from-sky-500/5 to-blue-500/5 p-4", className)}>
+      <div className={cn("rounded-2xl border border-border/50 p-4 bg-background", className)}>
         <div className="flex items-center justify-center gap-2 py-8">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Loading weather...</span>
@@ -294,7 +258,7 @@ export const WeatherDock = ({
 
   if (error || !current) {
     return (
-      <div className={cn("rounded-2xl border border-border/50 bg-gradient-to-br from-slate-500/5 to-slate-600/5 p-4", className)}>
+      <div className={cn("rounded-2xl border border-border/50 p-4 bg-background", className)}>
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
           <Cloud className="size-8 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
@@ -314,7 +278,7 @@ export const WeatherDock = ({
     <TooltipProvider delayDuration={0}>
       <div
         className={cn(
-          "overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5",
+          "overflow-hidden rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl",
           className
         )}
       >
@@ -347,7 +311,7 @@ export const WeatherDock = ({
         <div className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 p-3 shadow-lg shadow-sky-500/20">
+              <div className="rounded-xl bg-sky-500 p-3 shadow-lg shadow-sky-500/20">
                 <WeatherIcon
                   code={displayData?.weatherCode ?? current.weatherCode}
                   isDay={displayData?.isDay ?? current.isDay}
@@ -460,51 +424,53 @@ export const WeatherDock = ({
         {hourly.length > 0 && (
           <div className="border-t border-border/30">
             <div className="flex items-center gap-1 px-2 py-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="shrink-0 rounded-lg"
-                    onClick={goPrevHour}
-                    disabled={!canGoPrev}
-                    aria-label="Previous hour"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Previous hour</TooltipContent>
-              </Tooltip>
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 rounded-lg"
+                      onClick={goPrevHour}
+                      disabled={!canGoPrev}
+                      aria-label="Previous hour"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Previous hour</TooltipContent>
+                </Tooltip>
 
-              <div
-                ref={scrollContainerRef}
-                className="flex-1 flex gap-1 overflow-x-auto py-1 scrollbar-hide"
-              >
-                {hourly.slice(0, 24).map((forecast, index) => (
-                  <HourlyCard
-                    key={forecast.time.toISOString()}
-                    forecast={forecast}
-                    isSelected={index === selectedHourIndex}
-                    onClick={() => setSelectedHourIndex(index)}
-                  />
-                ))}
-              </div>
+                <div
+                  ref={scrollContainerRef}
+                  className="flex-1 flex gap-1 overflow-x-auto py-1 scrollbar-hide"
+                >
+                  {hourly.slice(0, 24).map((forecast, index) => (
+                    <HourlyCard
+                      key={forecast.time.toISOString()}
+                      forecast={forecast}
+                      isSelected={index === selectedHourIndex}
+                      onClick={() => setSelectedHourIndex(index)}
+                    />
+                  ))}
+                </div>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="shrink-0 rounded-lg"
-                    onClick={goNextHour}
-                    disabled={!canGoNext}
-                    aria-label="Next hour"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Next hour</TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 rounded-lg"
+                      onClick={goNextHour}
+                      disabled={!canGoNext}
+                      aria-label="Next hour"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Next hour</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         )}

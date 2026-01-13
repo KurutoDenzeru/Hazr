@@ -36,7 +36,7 @@ function HazrSidebar({ userLocation, onEarthquakeSelect }: HazrSidebarProps) {
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-linear-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
+                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20",
                   "group-data-[state=collapsed]/sidebar:size-10"
                 )}
               >
@@ -58,7 +58,7 @@ function HazrSidebar({ userLocation, onEarthquakeSelect }: HazrSidebarProps) {
                 <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
                   <div
                     className={cn(
-                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
+                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20",
                       "group-data-[state=collapsed]/sidebar:size-10"
                     )}
                   >

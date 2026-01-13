@@ -33,10 +33,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
 } from "@/components/ui/drawer";
 import {
   SidebarInset,
@@ -47,9 +44,11 @@ import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { WeatherDock } from "@/components/map/weather-dock";
+import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
-import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
+import { getMagnitudeColor } from "@/types/api";
+import { Separator } from "@/components/ui/separator";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -322,7 +321,7 @@ function EarthquakeFlyTo({
 
   React.useEffect(() => {
     if (!map || !earthquake) return;
-    
+
     // Only fly if it's a new earthquake selection
     if (prevEarthquakeId.current === earthquake.id) return;
     prevEarthquakeId.current = earthquake.id;
@@ -531,43 +530,14 @@ function MapOverlayUI({
         </div>
       </div>
 
-      {/* Mobile Menu Drawer (left slide) */}
+      {/* Mobile Menu Drawer */}
       <Drawer
-        direction="left"
         open={isMobileMenuOpen}
         onOpenChange={setIsMobileMenuOpen}
       >
-        <DrawerContent className="h-full w-[18.5rem] rounded-none rounded-r-2xl border-y-0 border-l-0 bg-sidebar text-sidebar-foreground supports-backdrop-filter:bg-sidebar/85 supports-backdrop-filter:backdrop-blur-xl">
-          <div className="flex h-full flex-col">
-            <div className="flex items-center gap-2 border-b px-3 py-3">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20">
-                  <Activity className="size-5" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-none tracking-tight">
-                    Hazr
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Live Quakes & Weather
-                  </p>
-                </div>
-              </div>
-
-              <DrawerClose asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="rounded-xl text-muted-foreground hover:bg-muted/70"
-                  aria-label="Close menu"
-                >
-                  <X className="size-4" />
-                </Button>
-              </DrawerClose>
-            </div>
-
-            <div className="flex-1 overflow-auto py-2">
+        <DrawerContent className="max-h-[85vh]">
+          <div className="flex h-full flex-col p-4">
+            <div className="flex-1 overflow-auto">
               <HazrMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
             </div>
           </div>
@@ -580,57 +550,29 @@ function MapOverlayUI({
         onOpenChange={setIsQuakesDrawerOpen}
       >
         <DrawerContent className="max-h-[80vh]">
-          <DrawerHeader className="border-b border-border/30 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg shadow-red-500/20">
-                  <Activity className="size-5 text-white" />
-                </div>
-                <div>
-                  <DrawerTitle>Live Earthquakes</DrawerTitle>
-                  <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
-                </div>
-              </div>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="icon-sm" className="rounded-xl" aria-label="Close">
-                  <X className="size-4" />
-                </Button>
-              </DrawerClose>
-            </div>
-          </DrawerHeader>
-          <div className="overflow-y-auto max-h-[60vh] p-2">
+          <div className="overflow-y-auto max-h-[80vh] p-4">
             {earthquakes.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No recent earthquakes
               </div>
             ) : (
               <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
+                    <Activity className="size-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Live Earthquakes</h3>
+                    <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
+                  </div>
+                </div>
+                <Separator className="my-2" />
                 {earthquakes.map((eq) => (
-                  <button
+                  <EarthquakeItem
                     key={eq.id}
-                    type="button"
+                    earthquake={eq}
                     onClick={() => handleQuakeClick(eq)}
-                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-muted/70"
-                    aria-label={eq.title}
-                  >
-                    <div
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg"
-                      style={{
-                        backgroundColor: getMagnitudeColor(eq.magnitude),
-                        boxShadow: `0 4px 14px ${getMagnitudeColor(eq.magnitude)}40`,
-                      }}
-                    >
-                      {eq.magnitude.toFixed(1)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{eq.place}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{getMagnitudeLabel(eq.magnitude)}</span>
-                        <span className="opacity-50">•</span>
-                        <span>{formatRelativeTime(eq.time)}</span>
-                      </div>
-                    </div>
-                  </button>
+                  />
                 ))}
               </div>
             )}
@@ -644,22 +586,7 @@ function MapOverlayUI({
         onOpenChange={setIsWeatherDrawerOpen}
       >
         <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="border-b border-border/30 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 shadow-lg shadow-sky-500/20">
-                  <Cloud className="size-5 text-white" />
-                </div>
-                <DrawerTitle>Weather</DrawerTitle>
-              </div>
-              <DrawerClose asChild>
-                <Button variant="ghost" size="icon-sm" className="rounded-xl" aria-label="Close">
-                  <X className="size-4" />
-                </Button>
-              </DrawerClose>
-            </div>
-          </DrawerHeader>
-          <div className="p-4 overflow-y-auto max-h-[70vh]">
+          <div className="p-4 overflow-y-auto max-h-[85vh]">
             <WeatherDock
               latitude={userLocation?.[1] ?? null}
               longitude={userLocation?.[0] ?? null}
@@ -667,6 +594,14 @@ function MapOverlayUI({
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Desktop Weather Dock (bottom left) */}
+      <div className="hidden md:block absolute bottom-4 left-4 z-20 w-80 pointer-events-auto">
+        <WeatherDock
+          latitude={userLocation?.[1] ?? null}
+          longitude={userLocation?.[0] ?? null}
+        />
+      </div>
 
       {/* Mobile Bottom Bar */}
       <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
