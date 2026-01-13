@@ -682,6 +682,83 @@ function CustomMapControls({
     };
   }, [map]);
 
+  // Handle 3D buildings extrusion
+  React.useEffect(() => {
+    if (!map) return;
+
+    const layerId = "3d-buildings";
+
+    const handle3DBuildings = () => {
+      if (is3D) {
+        if (!map.getLayer(layerId)) {
+          // Find building source - usually 'openmaptiles' or 'carto'
+          const sources = map.getStyle().sources;
+          const buildingSource = Object.keys(sources).find(
+            (s) => s.includes("maptiles") || s.includes("carto"),
+          );
+
+          if (buildingSource) {
+            map.addLayer(
+              {
+                id: layerId,
+                source: buildingSource,
+                "source-layer": "building",
+                type: "fill-extrusion",
+                minzoom: 15,
+                paint: {
+                  "fill-extrusion-color": [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "render_height"],
+                    0,
+                    "#aaa",
+                    200,
+                    "#888",
+                  ],
+                  "fill-extrusion-height": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    15,
+                    0,
+                    15.05,
+                    ["get", "render_height"],
+                  ],
+                  "fill-extrusion-base": [
+                    "interpolate",
+                    ["linear"],
+                    ["zoom"],
+                    15,
+                    0,
+                    15.05,
+                    ["get", "render_min_height"],
+                  ],
+                  "fill-extrusion-opacity": 0.8,
+                },
+              },
+              // Add below labels if possible
+              map
+                .getStyle()
+                .layers.find((l) => l.type === "symbol")?.id,
+            );
+          }
+        } else {
+          map.setLayoutProperty(layerId, "visibility", "visible");
+        }
+      } else {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, "visibility", "none");
+        }
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      handle3DBuildings();
+    } else {
+      map.once("styledata", handle3DBuildings);
+    }
+  }, [map, is3D]);
+
   const handleZoomIn = () => map?.zoomTo(map.getZoom() + 1, { duration: 300 });
   const handleZoomOut = () => map?.zoomTo(map.getZoom() - 1, { duration: 300 });
 
@@ -698,10 +775,11 @@ function CustomMapControls({
           onLocateAnimation();
           map.flyTo({
             center: coords,
-            zoom: 15,
-            duration: 1800,
-            curve: 1.6,
-            speed: 1.25,
+            zoom: 17,
+            duration: 2500,
+            curve: 1.42,
+            speed: 0.6,
+            essential: true,
             easing: (t) => 1 - Math.pow(1 - t, 3),
           });
           setWaitingForLocation(false);

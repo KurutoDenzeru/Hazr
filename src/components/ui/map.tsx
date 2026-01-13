@@ -102,7 +102,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     const map = new MapLibreGL.Map({
       container: containerRef.current,
       style: initialStyle,
-      renderWorldCopies: false,
+      renderWorldCopies: true,
       attributionControl: false,
       ...props,
     });
@@ -618,10 +618,11 @@ function MapControls({
           };
           map?.flyTo({
             center: [coords.longitude, coords.latitude],
-            zoom: 15,
-            duration: 1800,
-            curve: 1.6,
-            speed: 1.25,
+            zoom: 17,
+            duration: 2500,
+            curve: 1.42,
+            speed: 0.6,
+            essential: true,
             easing: (t) => 1 - Math.pow(1 - t, 3),
           });
           onLocate?.(coords);
