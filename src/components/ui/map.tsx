@@ -20,6 +20,12 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import React from "react";
 
 type MapContextValue = {
@@ -96,10 +102,8 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     const map = new MapLibreGL.Map({
       container: containerRef.current,
       style: initialStyle,
-      renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
+      renderWorldCopies: true,
+      attributionControl: false,
       ...props,
     });
 
@@ -547,32 +551,37 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ControlButton({
-  onClick,
-  label,
-  children,
-  disabled = false,
-}: {
-  onClick: () => void;
+type ControlButtonProps = Omit<
+  React.ComponentPropsWithoutRef<"button">,
+  "children" | "aria-label"
+> & {
   label: string;
   children: React.ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      type="button"
-      className={cn(
-        "flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors",
-        disabled && "opacity-50 pointer-events-none cursor-not-allowed"
-      )}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-}
+};
+
+const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
+  function ControlButton(
+    { label, children, className, type, disabled, ...props },
+    ref
+  ) {
+    return (
+      <button
+        ref={ref}
+        type={type ?? "button"}
+        aria-label={label}
+        className={cn(
+          "flex items-center justify-center size-8 hover:bg-accent dark:hover:bg-accent/40 transition-colors",
+          disabled && "opacity-50 pointer-events-none cursor-not-allowed",
+          className
+        )}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+);
 
 function MapControls({
   position = "bottom-right",
@@ -609,8 +618,12 @@ function MapControls({
           };
           map?.flyTo({
             center: [coords.longitude, coords.latitude],
-            zoom: 14,
-            duration: 1500,
+            zoom: 17,
+            duration: 2500,
+            curve: 1.42,
+            speed: 0.6,
+            essential: true,
+            easing: (t) => 1 - Math.pow(1 - t, 3),
           });
           onLocate?.(coords);
           setWaitingForLocation(false);
@@ -636,51 +649,77 @@ function MapControls({
   if (!isLoaded) return null;
 
   return (
-    <div
-      className={cn(
-        "absolute z-10 flex flex-col gap-1.5",
-        positionClasses[position],
-        className
-      )}
-    >
-      {showZoom && (
-        <ControlGroup>
-          <ControlButton onClick={handleZoomIn} label="Zoom in">
-            <Plus className="size-4" />
-          </ControlButton>
-          <ControlButton onClick={handleZoomOut} label="Zoom out">
-            <Minus className="size-4" />
-          </ControlButton>
-        </ControlGroup>
-      )}
-      {showCompass && (
-        <ControlGroup>
-          <CompassButton onClick={handleResetBearing} />
-        </ControlGroup>
-      )}
-      {showLocate && (
-        <ControlGroup>
-          <ControlButton
-            onClick={handleLocate}
-            label="Find my location"
-            disabled={waitingForLocation}
-          >
-            {waitingForLocation ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Locate className="size-4" />
-            )}
-          </ControlButton>
-        </ControlGroup>
-      )}
-      {showFullscreen && (
-        <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-            <Maximize className="size-4" />
-          </ControlButton>
-        </ControlGroup>
-      )}
-    </div>
+    <TooltipProvider delayDuration={0}>
+      <div
+        className={cn(
+          "absolute z-10 flex flex-col gap-1.5",
+          positionClasses[position],
+          className
+        )}
+      >
+        {showZoom && (
+          <ControlGroup>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton onClick={handleZoomIn} label="Zoom in">
+                  <Plus className="size-4" />
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Zoom in</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton onClick={handleZoomOut} label="Zoom out">
+                  <Minus className="size-4" />
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Zoom out</TooltipContent>
+            </Tooltip>
+          </ControlGroup>
+        )}
+
+        {showCompass && (
+          <ControlGroup>
+            <CompassButton onClick={handleResetBearing} />
+          </ControlGroup>
+        )}
+
+        {showLocate && (
+          <ControlGroup>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton
+                  onClick={handleLocate}
+                  label="Find my location"
+                  disabled={waitingForLocation}
+                >
+                  {waitingForLocation ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Locate className="size-4" />
+                  )}
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
+            </Tooltip>
+          </ControlGroup>
+        )}
+
+        {showFullscreen && (
+          <ControlGroup>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
+                  <Maximize className="size-4" />
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
+            </Tooltip>
+          </ControlGroup>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -710,19 +749,30 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [isLoaded, map]);
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
-      <svg
-        ref={compassRef}
-        viewBox="0 0 24 24"
-        className="size-5 transition-transform duration-200"
-        style={{ transformStyle: "preserve-3d" }}
-      >
-        <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
-        <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
-        <path d="M12 22L16 12H12V22Z" className="fill-muted-foreground/60" />
-        <path d="M12 22L8 12H12V22Z" className="fill-muted-foreground/30" />
-      </svg>
-    </ControlButton>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <ControlButton onClick={onClick} label="Reset bearing to north">
+          <svg
+            ref={compassRef}
+            viewBox="0 0 24 24"
+            className="size-5 transition-transform duration-200"
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
+            <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
+            <path
+              d="M12 22L16 12H12V22Z"
+              className="fill-muted-foreground/60"
+            />
+            <path
+              d="M12 22L8 12H12V22Z"
+              className="fill-muted-foreground/30"
+            />
+          </svg>
+        </ControlButton>
+      </TooltipTrigger>
+      <TooltipContent side="left" sideOffset={8}>Reset north</TooltipContent>
+    </Tooltip>
   );
 }
 
