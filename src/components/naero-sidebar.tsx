@@ -1,6 +1,6 @@
 "use client"
 
-import { Map as MapIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen, Activity } from "lucide-react"
 
 import { NaeroMenuPanel } from "@/components/naero-menu-panel"
 import { Button } from "@/components/ui/button"
@@ -18,8 +18,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import type { ProcessedEarthquake } from "@/types/api"
 
-function NaeroSidebar() {
+type NaeroSidebarProps = {
+  userLocation?: [number, number] | null
+  onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
+}
+
+function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
   const { isOpen } = useSidebar()
 
   return (
@@ -30,19 +36,19 @@ function NaeroSidebar() {
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground",
+                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
                   "group-data-[state=collapsed]/sidebar:size-10"
                 )}
               >
-                <MapIcon className="size-5" />
+                <Activity className="size-5" />
               </div>
 
               <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                 <p className="text-sm font-semibold leading-none tracking-tight">
-                  Naero Maps
+                  Naero
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Explore • Save • Plan
+                  Live Quakes & Weather
                 </p>
               </div>
             </div>
@@ -52,24 +58,24 @@ function NaeroSidebar() {
                 <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
                   <div
                     className={cn(
-                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground",
+                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
                       "group-data-[state=collapsed]/sidebar:size-10"
                     )}
                   >
-                    <MapIcon className="size-5" />
+                    <Activity className="size-5" />
                   </div>
 
                   <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                     <p className="text-sm font-semibold leading-none tracking-tight">
-                      Naero Maps
+                      Naero
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Explore • Save • Plan
+                      Live Quakes & Weather
                     </p>
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right">Naero Maps</TooltipContent>
+              <TooltipContent side="right">Naero - Live Quakes & Weather</TooltipContent>
             </Tooltip>
           )}
 
@@ -100,8 +106,12 @@ function NaeroSidebar() {
         </TooltipProvider>
       </SidebarHeader>
 
-      <SidebarContent className="py-2">
-        <NaeroMenuPanel collapsed={!isOpen} />
+      <SidebarContent className="py-2 overflow-y-auto scrollbar-hide">
+        <NaeroMenuPanel
+          collapsed={!isOpen}
+          userLocation={userLocation}
+          onEarthquakeSelect={onEarthquakeSelect}
+        />
       </SidebarContent>
     </Sidebar>
   )

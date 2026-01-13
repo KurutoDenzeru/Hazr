@@ -9,15 +9,11 @@ import {
   Minus,
   Locate,
   Map as MapIcon,
-  Navigation,
-  Utensils,
-  Fuel,
-  Hotel,
-  Coffee,
-  ShoppingBag,
-  MoreHorizontal,
-  Star,
-  Clock,
+  Activity,
+  Waves,
+  AlertTriangle,
+  Cloud,
+  Radio,
   Maximize,
   Sun,
   Moon,
@@ -61,6 +57,9 @@ import {
 import { cn } from "@/lib/utils";
 import { NaeroMenuPanel } from "@/components/naero-menu-panel";
 import { NaeroSidebar } from "@/components/naero-sidebar";
+import { useEarthquakes } from "@/hooks/use-earthquakes";
+import type { ProcessedEarthquake } from "@/types/api";
+import { getMagnitudeColor } from "@/types/api";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -79,14 +78,12 @@ const getInitialLocation = () => {
   return locations[tz] || [-122.4194, 37.7749]; // Default to SF
 };
 
-const CATEGORIES = [
-  { label: "Restaurants", icon: Utensils },
-  { label: "Gas", icon: Fuel },
-  { label: "Coffee", icon: Coffee },
-  { label: "Hotels", icon: Hotel },
-  { label: "Shopping", icon: ShoppingBag },
-  { label: "Groceries", icon: ShoppingBag },
-  { label: "More", icon: MoreHorizontal },
+const FILTER_CATEGORIES = [
+  { label: "Earthquakes", icon: Activity, id: "earthquakes" },
+  { label: "Weather", icon: Cloud, id: "weather" },
+  { label: "Tsunami", icon: Waves, id: "tsunami" },
+  { label: "Alerts", icon: AlertTriangle, id: "alerts" },
+  { label: "Live Feed", icon: Radio, id: "live" },
 ];
 
 const HIDDEN_SCROLLBAR_CLASS =
@@ -110,6 +107,21 @@ export default function GoogleMapsClone() {
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
+
+  // Fetch earthquake data
+  const { earthquakes } = useEarthquakes({
+    magnitude: "2.5",
+    range: "day",
+  });
+
+  // Handle flying to earthquake location
+  const handleEarthquakeSelect = React.useCallback(
+    (earthquake: ProcessedEarthquake) => {
+      // This will be handled by the map via context
+      console.log("Selected earthquake:", earthquake.id);
+    },
+    []
+  );
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -152,7 +164,10 @@ export default function GoogleMapsClone() {
       onOpenChange={setIsDesktopSidebarOpen}
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
-        <NaeroSidebar />
+        <NaeroSidebar
+          userLocation={userLocation}
+          onEarthquakeSelect={handleEarthquakeSelect}
+        />
 
         <SidebarInset>
           <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
@@ -196,11 +211,51 @@ export default function GoogleMapsClone() {
                   </MapMarker>
                 )}
 
+                {/* Earthquake Markers */}
+                {earthquakes.map((eq) => (
+                  <MapMarker
+                    key={eq.id}
+                    longitude={eq.coordinates[0]}
+                    latitude={eq.coordinates[1]}
+                  >
+                    <MarkerContent>
+                      <button
+                        type="button"
+                        onClick={() => handleEarthquakeSelect(eq)}
+                        className="group relative flex items-center justify-center cursor-pointer"
+                        aria-label={`Earthquake: ${eq.title}`}
+                      >
+                        {/* Pulse ring for recent earthquakes */}
+                        {Date.now() - eq.time.getTime() < 3600000 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute size-8 rounded-full animate-ping"
+                            style={{
+                              backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
+                            }}
+                          />
+                        )}
+                        {/* Main marker */}
+                        <div
+                          className="relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110"
+                          style={{
+                            backgroundColor: getMagnitudeColor(eq.magnitude),
+                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                          }}
+                        >
+                          {eq.magnitude.toFixed(1)}
+                        </div>
+                      </button>
+                    </MarkerContent>
+                  </MapMarker>
+                ))}
+
                 <MapOverlayUI
                   searchValue={searchValue}
                   setSearchValue={setSearchValue}
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
+                  userLocation={userLocation}
                 />
               </MapComponent>
             </div>
@@ -244,11 +299,13 @@ function MapOverlayUI({
   setSearchValue,
   setUserLocation,
   onLocateAnimation,
+  userLocation,
 }: {
   searchValue: string;
   setSearchValue: (v: string) => void;
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
+  userLocation: [number, number] | null;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
@@ -350,9 +407,9 @@ function MapOverlayUI({
             HIDDEN_SCROLLBAR_CLASS,
           )}
         >
-          {CATEGORIES.map((cat) => (
+          {FILTER_CATEGORIES.map((cat) => (
             <Button
-              key={cat.label}
+              key={cat.id}
               variant="ghost"
               size="sm"
               className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
@@ -384,9 +441,9 @@ function MapOverlayUI({
             HIDDEN_SCROLLBAR_CLASS,
           )}
         >
-          {CATEGORIES.map((cat) => (
+          {FILTER_CATEGORIES.map((cat) => (
             <Button
-              key={cat.label}
+              key={cat.id}
               variant="ghost"
               size="sm"
               className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
@@ -420,16 +477,16 @@ function MapOverlayUI({
               <div className="flex h-full flex-col">
                 <div className="flex items-center gap-2 border-b px-3 py-3">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
-                      <MapIcon className="size-5" />
+                    <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20">
+                      <Activity className="size-5" />
                     </div>
 
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-none tracking-tight">
-                        Naero Maps
+                        Naero
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Explore • Save • Plan
+                        Live Quakes & Weather
                       </p>
                     </div>
                   </div>
@@ -447,7 +504,7 @@ function MapOverlayUI({
                 </div>
 
                 <div className="flex-1 overflow-auto py-2">
-                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} />
+                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
                 </div>
               </div>
             </DrawerContent>
@@ -561,12 +618,11 @@ function MapOverlayUI({
       </div>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-5 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
         <BottomNavItem icon={MapIcon} label="Explore" active />
-        <BottomNavItem icon={Star} label="Saved" />
-        <BottomNavItem icon={Navigation} label="Go" />
-        <BottomNavItem icon={Plus} label="Contribute" />
-        <BottomNavItem icon={Clock} label="Updates" />
+        <BottomNavItem icon={Activity} label="Quakes" />
+        <BottomNavItem icon={Cloud} label="Weather" />
+        <BottomNavItem icon={AlertTriangle} label="Alerts" />
       </div>
     </div>
   );
