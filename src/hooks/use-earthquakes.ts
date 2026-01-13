@@ -62,7 +62,7 @@ export const useEarthquakes = (options: UseEarthquakesOptions = {}): UseEarthqua
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [metadata, setMetadata] = useState<UseEarthquakesReturn["metadata"]>(null);
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchEarthquakes = useCallback(async () => {
@@ -70,9 +70,9 @@ export const useEarthquakes = (options: UseEarthquakesOptions = {}): UseEarthqua
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     abortControllerRef.current = new AbortController();
-    
+
     setIsLoading(true);
     setError(null);
 
@@ -87,7 +87,7 @@ export const useEarthquakes = (options: UseEarthquakesOptions = {}): UseEarthqua
       }
 
       const data: EarthquakeFeedResponse = await response.json();
-      
+
       const processed = data.features
         .map(processEarthquake)
         .sort((a, b) => b.time.getTime() - a.time.getTime());
@@ -116,7 +116,7 @@ export const useEarthquakes = (options: UseEarthquakesOptions = {}): UseEarthqua
     if (!autoRefresh) return;
 
     const intervalId = setInterval(fetchEarthquakes, refreshInterval);
-    
+
     return () => {
       clearInterval(intervalId);
       if (abortControllerRef.current) {

@@ -55,8 +55,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { NaeroMenuPanel } from "@/components/naero-menu-panel";
-import { NaeroSidebar } from "@/components/naero-sidebar";
+import { HazrMenuPanel } from "@/components/hazr-menu-panel";
+import { HazrSidebar } from "@/components/hazr-sidebar";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
@@ -164,7 +164,7 @@ export default function GoogleMapsClone() {
       onOpenChange={setIsDesktopSidebarOpen}
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
-        <NaeroSidebar
+        <HazrSidebar
           userLocation={userLocation}
           onEarthquakeSelect={handleEarthquakeSelect}
         />
@@ -504,7 +504,7 @@ function MapOverlayUI({
                 </div>
 
                 <div className="flex-1 overflow-auto py-2">
-                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
+                  <HazrMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
                 </div>
               </div>
             </DrawerContent>

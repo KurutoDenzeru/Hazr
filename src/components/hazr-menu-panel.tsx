@@ -37,7 +37,7 @@ import { useWeather, getWeatherIcon } from "@/hooks/use-weather";
 import type { ProcessedEarthquake, WeatherCode } from "@/types/api";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 
-type NaeroMenuPanelProps = {
+type HazrMenuPanelProps = {
   onSelect?: () => void;
   collapsed?: boolean;
   userLocation?: [number, number] | null;
@@ -117,7 +117,7 @@ const EarthquakeItem = ({
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="max-w-[200px]">
+        <TooltipContent side="right" className="max-w-50">
           <p className="font-medium">{earthquake.magnitude.toFixed(1)} - {earthquake.place}</p>
           <p className="text-xs text-muted-foreground">{formatRelativeTime(earthquake.time)}</p>
         </TooltipContent>
@@ -229,7 +229,7 @@ const WeatherCard = ({
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-sky-500/5 to-blue-500/5 p-4">
+      <div className="rounded-2xl border border-border/50 bg-linear-to-br from-sky-500/5 to-blue-500/5 p-4">
         <div className="flex items-center justify-center gap-2 py-8">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Loading weather...</span>
@@ -240,7 +240,7 @@ const WeatherCard = ({
 
   if (error || !current) {
     return (
-      <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-slate-500/5 to-slate-600/5 p-4">
+      <div className="rounded-2xl border border-border/50 bg-linear-to-br from-slate-500/5 to-slate-600/5 p-4">
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
           <Cloud className="size-8 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
@@ -252,12 +252,12 @@ const WeatherCard = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-sky-500/5 via-transparent to-blue-500/5">
+    <div className="overflow-hidden rounded-2xl border border-border/50 bg-linear-to-br from-sky-500/5 via-transparent to-blue-500/5">
       {/* Current weather */}
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 p-2.5 shadow-lg shadow-sky-500/20">
+            <div className="rounded-xl bg-linear-to-br from-sky-400 to-blue-500 p-2.5 shadow-lg shadow-sky-500/20">
               <WeatherIcon
                 code={current.weatherCode}
                 isDay={current.isDay}
@@ -454,7 +454,7 @@ const EarthquakeFeed = ({
             <p className="text-sm text-muted-foreground">No recent earthquakes</p>
           </div>
         ) : (
-          <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto scrollbar-hide">
+          <div className="flex max-h-70 flex-col gap-0.5 overflow-y-auto scrollbar-hide">
             {earthquakes.slice(0, 10).map((eq) => (
               <EarthquakeItem
                 key={eq.id}
@@ -478,12 +478,12 @@ const EarthquakeFeed = ({
   );
 };
 
-function NaeroMenuPanel({
+function HazrMenuPanel({
   onSelect,
   collapsed = false,
   userLocation = null,
   onEarthquakeSelect,
-}: NaeroMenuPanelProps) {
+}: HazrMenuPanelProps) {
   const handleSettingsClick = () => onSelect?.();
 
   return (
@@ -553,4 +553,4 @@ function NaeroMenuPanel({
   );
 }
 
-export { NaeroMenuPanel };
+export { HazrMenuPanel };

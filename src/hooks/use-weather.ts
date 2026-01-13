@@ -323,7 +323,7 @@ export const getWeatherIcon = (code: WeatherCode, isDay: boolean = true): string
   if (code >= 85 && code <= 86) return "cloud-snow";
   // Thunderstorm
   if (code >= 95) return "cloud-lightning";
-  
+
   return "cloud";
 };
 

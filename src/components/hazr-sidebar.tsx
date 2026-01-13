@@ -2,7 +2,7 @@
 
 import { PanelLeftClose, PanelLeftOpen, Activity } from "lucide-react"
 
-import { NaeroMenuPanel } from "@/components/naero-menu-panel"
+import { HazrMenuPanel } from "@/components/hazr-menu-panel"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -20,12 +20,12 @@ import {
 import { cn } from "@/lib/utils"
 import type { ProcessedEarthquake } from "@/types/api"
 
-type NaeroSidebarProps = {
+type HazrSidebarProps = {
   userLocation?: [number, number] | null
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
 }
 
-function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
+function HazrSidebar({ userLocation, onEarthquakeSelect }: HazrSidebarProps) {
   const { isOpen } = useSidebar()
 
   return (
@@ -36,7 +36,7 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
+                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-linear-to-br from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20",
                   "group-data-[state=collapsed]/sidebar:size-10"
                 )}
               >
@@ -75,7 +75,7 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right">Naero - Live Quakes & Weather</TooltipContent>
+              <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
             </Tooltip>
           )}
 
@@ -107,7 +107,7 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="py-2 overflow-y-auto scrollbar-hide">
-        <NaeroMenuPanel
+        <HazrMenuPanel
           collapsed={!isOpen}
           userLocation={userLocation}
           onEarthquakeSelect={onEarthquakeSelect}
@@ -117,4 +117,4 @@ function NaeroSidebar({ userLocation, onEarthquakeSelect }: NaeroSidebarProps) {
   )
 }
 
-export { NaeroSidebar }
+export { HazrSidebar }
