@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Clock,
   Ruler,
-  Signal,
   Users,
   Gauge,
   Waves,
@@ -78,14 +77,14 @@ const EarthquakeItem = ({
 
   const detailBadges = [
     {
+      label: `Magnitude ${earthquake.magnitude.toFixed(1)}`,
+      icon: Gauge,
+      className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    },
+    {
       label: `Depth ${earthquake.depth.toFixed(1)}km`,
       icon: Ruler,
       className: "bg-muted/40 text-muted-foreground",
-    },
-    {
-      label: `Sig ${earthquake.sig}`,
-      icon: Signal,
-      className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
     },
     earthquake.felt !== null
       ? {
