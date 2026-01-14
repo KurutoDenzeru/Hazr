@@ -54,6 +54,7 @@ const Sidebar = React.forwardRef<
   React.ComponentPropsWithoutRef<"aside"> & {
     widthClassName?: string
     collapsedWidthClassName?: string
+    resizable?: boolean
   }
 >(
   (
@@ -62,6 +63,7 @@ const Sidebar = React.forwardRef<
       widthClassName = "w-72",
       collapsedWidthClassName = "w-16",
       children,
+      resizable = false,
       ...props
     },
     ref
@@ -69,6 +71,7 @@ const Sidebar = React.forwardRef<
     const { isOpen } = useSidebar()
 
     const currentWidthClassName = isOpen ? widthClassName : collapsedWidthClassName
+    const resizeClasses = resizable && isOpen ? "resize-x min-w-[16rem] max-w-[28rem]" : ""
 
     return (
       <aside
@@ -77,6 +80,7 @@ const Sidebar = React.forwardRef<
         className={cn(
           "group/sidebar hidden md:block shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
           currentWidthClassName,
+          resizeClasses,
           className
         )}
         {...props}
@@ -85,6 +89,7 @@ const Sidebar = React.forwardRef<
           className={cn(
             "flex h-full flex-col border-r bg-sidebar text-sidebar-foreground supports-backdrop-filter:bg-sidebar/85 supports-backdrop-filter:backdrop-blur-xl",
             currentWidthClassName,
+            resizeClasses,
             "transition-[opacity,transform] duration-300 ease-in-out will-change-transform",
             isOpen
               ? "opacity-100 translate-x-0"

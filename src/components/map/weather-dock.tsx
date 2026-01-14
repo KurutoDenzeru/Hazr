@@ -330,19 +330,19 @@ export const WeatherDock = ({
         <div className={cn("p-4", unstyled && "p-0 pt-2")}> 
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-sky-500 p-3 shadow-lg shadow-sky-500/20">
+              <div className="rounded-xl bg-sky-500 p-2.5 shadow-lg shadow-sky-500/20">
                 <WeatherIcon
                   code={displayData?.weatherCode ?? current.weatherCode}
                   isDay={displayData?.isDay ?? current.isDay}
-                  className="size-8 text-white"
+                  className="size-6 text-white"
                 />
               </div>
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-light tracking-tight">
+                  <span className="text-3xl font-light tracking-tight">
                     {Math.round(displayData?.temperature ?? current.temperature)}
                   </span>
-                  <span className="text-xl text-muted-foreground">°C</span>
+                  <span className="text-lg text-muted-foreground">°C</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {displayData

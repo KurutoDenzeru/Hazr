@@ -30,7 +30,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
   const { isOpen } = useSidebar()
 
   return (
-    <Sidebar widthClassName="w-80" collapsedWidthClassName="w-16">
+    <Sidebar widthClassName="w-80" collapsedWidthClassName="w-16" resizable>
       <SidebarHeader className="relative group-data-[state=collapsed]/sidebar:pb-14">
         <TooltipProvider delayDuration={0}>
           {isOpen ? (

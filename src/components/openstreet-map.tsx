@@ -3,29 +3,17 @@
 import * as React from "react";
 import {
   Menu,
-  X,
   Plus,
   Minus,
   Locate,
   Map as MapIcon,
   Activity,
+  Cloud,
   Maximize,
   Sun,
   Moon,
   Box,
   Loader2,
-  AlertTriangle,
-  Clock,
-  MapPin,
-  Signal,
-  Ruler,
-  Users,
-  Gauge,
-  Radio,
-  Waves,
-  ExternalLink,
-  CheckCircle2,
-  CircleDot,
 } from "lucide-react";
 
 import {
@@ -33,9 +21,7 @@ import {
   useMap,
   MapMarker,
   MarkerContent,
-  MapPopup,
 } from "@/components/ui/map";
-import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import {
   Tooltip,
@@ -55,10 +41,12 @@ import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
+import { WeatherDock } from "@/components/map/weather-dock";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
-import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
+import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
+import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -75,6 +63,20 @@ const getInitialLocation = () => {
   };
 
   return locations[tz] || [-122.4194, 37.7749]; // Default to SF
+};
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)");
+    const handleChange = () => setIsMobile(media.matches);
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  return isMobile;
 };
 
 type MapViewState = {
@@ -372,200 +374,7 @@ function EarthquakeFlyTo({
   return null;
 }
 
-// Format relative time for display
-const formatRelativeTime = (date: Date): string => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
-};
-
-// Earthquake detail popover
-function EarthquakePopover({
-  earthquake,
-  onClose,
-}: {
-  earthquake: ProcessedEarthquake | null;
-  onClose: () => void;
-}) {
-  if (!earthquake) return null;
-
-  const magColor = getMagnitudeColor(earthquake.magnitude);
-  const statusLabel =
-    earthquake.status === "reviewed"
-      ? "Reviewed"
-      : earthquake.status === "deleted"
-        ? "Deleted"
-        : "Automatic";
-  const StatusIcon =
-    earthquake.status === "reviewed"
-      ? CheckCircle2
-      : earthquake.status === "deleted"
-        ? AlertTriangle
-        : CircleDot;
-  const typeList = earthquake.types
-    .split(",")
-    .map((type) => type.trim())
-    .filter(Boolean)
-    .slice(0, 4)
-    .join(", ");
-
-  const detailItems = [
-    { label: "Depth", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
-    { label: "Significance", value: `${earthquake.sig}`, icon: Signal },
-    earthquake.felt !== null
-      ? { label: "Felt", value: `${earthquake.felt}`, icon: Users }
-      : null,
-    earthquake.mmi !== null
-      ? { label: "MMI", value: earthquake.mmi.toFixed(1), icon: Gauge }
-      : null,
-    earthquake.cdi !== null
-      ? { label: "CDI", value: earthquake.cdi.toFixed(1), icon: Activity }
-      : null,
-    earthquake.gap !== null
-      ? { label: "Gap", value: `${earthquake.gap.toFixed(0)}°`, icon: CircleDot }
-      : null,
-    earthquake.rms !== null
-      ? { label: "RMS", value: earthquake.rms.toFixed(2), icon: Radio }
-      : null,
-    earthquake.nst !== null
-      ? { label: "Stations", value: `${earthquake.nst}`, icon: Radio }
-      : null,
-  ].filter(Boolean) as Array<{
-    label: string;
-    value: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }>;
-
-  return (
-    <MapPopup
-      key={earthquake.id}
-      longitude={earthquake.coordinates[0]}
-      latitude={earthquake.coordinates[1]}
-      onClose={onClose}
-      closeOnClick={false}
-      offset={[0, -18]}
-      className="w-80 rounded-lg border border-border/60 bg-background/95 p-4 shadow-lg"
-    >
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
-          <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
-            style={{
-              backgroundColor: magColor,
-              boxShadow: `0 4px 14px ${magColor}40`,
-            }}
-          >
-            {earthquake.magnitude.toFixed(1)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="size-3.5" />
-                <span className="line-clamp-2 text-foreground font-semibold">
-                  {earthquake.place}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                {getMagnitudeLabel(earthquake.magnitude)}
-              </span>
-              <span className="opacity-50">•</span>
-              <span className="flex items-center gap-1">
-                <Clock className="size-3" />
-                {formatRelativeTime(earthquake.time)}
-              </span>
-            </div>
-            <div className="mt-1 text-[10px] text-muted-foreground/70">
-              Updated {formatRelativeTime(earthquake.updated)}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="gap-1">
-            <StatusIcon className="size-3" />
-            {statusLabel}
-          </Badge>
-          {earthquake.magType ? (
-            <Badge variant="outline">Mag: {earthquake.magType.toUpperCase()}</Badge>
-          ) : null}
-          {earthquake.net ? (
-            <Badge variant="outline">Net: {earthquake.net.toUpperCase()}</Badge>
-          ) : null}
-          {earthquake.alert ? (
-            <Badge
-              variant="destructive"
-              className={cn(
-                "gap-1",
-                earthquake.alert === "yellow" && "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-                earthquake.alert === "orange" && "bg-orange-500/10 text-orange-700 border-orange-500/20",
-                earthquake.alert === "red" && "bg-red-500/10 text-red-700 border-red-500/20",
-                earthquake.alert === "green" && "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-              )}
-            >
-              <AlertTriangle className="size-3" />
-              Alert {earthquake.alert}
-            </Badge>
-          ) : null}
-          {earthquake.tsunami ? (
-            <Badge variant="outline" className="gap-1 border-blue-500/40 text-blue-600">
-              <Waves className="size-3" />
-              Tsunami risk
-            </Badge>
-          ) : null}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {detailItems.map((item) => (
-            <div key={item.label} className="rounded-lg bg-muted/30 px-3 py-2">
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
-                <item.icon className="size-3" />
-                <span>{item.label}</span>
-              </div>
-              <p className="text-sm font-medium text-foreground">{item.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {typeList ? (
-          <div className="text-[10px] text-muted-foreground/70">
-            Types: {typeList}
-          </div>
-        ) : null}
-
-        <a
-          href={earthquake.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
-        >
-          View on USGS
-          <ExternalLink className="size-4" />
-        </a>
-
-        <p className="text-[10px] text-muted-foreground/60">
-          {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
-        </p>
-      </div>
-    </MapPopup>
-  );
-}
 
 function MapOverlayUI({
   setUserLocation,
@@ -584,6 +393,7 @@ function MapOverlayUI({
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
+  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
   const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
 
   const handleQuakeClick = (eq: ProcessedEarthquake) => {
@@ -659,9 +469,24 @@ function MapOverlayUI({
         </DrawerContent>
       </Drawer>
 
+      {/* Mobile Weather Drawer (bottom) */}
+      <Drawer
+        open={isWeatherDrawerOpen}
+        onOpenChange={setIsWeatherDrawerOpen}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <div className="p-4 overflow-y-auto max-h-[85vh]">
+            <WeatherDock
+              latitude={userLocation?.[1] ?? null}
+              longitude={userLocation?.[0] ?? null}
+              unstyled
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-3 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
         <BottomNavItem
           icon={MapIcon}
           label="Explore"
@@ -673,6 +498,11 @@ function MapOverlayUI({
           onClick={() => setIsQuakesDrawerOpen(true)}
         />
         <BottomNavItem
+          icon={Cloud}
+          label="Weather"
+          onClick={() => setIsWeatherDrawerOpen(true)}
+        />
+        <BottomNavItem
           icon={Menu}
           label="Menu"
           onClick={() => setIsMobileMenuOpen(true)}
@@ -681,6 +511,7 @@ function MapOverlayUI({
     </div>
   );
 }
+
 
 function BottomNavItem({
   icon: Icon,
@@ -771,6 +602,7 @@ function CustomMapControls({
 }) {
   const { map } = useMap();
   const { resolvedTheme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [is3D, setIs3D] = React.useState(false);
   const [waitingForLocation, setWaitingForLocation] = React.useState(false);
   const compassRef = React.useRef<SVGSVGElement>(null);
@@ -804,7 +636,6 @@ function CustomMapControls({
     const handle3DBuildings = () => {
       if (is3D) {
         if (!map.getLayer(layerId)) {
-          // Find building source - usually 'openmaptiles' or 'carto'
           const sources = map.getStyle().sources;
           const buildingSource = Object.keys(sources).find(
             (s) => s.includes("maptiles") || s.includes("carto"),
@@ -849,7 +680,6 @@ function CustomMapControls({
                   "fill-extrusion-opacity": 0.8,
                 },
               },
-              // Add below labels if possible
               map
                 .getStyle()
                 .layers.find((l) => l.type === "symbol")?.id,
@@ -858,18 +688,19 @@ function CustomMapControls({
         } else {
           map.setLayoutProperty(layerId, "visibility", "visible");
         }
-      } else {
-        if (map.getLayer(layerId)) {
-          map.setLayoutProperty(layerId, "visibility", "none");
-        }
+      } else if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", "none");
       }
     };
 
+    map.on("styledata", handle3DBuildings);
     if (map.isStyleLoaded()) {
       handle3DBuildings();
-    } else {
-      map.once("styledata", handle3DBuildings);
     }
+
+    return () => {
+      map.off("styledata", handle3DBuildings);
+    };
   }, [map, is3D]);
 
   const handleZoomIn = () => map?.zoomTo(map.getZoom() + 1, { duration: 300 });
@@ -948,14 +779,16 @@ function CustomMapControls({
             <TooltipContent side="left" sideOffset={8}>Toggle 3D</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={handleFullscreen} label="Fullscreen">
-                <Maximize className="size-4" />
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
-          </Tooltip>
+          {!isMobile && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton onClick={handleFullscreen} label="Fullscreen">
+                  <Maximize className="size-4" />
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
+            </Tooltip>
+          )}
         </ControlGroup>
 
         {/* Compass/Locate */}
