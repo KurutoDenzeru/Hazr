@@ -34,6 +34,7 @@ type WeatherDockProps = {
   longitude: number | null;
   className?: string;
   collapsed?: boolean;
+  isLocating?: boolean;
 };
 
 // Format time for display
@@ -156,6 +157,7 @@ export const WeatherDock = ({
   longitude,
   className,
   collapsed = false,
+  isLocating = false,
 }: WeatherDockProps) => {
   const {
     current,
@@ -198,6 +200,7 @@ export const WeatherDock = ({
   // Get selected hour data or current
   const selectedHour = hourly[selectedHourIndex];
   const displayData = selectedHour || null;
+  const emptyMessage = isLocating ? "Locating weather..." : "Enable location for weather";
 
   if (collapsed) {
     if (isLoading) {
@@ -213,10 +216,16 @@ export const WeatherDock = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex size-10 items-center justify-center rounded-xl text-muted-foreground">
-              <Cloud className="size-5" />
+              {isLocating ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <Cloud className="size-5" />
+              )}
             </div>
           </TooltipTrigger>
-          <TooltipContent side="right">Enable location for weather</TooltipContent>
+          <TooltipContent side="right">
+            {isLocating ? "Locating weather..." : "Enable location for weather"}
+          </TooltipContent>
         </Tooltip>
       );
     }
@@ -260,9 +269,13 @@ export const WeatherDock = ({
     return (
       <div className={cn("rounded-2xl border border-border/50 p-4 bg-background", className)}>
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-          <Cloud className="size-8 text-muted-foreground/50" />
+          {isLocating ? (
+            <Loader2 className="size-8 animate-spin text-muted-foreground/60" />
+          ) : (
+            <Cloud className="size-8 text-muted-foreground/50" />
+          )}
           <p className="text-sm text-muted-foreground">
-            {error ? "Failed to load weather" : "Enable location for weather"}
+            {error ? "Failed to load weather" : emptyMessage}
           </p>
           {error && (
             <Button variant="ghost" size="sm" onClick={() => refetch()}>

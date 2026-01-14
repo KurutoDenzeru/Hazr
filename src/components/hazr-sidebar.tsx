@@ -22,10 +22,11 @@ import type { ProcessedEarthquake } from "@/types/api"
 
 type HazrSidebarProps = {
   userLocation?: [number, number] | null
+  isLocating?: boolean
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
 }
 
-function HazrSidebar({ userLocation, onEarthquakeSelect }: HazrSidebarProps) {
+function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSidebarProps) {
   const { isOpen } = useSidebar()
 
   return (
@@ -110,6 +111,7 @@ function HazrSidebar({ userLocation, onEarthquakeSelect }: HazrSidebarProps) {
         <HazrMenuPanel
           collapsed={!isOpen}
           userLocation={userLocation}
+          isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}
         />
       </SidebarContent>

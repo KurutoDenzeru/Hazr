@@ -230,12 +230,25 @@ export type ProcessedEarthquake = {
   magnitude: number;
   place: string;
   time: Date;
+  updated: Date;
   depth: number;
   coordinates: [number, number];
   url: string;
   alert: EarthquakeProperties["alert"];
   tsunami: boolean;
   title: string;
+  status: EarthquakeProperties["status"];
+  sig: number;
+  felt: number | null;
+  cdi: number | null;
+  mmi: number | null;
+  magType: string | null;
+  gap: number | null;
+  rms: number | null;
+  nst: number | null;
+  dmin: number | null;
+  net: string;
+  types: string;
 };
 
 // Helper type for processed weather data

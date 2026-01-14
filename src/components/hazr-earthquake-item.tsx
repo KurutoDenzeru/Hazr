@@ -1,6 +1,15 @@
 "use client";
 
-import { ChevronRight, Activity, Clock, Info } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  Ruler,
+  Signal,
+  Users,
+  Gauge,
+  Waves,
+  AlertTriangle,
+} from "lucide-react";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 import {
@@ -8,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 // Format relative time
 const formatRelativeTime = (date: Date): string => {
@@ -66,6 +76,56 @@ const EarthquakeItem = ({
     );
   }
 
+  const detailBadges = [
+    {
+      label: `Depth ${earthquake.depth.toFixed(1)}km`,
+      icon: Ruler,
+      className: "bg-muted/40 text-muted-foreground",
+    },
+    {
+      label: `Sig ${earthquake.sig}`,
+      icon: Signal,
+      className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    },
+    earthquake.felt !== null
+      ? {
+          label: `${earthquake.felt} felt`,
+          icon: Users,
+          className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        }
+      : null,
+    earthquake.mmi !== null
+      ? {
+          label: `MMI ${earthquake.mmi.toFixed(1)}`,
+          icon: Gauge,
+          className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+        }
+      : null,
+    earthquake.tsunami
+      ? {
+          label: "Tsunami",
+          icon: Waves,
+          className: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+        }
+      : null,
+    earthquake.alert
+      ? {
+          label: `Alert ${earthquake.alert}`,
+          icon: AlertTriangle,
+          className: cn(
+            "bg-red-500/10 text-red-600 dark:text-red-400",
+            earthquake.alert === "yellow" && "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+            earthquake.alert === "orange" && "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+            earthquake.alert === "green" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+          ),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    className: string;
+  }>;
+
   return (
     <button
       type="button"
@@ -104,17 +164,19 @@ const EarthquakeItem = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 pl-13">
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Activity className="size-3" />
-          <span>Depth: {earthquake.depth.toFixed(1)}km</span>
-        </div>
-        {earthquake.tsunami && (
-          <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-            <Info className="size-3" />
-            <span>Tsunami Risk</span>
+      <div className="flex flex-wrap gap-2 pl-13">
+        {detailBadges.map((badge) => (
+          <div
+            key={badge.label}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-medium",
+              badge.className,
+            )}
+          >
+            <badge.icon className="size-3" />
+            <span>{badge.label}</span>
           </div>
-        )}
+        ))}
       </div>
     </button>
   );

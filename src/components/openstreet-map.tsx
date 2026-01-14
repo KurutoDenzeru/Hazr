@@ -9,12 +9,23 @@ import {
   Locate,
   Map as MapIcon,
   Activity,
-  Cloud,
   Maximize,
   Sun,
   Moon,
   Box,
   Loader2,
+  AlertTriangle,
+  Clock,
+  MapPin,
+  Signal,
+  Ruler,
+  Users,
+  Gauge,
+  Radio,
+  Waves,
+  ExternalLink,
+  CheckCircle2,
+  CircleDot,
 } from "lucide-react";
 
 import {
@@ -22,8 +33,10 @@ import {
   useMap,
   MapMarker,
   MarkerContent,
+  MapPopup,
 } from "@/components/ui/map";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import {
   Tooltip,
@@ -43,11 +56,10 @@ import {
 import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
-import { WeatherDock } from "@/components/map/weather-dock";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
-import { getMagnitudeColor } from "@/types/api";
+import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 
 // Helper to get approximate location based on timezone
@@ -106,7 +118,9 @@ export default function GoogleMapsClone() {
   }, []);
 
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
+  const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
+  const hasRequestedLocationRef = React.useRef(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
@@ -151,6 +165,29 @@ export default function GoogleMapsClone() {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (userLocation || hasRequestedLocationRef.current) return;
+    if (typeof window === "undefined") return;
+    if (!("geolocation" in navigator)) return;
+
+    hasRequestedLocationRef.current = true;
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [number, number] = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+        setUserLocation(coords);
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [userLocation, setUserLocation]);
+
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: 12 };
@@ -173,6 +210,7 @@ export default function GoogleMapsClone() {
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
         <HazrSidebar
           userLocation={userLocation}
+          isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
         />
 
@@ -270,6 +308,7 @@ export default function GoogleMapsClone() {
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
                   userLocation={userLocation}
+                  isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
                 />
@@ -363,19 +402,62 @@ function EarthquakePopover({
   if (!earthquake) return null;
 
   const magColor = getMagnitudeColor(earthquake.magnitude);
-  const getMagnitudeLabel = (mag: number): string => {
-    if (mag < 3) return "Minor";
-    if (mag < 4) return "Light";
-    if (mag < 5) return "Moderate";
-    if (mag < 6) return "Strong";
-    if (mag < 7) return "Major";
-    return "Great";
-  };
+  const statusLabel =
+    earthquake.status === "reviewed"
+      ? "Reviewed"
+      : earthquake.status === "deleted"
+        ? "Deleted"
+        : "Automatic";
+  const StatusIcon =
+    earthquake.status === "reviewed"
+      ? CheckCircle2
+      : earthquake.status === "deleted"
+        ? AlertTriangle
+        : CircleDot;
+  const typeList = earthquake.types
+    .split(",")
+    .map((type) => type.trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(", ");
+
+  const detailItems = [
+    { label: "Depth", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
+    { label: "Significance", value: `${earthquake.sig}`, icon: Signal },
+    earthquake.felt !== null
+      ? { label: "Felt", value: `${earthquake.felt}`, icon: Users }
+      : null,
+    earthquake.mmi !== null
+      ? { label: "MMI", value: earthquake.mmi.toFixed(1), icon: Gauge }
+      : null,
+    earthquake.cdi !== null
+      ? { label: "CDI", value: earthquake.cdi.toFixed(1), icon: Activity }
+      : null,
+    earthquake.gap !== null
+      ? { label: "Gap", value: `${earthquake.gap.toFixed(0)}°`, icon: CircleDot }
+      : null,
+    earthquake.rms !== null
+      ? { label: "RMS", value: earthquake.rms.toFixed(2), icon: Radio }
+      : null,
+    earthquake.nst !== null
+      ? { label: "Stations", value: `${earthquake.nst}`, icon: Radio }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string;
+    value: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }>;
 
   return (
-    <div className="absolute top-4 right-4 z-30 pointer-events-auto max-w-xs w-full">
-      <div className="overflow-hidden rounded-2xl border border-border/50 bg-background/95 shadow-xl supports-backdrop-filter:bg-background/85 supports-backdrop-filter:backdrop-blur-xl">
-        {/* Header */}
+    <MapPopup
+      longitude={earthquake.coordinates[0]}
+      latitude={earthquake.coordinates[1]}
+      onClose={onClose}
+      closeOnClick={true}
+      offset={[0, -18]}
+      className="w-80 rounded-2xl border-border/50 bg-background/95 p-0 shadow-xl"
+    >
+      <div className="overflow-hidden rounded-2xl border border-border/40 bg-background/95">
         <div className="flex items-start gap-3 p-4 border-b border-border/30">
           <div
             className="flex size-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-lg"
@@ -387,13 +469,22 @@ function EarthquakePopover({
             {earthquake.magnitude.toFixed(1)}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-foreground leading-tight">
-              {earthquake.place}
-            </h3>
-            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-              <span>{getMagnitudeLabel(earthquake.magnitude)}</span>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="size-3.5" />
+              <span className="line-clamp-2">{earthquake.place}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {getMagnitudeLabel(earthquake.magnitude)}
+              </span>
               <span className="opacity-50">•</span>
-              <span>{formatRelativeTime(earthquake.time)}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="size-3" />
+                {formatRelativeTime(earthquake.time)}
+              </span>
+            </div>
+            <div className="mt-1 text-[10px] text-muted-foreground/70">
+              Updated {formatRelativeTime(earthquake.updated)}
             </div>
           </div>
           <button
@@ -406,47 +497,59 @@ function EarthquakePopover({
           </button>
         </div>
 
-        {/* Details */}
-        <div className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Depth</p>
-              <p className="text-sm font-medium">{earthquake.depth.toFixed(1)} km</p>
-            </div>
-            <div className="rounded-lg bg-muted/30 px-3 py-2">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Time</p>
-              <p className="text-sm font-medium">
-                {earthquake.time.toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
-
-          {earthquake.tsunami && (
-            <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-amber-600 dark:text-amber-400">
-              <svg className="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="text-xs font-medium">Tsunami Warning</span>
-            </div>
-          )}
-
-          {earthquake.alert && (
-            <div
+        <div className="px-4 pt-3 flex flex-wrap gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <StatusIcon className="size-3" />
+            {statusLabel}
+          </Badge>
+          {earthquake.magType ? (
+            <Badge variant="outline">Mag: {earthquake.magType.toUpperCase()}</Badge>
+          ) : null}
+          {earthquake.net ? (
+            <Badge variant="outline">Net: {earthquake.net.toUpperCase()}</Badge>
+          ) : null}
+          {earthquake.alert ? (
+            <Badge
+              variant="destructive"
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium border",
-                earthquake.alert === "red" && "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400",
-                earthquake.alert === "orange" && "bg-orange-500/10 border-orange-500/20 text-orange-600 dark:text-orange-400",
-                earthquake.alert === "yellow" && "bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400",
-                earthquake.alert === "green" && "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400",
+                "gap-1",
+                earthquake.alert === "yellow" && "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
+                earthquake.alert === "orange" && "bg-orange-500/10 text-orange-700 border-orange-500/20",
+                earthquake.alert === "red" && "bg-red-500/10 text-red-700 border-red-500/20",
+                earthquake.alert === "green" && "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
               )}
             >
-              PAGER Alert: {earthquake.alert.charAt(0).toUpperCase() + earthquake.alert.slice(1)}
-            </div>
-          )}
+              <AlertTriangle className="size-3" />
+              Alert {earthquake.alert}
+            </Badge>
+          ) : null}
+          {earthquake.tsunami ? (
+            <Badge variant="outline" className="gap-1 border-blue-500/40 text-blue-600">
+              <Waves className="size-3" />
+              Tsunami risk
+            </Badge>
+          ) : null}
+        </div>
 
+        <div className="p-4 grid grid-cols-2 gap-3">
+          {detailItems.map((item) => (
+            <div key={item.label} className="rounded-lg bg-muted/30 px-3 py-2">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+                <item.icon className="size-3" />
+                <span>{item.label}</span>
+              </div>
+              <p className="text-sm font-medium text-foreground">{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {typeList ? (
+          <div className="px-4 pb-3 text-[10px] text-muted-foreground/70">
+            Types: {typeList}
+          </div>
+        ) : null}
+
+        <div className="px-4 pb-4">
           <a
             href={earthquake.url}
             target="_blank"
@@ -454,20 +557,17 @@ function EarthquakePopover({
             className="flex items-center justify-center gap-2 w-full rounded-xl bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
           >
             View on USGS
-            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
+            <ExternalLink className="size-4" />
           </a>
         </div>
 
-        {/* Footer with coordinates */}
         <div className="px-4 pb-3">
           <p className="text-[10px] text-muted-foreground/60">
             {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
           </p>
         </div>
       </div>
-    </div>
+    </MapPopup>
   );
 }
 
@@ -475,18 +575,19 @@ function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
   userLocation,
+  isLocating,
   earthquakes,
   onEarthquakeSelect,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
   userLocation: [number, number] | null;
+  isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
-  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
   const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
 
   const handleQuakeClick = (eq: ProcessedEarthquake) => {
@@ -538,7 +639,11 @@ function MapOverlayUI({
         <DrawerContent className="max-h-[85vh]">
           <div className="flex h-full flex-col p-4">
             <div className="flex-1 overflow-auto">
-              <HazrMenuPanel onSelect={handleCloseMobileMenu} userLocation={userLocation} />
+              <HazrMenuPanel
+                onSelect={handleCloseMobileMenu}
+                userLocation={userLocation}
+                isLocating={isLocating}
+              />
             </div>
           </div>
         </DrawerContent>
@@ -580,31 +685,9 @@ function MapOverlayUI({
         </DrawerContent>
       </Drawer>
 
-      {/* Mobile Weather Drawer (bottom) */}
-      <Drawer
-        open={isWeatherDrawerOpen}
-        onOpenChange={setIsWeatherDrawerOpen}
-      >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="p-4 overflow-y-auto max-h-[85vh]">
-            <WeatherDock
-              latitude={userLocation?.[1] ?? null}
-              longitude={userLocation?.[0] ?? null}
-            />
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Desktop Weather Dock (bottom left) */}
-      <div className="hidden md:block absolute bottom-4 left-4 z-20 w-80 pointer-events-auto">
-        <WeatherDock
-          latitude={userLocation?.[1] ?? null}
-          longitude={userLocation?.[0] ?? null}
-        />
-      </div>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-3 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
         <BottomNavItem
           icon={MapIcon}
           label="Explore"
@@ -614,11 +697,6 @@ function MapOverlayUI({
           icon={Activity}
           label="Quakes"
           onClick={() => setIsQuakesDrawerOpen(true)}
-        />
-        <BottomNavItem
-          icon={Cloud}
-          label="Weather"
-          onClick={() => setIsWeatherDrawerOpen(true)}
         />
         <BottomNavItem
           icon={Menu}
