@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import type { ProjectionSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   Map as MapComponent,
   useMap,
@@ -634,23 +634,21 @@ function CustomMapControls({
   React.useEffect(() => {
     if (!map) return;
 
+    const globeMap = map as GlobeCapableMap;
     const layerId = "3d-buildings";
 
     const handle3DBuildings = () => {
-      const projection: ProjectionSpecification = {
-        name: is3D ? "globe" : "mercator",
-      } as ProjectionSpecification;
-      map.setProjection(projection);
+      globeMap.setProjection({ name: is3D ? "globe" : "mercator" });
 
       if (is3D) {
-        if (!map.getLayer(layerId)) {
+        if (!globeMap.getLayer(layerId)) {
           const sources = map.getStyle().sources;
           const buildingSource = Object.keys(sources).find(
             (s) => s.includes("maptiles") || s.includes("carto"),
           );
 
           if (buildingSource) {
-            map.addLayer(
+            globeMap.addLayer(
               {
                 id: layerId,
                 source: buildingSource,
@@ -694,22 +692,32 @@ function CustomMapControls({
             );
           }
         } else {
-          map.setLayoutProperty(layerId, "visibility", "visible");
+          globeMap.setLayoutProperty(layerId, "visibility", "visible");
         }
-      } else if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, "visibility", "none");
+      } else if (globeMap.getLayer(layerId)) {
+        globeMap.setLayoutProperty(layerId, "visibility", "none");
       }
     };
 
-    map.on("styledata", handle3DBuildings);
-    if (map.isStyleLoaded()) {
+    globeMap.on("styledata", handle3DBuildings);
+    if (globeMap.isStyleLoaded()) {
       handle3DBuildings();
     }
 
     return () => {
-      map.off("styledata", handle3DBuildings);
+      globeMap.off("styledata", handle3DBuildings);
     };
   }, [map, is3D]);
+
+  type GlobeCapableMap = MapLibreMap & {
+    setProjection: (projection: { name: "globe" | "mercator" }) => void;
+    setFog?: (fog?: {
+      color?: string;
+      "high-color"?: string;
+      "horizon-blend"?: number;
+      range?: [number, number];
+    }) => void;
+  };
 
   const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -768,11 +776,29 @@ function CustomMapControls({
     setIs3D(new3D);
     if (!map) return;
 
-    const projection: ProjectionSpecification = {
-      name: new3D ? "globe" : "mercator",
-    } as ProjectionSpecification;
-    map.setProjection(projection);
-    map.easeTo({ pitch: new3D ? 60 : 0, duration: 400, easing: ease });
+    const globeMap = map as GlobeCapableMap;
+    globeMap.setProjection({ name: new3D ? "globe" : "mercator" });
+
+    if (new3D) {
+      globeMap.setFog?.({
+        color: "#dbeafe",
+        "high-color": "#0b172a",
+        "horizon-blend": 0.15,
+        range: [0.6, 10],
+      });
+      const targetZoom = Math.min(map.getZoom(), 3.2);
+      map.easeTo({
+        pitch: 55,
+        bearing: 0,
+        zoom: targetZoom,
+        duration: 800,
+        easing: ease,
+        essential: true,
+      });
+    } else {
+      globeMap.setFog?.(undefined);
+      map.easeTo({ pitch: 0, duration: 600, easing: ease, essential: true });
+    }
   };
 
   const toggleTheme = () => {
