@@ -130,7 +130,7 @@ const EarthquakeItem = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-2 rounded-xl px-3 py-3 text-left transition-all hover:bg-muted/70"
+      className="group flex w-full flex-col gap-2 rounded-lg px-2 py-2 text-left transition-all hover:bg-muted/70"
       aria-label={earthquake.title}
     >
       <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ const EarthquakeItem = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 pl-13">
+      <div className="flex flex-wrap gap-1.5 pl-13">
         {detailBadges.map((badge) => (
           <div
             key={badge.label}

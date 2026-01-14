@@ -96,7 +96,7 @@ const EarthquakeFeed = ({
   return (
     <div className="overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-1 pb-3">
+      <div className="flex items-center justify-between px-0 pb-2">
         <div className="flex items-center gap-2">
           <div className="rounded-lg bg-red-500 p-1.5 shadow-lg shadow-red-500/20">
             <Mountain className="size-4 text-white" />
@@ -145,7 +145,7 @@ const EarthquakeFeed = ({
             <p className="text-sm text-muted-foreground">No recent earthquakes</p>
           </div>
         ) : (
-          <div className="flex max-h-70 flex-col gap-0.5 overflow-y-auto scrollbar-hide">
+          <div className="flex max-h-70 flex-col gap-0 overflow-y-auto scrollbar-hide">
             {earthquakes.slice(0, 10).map((eq) => (
               <EarthquakeItem
                 key={eq.id}

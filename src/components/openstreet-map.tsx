@@ -455,12 +455,12 @@ function EarthquakePopover({
       onClose={onClose}
       closeOnClick={true}
       offset={[0, -18]}
-      className="w-80 rounded-2xl border-border/50 bg-background/95 p-0 shadow-xl"
+      className="w-80 rounded-lg border border-border/60 bg-background/95 p-4 shadow-lg"
     >
-      <div className="overflow-hidden rounded-2xl border border-border/40 bg-background/95">
-        <div className="flex items-start gap-3 p-4 border-b border-border/30">
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
           <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white shadow-lg"
+            className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
             style={{
               backgroundColor: magColor,
               boxShadow: `0 4px 14px ${magColor}40`,
@@ -469,9 +469,21 @@ function EarthquakePopover({
             {earthquake.magnitude.toFixed(1)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="size-3.5" />
-              <span className="line-clamp-2">{earthquake.place}</span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="size-3.5" />
+                <span className="line-clamp-2 text-foreground font-semibold">
+                  {earthquake.place}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">
@@ -487,17 +499,9 @@ function EarthquakePopover({
               Updated {formatRelativeTime(earthquake.updated)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
         </div>
 
-        <div className="px-4 pt-3 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="gap-1">
             <StatusIcon className="size-3" />
             {statusLabel}
@@ -531,7 +535,7 @@ function EarthquakePopover({
           ) : null}
         </div>
 
-        <div className="p-4 grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {detailItems.map((item) => (
             <div key={item.label} className="rounded-lg bg-muted/30 px-3 py-2">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -544,28 +548,24 @@ function EarthquakePopover({
         </div>
 
         {typeList ? (
-          <div className="px-4 pb-3 text-[10px] text-muted-foreground/70">
+          <div className="text-[10px] text-muted-foreground/70">
             Types: {typeList}
           </div>
         ) : null}
 
-        <div className="px-4 pb-4">
-          <a
-            href={earthquake.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full rounded-xl bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
-          >
-            View on USGS
-            <ExternalLink className="size-4" />
-          </a>
-        </div>
+        <a
+          href={earthquake.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
+        >
+          View on USGS
+          <ExternalLink className="size-4" />
+        </a>
 
-        <div className="px-4 pb-3">
-          <p className="text-[10px] text-muted-foreground/60">
-            {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
-          </p>
-        </div>
+        <p className="text-[10px] text-muted-foreground/60">
+          {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
+        </p>
       </div>
     </MapPopup>
   );
@@ -622,8 +622,8 @@ function MapOverlayUI({
       </div>
 
       {/* Bottom Section: Controls */}
-      <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        <div className="flex flex-col gap-4 items-end w-full sm:w-auto">
+      <div className="pointer-events-none p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
+        <div className="pointer-events-auto flex flex-col gap-4 items-end w-full sm:w-auto">
           <CustomMapControls
             setUserLocation={setUserLocation}
             onLocateAnimation={onLocateAnimation}
