@@ -35,7 +35,6 @@ import {
   MarkerContent,
   MapPopup,
 } from "@/components/ui/map";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import {
@@ -51,7 +50,6 @@ import {
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
@@ -78,9 +76,6 @@ const getInitialLocation = () => {
 
   return locations[tz] || [-122.4194, 37.7749]; // Default to SF
 };
-
-const BAR_SURFACE_CLASS =
-  "rounded-2xl border border-border/60 bg-background/80 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
 
 type MapViewState = {
   center: [number, number];
@@ -450,10 +445,11 @@ function EarthquakePopover({
 
   return (
     <MapPopup
+      key={earthquake.id}
       longitude={earthquake.coordinates[0]}
       latitude={earthquake.coordinates[1]}
       onClose={onClose}
-      closeOnClick={true}
+      closeOnClick={false}
       offset={[0, -18]}
       className="w-80 rounded-lg border border-border/60 bg-background/95 p-4 shadow-lg"
     >
@@ -598,32 +594,10 @@ function MapOverlayUI({
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
       {/* Top Section: Desktop Sidebar Toggle */}
-      <div className="hidden md:flex p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
-        <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "size-10 rounded-2xl text-muted-foreground hover:bg-muted/70",
-                    BAR_SURFACE_CLASS
-                  )}
-                  aria-label="Toggle sidebar"
-                >
-                  <Menu className="size-5" />
-                </Button>
-              </SidebarTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Menu</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
 
       {/* Bottom Section: Controls */}
       <div className="pointer-events-none p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        <div className="pointer-events-auto flex flex-col gap-4 items-end w-full sm:w-auto">
+        <div className="pointer-events-auto flex flex-col gap-4 items-end w-auto">
           <CustomMapControls
             setUserLocation={setUserLocation}
             onLocateAnimation={onLocateAnimation}

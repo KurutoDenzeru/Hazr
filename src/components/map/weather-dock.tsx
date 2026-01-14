@@ -35,6 +35,7 @@ type WeatherDockProps = {
   className?: string;
   collapsed?: boolean;
   isLocating?: boolean;
+  unstyled?: boolean;
 };
 
 // Format time for display
@@ -158,6 +159,7 @@ export const WeatherDock = ({
   className,
   collapsed = false,
   isLocating = false,
+  unstyled = false,
 }: WeatherDockProps) => {
   const {
     current,
@@ -262,7 +264,7 @@ export const WeatherDock = ({
 
   if (error || !current) {
     return (
-      <div className={cn("rounded-2xl border border-border/50 p-4 bg-background", className)}>
+      <div className={cn(unstyled ? "p-0" : "rounded-2xl border border-border/50 p-4 bg-background", className)}>
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
           {error ? (
             <Cloud className="size-8 text-muted-foreground/50" />
@@ -286,16 +288,21 @@ export const WeatherDock = ({
     );
   }
 
+  const containerClasses = unstyled
+    ? cn("bg-transparent border-none shadow-none p-0", className)
+    : cn(
+        "overflow-hidden rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl",
+        className,
+      );
+
   return (
     <TooltipProvider delayDuration={0}>
-      <div
-        className={cn(
-          "overflow-hidden rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl",
-          className
-        )}
-      >
+      <div className={containerClasses}>
         {/* Header with location */}
-        <div className="flex items-center justify-between gap-2 border-b border-border/30 px-4 py-3">
+        <div className={cn(
+          "flex items-center justify-between gap-2 border-b border-border/30 px-4 py-3",
+          unstyled && "border-none px-0 py-2",
+        )}>
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="size-4 shrink-0 text-muted-foreground" />
             <span className="text-sm font-medium truncate">
@@ -320,7 +327,7 @@ export const WeatherDock = ({
         </div>
 
         {/* Current/Selected weather display */}
-        <div className="p-4">
+        <div className={cn("p-4", unstyled && "p-0 pt-2")}> 
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="rounded-xl bg-sky-500 p-3 shadow-lg shadow-sky-500/20">

@@ -96,7 +96,7 @@ const EarthquakeFeed = ({
   return (
     <div className="overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-0 pb-2">
+      <div className="flex items-center justify-between px-0 pb-1">
         <div className="flex items-center gap-2">
           <div className="rounded-lg bg-red-500 p-1.5 shadow-lg shadow-red-500/20">
             <Mountain className="size-4 text-white" />
@@ -187,31 +187,34 @@ function HazrMenuPanel({
             Weather
           </p>
         )}
-        <div className={cn("mb-4", collapsed && "flex flex-col items-center")}>
+        <div className={cn("mb-2", collapsed && "flex flex-col items-center")}> 
           <WeatherDock
             latitude={userLocation?.[1] ?? null}
             longitude={userLocation?.[0] ?? null}
             collapsed={collapsed}
             isLocating={isLocating}
+            unstyled
           />
         </div>
 
-        <Separator className={cn(collapsed ? "my-2" : "my-3")} />
+        <Separator className={cn(collapsed ? "my-2" : "my-2")} />
 
         {/* Earthquakes Section */}
         {!collapsed && (
-          <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">
+          <p className="px-0 pb-1 text-xs font-medium text-muted-foreground">
             Seismic Activity
           </p>
         )}
-        <div className={cn(collapsed && "flex flex-col items-center")}>
+        <div className={cn(collapsed && "flex flex-col items-center")}
+        >
           <EarthquakeFeed
             collapsed={collapsed}
             onEarthquakeSelect={onEarthquakeSelect}
           />
         </div>
 
-        <Separator className={cn(collapsed ? "my-2" : "my-3")} />
+        <Separator className={cn(collapsed ? "my-2" : "my-2")} />
+
 
         {/* Settings */}
         {collapsed ? (
