@@ -37,7 +37,7 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-export const formatRelativeTime = (date: Date): string => {
+const formatRelativeTime = (date: Date): string => {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);

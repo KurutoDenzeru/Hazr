@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 
+import type { ProjectionSpecification } from "maplibre-gl";
 import {
   Map as MapComponent,
   useMap,
@@ -127,6 +128,9 @@ export default function GoogleMapsClone() {
     magnitude: "2.5",
     range: "day",
   });
+
+  const nowRef = React.useRef(Date.now());
+  const now = nowRef.current;
 
   // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
@@ -268,7 +272,7 @@ export default function GoogleMapsClone() {
                         aria-label={`Earthquake: ${eq.title}`}
                       >
                         {/* Pulse ring for recent earthquakes */}
-                        {Date.now() - eq.time.getTime() < 3600000 && (
+                        {now - eq.time.getTime() < 3600000 && (
                           <span
                             aria-hidden="true"
                             className="absolute size-8 rounded-full animate-ping"
@@ -634,6 +638,11 @@ function CustomMapControls({
     const layerId = "3d-buildings";
 
     const handle3DBuildings = () => {
+      const projection: ProjectionSpecification = {
+        name: is3D ? "globe" : "mercator",
+      } as ProjectionSpecification;
+      map.setProjection(projection);
+
       if (is3D) {
         if (!map.getLayer(layerId)) {
           const sources = map.getStyle().sources;
@@ -703,8 +712,12 @@ function CustomMapControls({
     };
   }, [map, is3D]);
 
-  const handleZoomIn = () => map?.zoomTo(map.getZoom() + 1, { duration: 300 });
-  const handleZoomOut = () => map?.zoomTo(map.getZoom() - 1, { duration: 300 });
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+  const handleZoomIn = () =>
+    map?.easeTo({ zoom: map.getZoom() + 1, duration: 350, easing: ease });
+  const handleZoomOut = () =>
+    map?.easeTo({ zoom: map.getZoom() - 1, duration: 350, easing: ease });
 
   const handleLocate = () => {
     if (navigator.geolocation && map) {
@@ -733,7 +746,8 @@ function CustomMapControls({
     }
   };
 
-  const handleResetBearing = () => map?.resetNorthPitch({ duration: 300 });
+  const handleResetBearing = () =>
+    map?.easeTo({ bearing: 0, pitch: 0, duration: 600, easing: ease });
   const handleFullscreen = () => {
     const container = map?.getContainer();
     if (!container) return;
@@ -744,7 +758,13 @@ function CustomMapControls({
   const toggle3D = () => {
     const new3D = !is3D;
     setIs3D(new3D);
-    map?.easeTo({ pitch: new3D ? 60 : 0, duration: 300 });
+    if (!map) return;
+
+    const projection: ProjectionSpecification = {
+      name: new3D ? "globe" : "mercator",
+    } as ProjectionSpecification;
+    map.setProjection(projection);
+    map.easeTo({ pitch: new3D ? 60 : 0, duration: 400, easing: ease });
   };
 
   const toggleTheme = () => {
