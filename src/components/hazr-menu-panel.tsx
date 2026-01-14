@@ -80,7 +80,7 @@ const EarthquakeFeed = ({
         {earthquakes.length > 3 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex size-10 items-center justify-center rounded-xl text-xs font-medium text-muted-foreground">
+              <div className="flex size-10 items-center justify-center rounded-xl text-sm font-medium text-muted-foreground">
                 +{earthquakes.length - 3}
               </div>
             </TooltipTrigger>
@@ -98,8 +98,8 @@ const EarthquakeFeed = ({
       {/* Header */}
       <div className="flex items-center justify-between px-0 pb-1">
         <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-red-500 p-1.5 shadow-lg shadow-red-500/20">
-            <Mountain className="size-4 text-white" />
+          <div className="rounded-lg bg-red-500 p-2.5 shadow-lg shadow-red-500/20">
+            <Mountain className="size-5 text-white" />
           </div>
           <div>
             <h3 className="text-sm font-medium">Live Earthquakes</h3>
@@ -183,7 +183,7 @@ function HazrMenuPanel({
       <div className={cn("flex flex-col", collapsed ? "p-2" : "p-4")}>
         {/* Weather Section */}
         {!collapsed && (
-          <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">
+          <p className="px-2 pb-2 text-sm font-medium text-muted-foreground">
             Weather
           </p>
         )}
@@ -201,7 +201,7 @@ function HazrMenuPanel({
 
         {/* Earthquakes Section */}
         {!collapsed && (
-          <p className="px-0 pb-1 text-xs font-medium text-muted-foreground">
+          <p className="px-0 pb-1 text-sm font-medium text-muted-foreground">
             Seismic Activity
           </p>
         )}

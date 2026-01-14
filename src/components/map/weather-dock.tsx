@@ -71,7 +71,7 @@ const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-white cursor-help"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-white cursor-help"
           style={{ backgroundColor: info.color }}
         >
           <Sun className="size-3" />
@@ -80,7 +80,7 @@ const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-[200px]">
         <p className="font-semibold">{info.label} UV Index</p>
-        <p className="text-xs text-muted-foreground mt-1">{info.description}</p>
+        <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -95,7 +95,7 @@ const PrecipBadge = ({ probability, amount }: { probability: number; amount: num
       <TooltipTrigger asChild>
         <div
           className={cn(
-            "flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium cursor-help",
+            "flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium cursor-help",
             hasRain
               ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
               : "bg-muted/50 text-muted-foreground"
@@ -108,7 +108,7 @@ const PrecipBadge = ({ probability, amount }: { probability: number; amount: num
       <TooltipContent side="top">
         <p className="font-semibold">{probability}% chance of precipitation</p>
         {amount > 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Expected: {amount.toFixed(1)}mm
           </p>
         )}
@@ -243,7 +243,7 @@ export const WeatherDock = ({
         </TooltipTrigger>
         <TooltipContent side="right">
           <p className="font-medium">{current.description}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {locationInfo?.displayName || "Current location"}
           </p>
         </TooltipContent>
@@ -328,13 +328,13 @@ export const WeatherDock = ({
 
         {/* Current/Selected weather display */}
         <div className={cn("p-4", unstyled && "p-0 pt-2")}> 
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4!">
             <div className="flex items-center gap-3">
               <div className="rounded-xl bg-sky-500 p-2.5 shadow-lg shadow-sky-500/20">
                 <WeatherIcon
                   code={displayData?.weatherCode ?? current.weatherCode}
                   isDay={displayData?.isDay ?? current.isDay}
-                  className="size-6 text-white"
+                  className="size-5 text-white"
                 />
               </div>
               <div>
@@ -368,7 +368,7 @@ export const WeatherDock = ({
               <TooltipTrigger asChild>
                 <div className="flex flex-col items-center gap-1 rounded-lg bg-muted/30 px-2 py-2 cursor-help">
                   <Thermometer className="size-4 text-orange-500" />
-                  <span className="text-xs font-medium">
+                  <span className="text-sm font-medium">
                     {Math.round(displayData?.feelsLike ?? current.feelsLike)}°
                   </span>
                   <span className="text-[10px] text-muted-foreground">Feels</span>
@@ -381,7 +381,7 @@ export const WeatherDock = ({
               <TooltipTrigger asChild>
                 <div className="flex flex-col items-center gap-1 rounded-lg bg-muted/30 px-2 py-2 cursor-help">
                   <Wind className="size-4 text-cyan-500" />
-                  <span className="text-xs font-medium">
+                  <span className="text-sm font-medium">
                     {Math.round(displayData?.windSpeed ?? current.windSpeed)}
                   </span>
                   <span className="text-[10px] text-muted-foreground">km/h</span>
@@ -389,7 +389,7 @@ export const WeatherDock = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Wind speed: {Math.round(displayData?.windSpeed ?? current.windSpeed)} km/h</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Direction: {getWindDirection(current.windDirection)}
                 </p>
               </TooltipContent>
@@ -399,7 +399,7 @@ export const WeatherDock = ({
               <TooltipTrigger asChild>
                 <div className="flex flex-col items-center gap-1 rounded-lg bg-muted/30 px-2 py-2 cursor-help">
                   <Droplets className="size-4 text-blue-500" />
-                  <span className="text-xs font-medium">
+                  <span className="text-sm font-medium">
                     {displayData?.humidity ?? current.humidity}%
                   </span>
                   <span className="text-[10px] text-muted-foreground">Humid</span>
@@ -414,7 +414,7 @@ export const WeatherDock = ({
                   {displayData?.visibility ? (
                     <>
                       <Eye className="size-4 text-violet-500" />
-                      <span className="text-xs font-medium">
+                      <span className="text-sm font-medium">
                         {(displayData.visibility / 1000).toFixed(0)}
                       </span>
                       <span className="text-[10px] text-muted-foreground">km</span>
@@ -422,7 +422,7 @@ export const WeatherDock = ({
                   ) : (
                     <>
                       <Gauge className="size-4 text-violet-500" />
-                      <span className="text-xs font-medium">
+                      <span className="text-sm font-medium">
                         {current.cloudCover}%
                       </span>
                       <span className="text-[10px] text-muted-foreground">Cloud</span>
@@ -440,7 +440,7 @@ export const WeatherDock = ({
         </div>
 
         {/* Hourly timeline with navigation */}
-        {hourly.length > 0 && (
+        {/* {hourly.length > 0 && (
           <div className="border-t border-border/30">
             <div className="flex items-center gap-1 px-2 py-2">
               <TooltipProvider delayDuration={0}>
@@ -492,7 +492,7 @@ export const WeatherDock = ({
               </TooltipProvider>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* 7-day forecast */}
         {daily.length > 0 && (
@@ -522,7 +522,7 @@ export const WeatherDock = ({
                     <p className="font-medium">
                       {day.date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                     </p>
-                    <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                    <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
                       <p>High: {Math.round(day.tempMax)}°C / Low: {Math.round(day.tempMin)}°C</p>
                       <p>Precipitation: {day.precipitationProbability}% ({day.precipitationSum.toFixed(1)}mm)</p>
                       <p>UV Index Max: {day.uvIndexMax.toFixed(0)}</p>
