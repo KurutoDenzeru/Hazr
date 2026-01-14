@@ -78,7 +78,7 @@ const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
           <span>UV {uvIndex.toFixed(0)}</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[200px]">
+      <TooltipContent side="top" className="max-w-50">
         <p className="font-semibold">{info.label} UV Index</p>
         <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
       </TooltipContent>
@@ -132,7 +132,7 @@ const HourlyCard = ({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-all min-w-[60px]",
+        "flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-all min-w-15",
         isSelected
           ? "bg-primary text-primary-foreground shadow-md"
           : "hover:bg-muted/70"
@@ -496,12 +496,12 @@ export const WeatherDock = ({
 
         {/* 7-day forecast */}
         {daily.length > 0 && (
-          <div className="border-t border-border/30 px-3 py-2">
-            <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+          <div className="border-t border-border/30 py-2">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {daily.slice(0, 7).map((day) => (
                 <Tooltip key={day.date.toISOString()}>
                   <TooltipTrigger asChild>
-                    <div className="flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-muted/50 cursor-help">
+                    <div className="flex min-w-14 flex-col items-center gap-1 rounded-lg px-2 py-2 hover:bg-muted/50 cursor-help">
                       <span className="text-[10px] font-medium text-muted-foreground">
                         {day.date.toDateString() === new Date().toDateString()
                           ? "Today"
@@ -537,8 +537,8 @@ export const WeatherDock = ({
 
         {/* Last updated */}
         {lastUpdated && (
-          <div className="px-4 pb-2">
-            <p className="text-[10px] text-muted-foreground/60">
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground/60">
               Updated {lastUpdated.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </p>
           </div>

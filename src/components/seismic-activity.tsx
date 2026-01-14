@@ -131,8 +131,8 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
 
         {/* Footer */}
         {lastUpdated && (
-          <div className="pt-2 px-1">
-            <p className="text-[10px] text-muted-foreground/60">Updated {formatRelativeTime(lastUpdated)}</p>
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground/60">Updated {formatRelativeTime(lastUpdated)}</p>
           </div>
         )}
       </div>
