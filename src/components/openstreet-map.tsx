@@ -129,8 +129,7 @@ export default function GoogleMapsClone() {
     range: "day",
   });
 
-  const nowRef = React.useRef(Date.now());
-  const now = nowRef.current;
+  const [now] = React.useState(() => Date.now());
 
   // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
@@ -714,10 +713,19 @@ function CustomMapControls({
 
   const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
-  const handleZoomIn = () =>
-    map?.easeTo({ zoom: map.getZoom() + 1, duration: 350, easing: ease });
-  const handleZoomOut = () =>
-    map?.easeTo({ zoom: map.getZoom() - 1, duration: 350, easing: ease });
+  const animateZoom = (delta: number) => {
+    if (!map) return;
+    map.flyTo({
+      zoom: map.getZoom() + delta,
+      duration: 500,
+      easing: ease,
+      curve: 1.3,
+      essential: true,
+    });
+  };
+
+  const handleZoomIn = () => animateZoom(1);
+  const handleZoomOut = () => animateZoom(-1);
 
   const handleLocate = () => {
     if (navigator.geolocation && map) {
