@@ -57,7 +57,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
         {earthquakes.length > 3 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex size-10 items-center justify-center rounded-xl text-sm font-medium text-muted-foreground">
+              <div className="flex size-10 items-center justify-center rounded-md text-sm font-medium text-muted-foreground">
                 +{earthquakes.length - 3}
               </div>
             </TooltipTrigger>
@@ -76,7 +76,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
         {/* Header */}
         <div className="flex items-center justify-between px-0 pb-1">
           <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-red-500 p-2.5 shadow-lg shadow-red-500/20">
+            <div className="rounded-md bg-red-500 p-2.5 shadow-lg shadow-red-500/20">
               <Mountain className="size-5 text-white" />
             </div>
             <div>
@@ -90,7 +90,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="rounded-lg text-muted-foreground hover:bg-muted/70"
+                className="rounded-md text-muted-foreground hover:bg-muted/70"
                 onClick={() => refetch()}
                 aria-label="Refresh earthquakes"
               >

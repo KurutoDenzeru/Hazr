@@ -79,7 +79,7 @@ function HazrMenuPanel({
               <Button
                 variant="ghost"
                 size="icon-lg"
-                className="justify-center rounded-xl px-0 text-foreground/90 hover:bg-muted/70 hover:text-foreground"
+                className="justify-center rounded-md px-0 text-foreground/90 hover:bg-muted/70 hover:text-foreground"
                 onClick={handleSettingsClick}
                 aria-label="Settings"
               >
@@ -92,7 +92,7 @@ function HazrMenuPanel({
           <Button
             variant="ghost"
             size="default"
-            className="w-full justify-start gap-3 rounded-xl text-foreground/90 hover:bg-muted/70 hover:text-foreground"
+            className="w-full justify-start gap-3 rounded-md text-foreground/90 hover:bg-muted/70 hover:text-foreground"
             onClick={handleSettingsClick}
             aria-label="Settings"
           >

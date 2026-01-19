@@ -52,7 +52,7 @@ const EarthquakeItem = ({
           <button
             type="button"
             onClick={onClick}
-            className="flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-muted/70"
+            className="flex size-10 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
             aria-label={earthquake.title}
           >
             <div
@@ -129,7 +129,7 @@ const EarthquakeItem = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-2 rounded-lg px-2 py-2 text-left transition-all hover:bg-muted/70"
+      className="group flex w-full flex-col gap-2 rounded-md px-2 py-2 text-left transition-all hover:bg-muted/70"
       aria-label={earthquake.title}
     >
       <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ const EarthquakeItem = ({
           <div
             key={badge.label}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-medium",
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium",
               badge.className,
             )}
           >
