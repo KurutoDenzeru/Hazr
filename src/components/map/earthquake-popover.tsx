@@ -126,7 +126,7 @@ export function EarthquakePopover({
       className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
     >
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex items-start gap-3">
           <div
             className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
             style={{
@@ -138,9 +138,9 @@ export function EarthquakePopover({
           </div>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="size-3.5" />
-                <span className="line-clamp-3 text-foreground font-semibold">
+                <span className="line-clamp-2 text-foreground font-semibold leading-snug">
                   {earthquake.place}
                 </span>
               </div>
