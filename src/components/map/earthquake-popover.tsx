@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
   CircleDot,
   Clock,
   ExternalLink,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MapPopup } from "@/components/ui/map";
 import { cn } from "@/lib/utils";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
@@ -62,27 +62,12 @@ export function EarthquakePopover({
   if (!earthquake) return null;
 
   const magColor = getMagnitudeColor(earthquake.magnitude);
-  const statusLabel =
-    earthquake.status === "reviewed"
-      ? "Status: Reviewed"
-      : earthquake.status === "deleted"
-        ? "Status: Deleted"
-        : "Status: Automatic";
-  const StatusIcon =
-    earthquake.status === "reviewed"
-      ? CheckCircle2
-      : earthquake.status === "deleted"
-        ? AlertTriangle
-        : CircleDot;
-
-  const statusBadgeClass = cn(
-    "gap-1",
-    earthquake.status === "reviewed" && "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
-    earthquake.status === "deleted" && "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
-    earthquake.status === "automatic" && "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
-  );
-
   const detailItems = [
+    {
+      label: "Magnitude",
+      value: `${earthquake.magnitude.toFixed(1)} (${getMagnitudeLabel(earthquake.magnitude)})`,
+      icon: Gauge,
+    },
     { label: "Depth below ground", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
     { label: "Impact score", value: `${earthquake.sig}`, icon: Signal },
     earthquake.felt !== null
@@ -122,7 +107,7 @@ export function EarthquakePopover({
       onClose={onClose}
       closeOnClick={false}
       offset={popupOffset}
-      className="w-[92vw] max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-4 sm:p-5 shadow-lg"
+      className="w-[92vw] max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
     >
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -152,37 +137,23 @@ export function EarthquakePopover({
                 <X className="size-4" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge className="bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200">
-                {getMagnitudeLabel(earthquake.magnitude)}
-              </Badge>
-              <Badge className="gap-1 bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200">
-                <Clock className="size-3" />
-                {formatRelativeTime(earthquake.time)}
-              </Badge>
+            <div className="flex flex-wrap gap-2 items-center">
               <Badge className="gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
                 <Clock className="size-3" />
                 Last updated {formatRelativeTime(earthquake.updated)}
               </Badge>
+              {earthquake.magType ? (
+                <Badge className="rounded-full bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground/90">
+                  <Gauge className="size-3" />
+                  Magnitude Scale: {earthquake.magType.toUpperCase()}
+                </Badge>
+              ) : null}
             </div>
+            
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge className={statusBadgeClass}>
-            <StatusIcon className="size-3" />
-            {statusLabel}
-          </Badge>
-          {earthquake.magType ? (
-            <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
-              Magnitude scale: {earthquake.magType.toUpperCase()}
-            </Badge>
-          ) : null}
-          {earthquake.net ? (
-            <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
-              Network: {earthquake.net.toUpperCase()}
-            </Badge>
-          ) : null}
           {earthquake.alert ? (
             <Badge
               className={cn(
@@ -249,15 +220,15 @@ export function EarthquakePopover({
           </Badge>
         </div>
 
-        <a
-          href={earthquake.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
+        <Button
+          asChild
+          className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
         >
-          View on USGS
-          <ExternalLink className="size-4" />
-        </a>
+          <a href={earthquake.url} target="_blank" rel="noopener noreferrer">
+            View on USGS
+            <ExternalLink className="size-4" />
+          </a>
+        </Button>
 
       </div>
     </MapPopup>

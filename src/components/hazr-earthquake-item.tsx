@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Clock,
   Ruler,
-  Users,
   Gauge,
   Waves,
   AlertTriangle,
@@ -91,13 +90,6 @@ const EarthquakeItem = ({
       icon: Clock,
       className: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
     },
-    earthquake.felt !== null
-      ? {
-          label: `${earthquake.felt} felt`,
-          icon: Users,
-          className: "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
-        }
-      : null,
     earthquake.mmi !== null
       ? {
           label: `MMI ${earthquake.mmi.toFixed(1)}`,
