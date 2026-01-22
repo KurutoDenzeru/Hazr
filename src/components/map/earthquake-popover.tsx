@@ -68,6 +68,13 @@ export function EarthquakePopover({
       value: `${earthquake.magnitude.toFixed(1)} (${getMagnitudeLabel(earthquake.magnitude)})`,
       icon: Gauge,
     },
+    earthquake.magType
+      ? {
+          label: "Magnitude scale",
+          value: earthquake.magType.toUpperCase(),
+          icon: Gauge,
+        }
+      : null,
     { label: "Depth below ground", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
     { label: "Impact score", value: `${earthquake.sig}`, icon: Signal },
     earthquake.felt !== null
@@ -97,7 +104,8 @@ export function EarthquakePopover({
     icon: React.ComponentType<{ className?: string }>;
   }>;
 
-  const popupOffset: [number, number] = isMobile ? [0, -140] : [0, -18];
+  const visibleDetailItems = isMobile ? detailItems.slice(0, 6) : detailItems;
+  const popupOffset = isMobile ? 24 : 18;
 
   return (
     <MapPopup
@@ -106,6 +114,7 @@ export function EarthquakePopover({
       latitude={earthquake.coordinates[1]}
       onClose={onClose}
       closeOnClick={false}
+      anchor="bottom"
       offset={popupOffset}
       className="w-[92vw] max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
     >
@@ -142,12 +151,6 @@ export function EarthquakePopover({
                 <Clock className="size-3" />
                 Last updated {formatRelativeTime(earthquake.updated)}
               </Badge>
-              {earthquake.magType ? (
-                <Badge className="rounded-full bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground/90">
-                  <Gauge className="size-3" />
-                  Magnitude Scale: {earthquake.magType.toUpperCase()}
-                </Badge>
-              ) : null}
             </div>
             
           </div>
@@ -180,7 +183,7 @@ export function EarthquakePopover({
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {detailItems.map((item) => (
+          {visibleDetailItems.map((item) => (
             <div key={item.label} className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
                 <item.icon className="size-3" />
