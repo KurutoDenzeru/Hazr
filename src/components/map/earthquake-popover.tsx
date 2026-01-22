@@ -64,21 +64,16 @@ export function EarthquakePopover({
   const magColor = getMagnitudeColor(earthquake.magnitude);
   const statusLabel =
     earthquake.status === "reviewed"
-      ? "Reviewed"
+      ? "Status: Reviewed"
       : earthquake.status === "deleted"
-        ? "Deleted"
-        : "Automatic";
+        ? "Status: Deleted"
+        : "Status: Automatic";
   const StatusIcon =
     earthquake.status === "reviewed"
       ? CheckCircle2
       : earthquake.status === "deleted"
         ? AlertTriangle
         : CircleDot;
-  const typeBadges = earthquake.types
-    .split(",")
-    .map((type) => type.trim())
-    .filter(Boolean)
-    .map((type) => type.toUpperCase());
 
   const statusBadgeClass = cn(
     "gap-1",
@@ -88,28 +83,28 @@ export function EarthquakePopover({
   );
 
   const detailItems = [
-    { label: "Depth", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
-    { label: "Significance", value: `${earthquake.sig}`, icon: Signal },
+    { label: "Depth below ground", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
+    { label: "Impact score", value: `${earthquake.sig}`, icon: Signal },
     earthquake.felt !== null
       ? { label: "Felt", value: `${earthquake.felt}`, icon: Users }
       : null,
     earthquake.mmi !== null
-      ? { label: "MMI", value: earthquake.mmi.toFixed(1), icon: Gauge }
+      ? { label: "Intensity (MMI)", value: earthquake.mmi.toFixed(1), icon: Gauge }
       : null,
     earthquake.cdi !== null
-      ? { label: "CDI", value: earthquake.cdi.toFixed(1), icon: Signal }
+      ? { label: "Community intensity", value: earthquake.cdi.toFixed(1), icon: Signal }
       : null,
     earthquake.gap !== null
-      ? { label: "Gap", value: `${earthquake.gap.toFixed(0)}°`, icon: CircleDot }
+      ? { label: "Azimuthal gap", value: `${earthquake.gap.toFixed(0)}°`, icon: CircleDot }
       : null,
     earthquake.dmin !== null
-      ? { label: "Dmin", value: earthquake.dmin.toFixed(2), icon: MapPin }
+      ? { label: "Nearest station", value: earthquake.dmin.toFixed(2), icon: MapPin }
       : null,
     earthquake.rms !== null
-      ? { label: "RMS", value: earthquake.rms.toFixed(2), icon: Radio }
+      ? { label: "Wave residual", value: earthquake.rms.toFixed(2), icon: Radio }
       : null,
     earthquake.nst !== null
-      ? { label: "Stations", value: `${earthquake.nst}`, icon: Radio }
+      ? { label: "Stations reporting", value: `${earthquake.nst}`, icon: Radio }
       : null,
   ].filter(Boolean) as Array<{
     label: string;
@@ -127,10 +122,10 @@ export function EarthquakePopover({
       onClose={onClose}
       closeOnClick={false}
       offset={popupOffset}
-      className="w-80 max-h-[70vh] overflow-auto rounded-lg border border-border/60 bg-background/95 p-4 shadow-lg"
+      className="w-[92vw] max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-4 sm:p-5 shadow-lg"
     >
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div
             className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
             style={{
@@ -140,11 +135,11 @@ export function EarthquakePopover({
           >
             {earthquake.magnitude.toFixed(1)}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="size-3.5" />
-                <span className="line-clamp-2 text-foreground font-semibold">
+                <span className="line-clamp-3 text-foreground font-semibold">
                   {earthquake.place}
                 </span>
               </div>
@@ -157,7 +152,7 @@ export function EarthquakePopover({
                 <X className="size-4" />
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge className="bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200">
                 {getMagnitudeLabel(earthquake.magnitude)}
               </Badge>
@@ -167,7 +162,7 @@ export function EarthquakePopover({
               </Badge>
               <Badge className="gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
                 <Clock className="size-3" />
-                Updated {formatRelativeTime(earthquake.updated)}
+                Last updated {formatRelativeTime(earthquake.updated)}
               </Badge>
             </div>
           </div>
@@ -180,12 +175,12 @@ export function EarthquakePopover({
           </Badge>
           {earthquake.magType ? (
             <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
-              Mag: {earthquake.magType.toUpperCase()}
+              Magnitude scale: {earthquake.magType.toUpperCase()}
             </Badge>
           ) : null}
           {earthquake.net ? (
             <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
-              Net: {earthquake.net.toUpperCase()}
+              Network: {earthquake.net.toUpperCase()}
             </Badge>
           ) : null}
           {earthquake.alert ? (
@@ -208,15 +203,12 @@ export function EarthquakePopover({
               Tsunami risk
             </Badge>
           ) : null}
-          <Badge className="bg-muted/60 text-foreground/80 dark:bg-muted/25 dark:text-foreground">
+          {/* <Badge className="bg-muted/60 text-foreground/80 dark:bg-muted/25 dark:text-foreground">
             ID: {earthquake.id}
-          </Badge>
-          <Badge className="max-w-full truncate bg-muted/60 text-foreground/80 dark:bg-muted/25 dark:text-foreground">
-            Title: {earthquake.title}
-          </Badge>
+          </Badge> */}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {detailItems.map((item) => (
             <div key={item.label} className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -228,7 +220,7 @@ export function EarthquakePopover({
           ))}
         </div>
 
-        {typeBadges.length > 0 ? (
+        {/* {typeBadges.length > 0 ? (
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               Types
@@ -244,16 +236,16 @@ export function EarthquakePopover({
               ))}
             </div>
           </div>
-        ) : null}
+        ) : null} */}
 
         <div className="flex flex-wrap gap-2">
           <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
             <MapPin className="size-3" />
-            Lat {earthquake.coordinates[1].toFixed(4)}
+            Latitude: {earthquake.coordinates[1].toFixed(4)}
           </Badge>
           <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
             <MapPin className="size-3" />
-            Lng {earthquake.coordinates[0].toFixed(4)}
+            Longitude: {earthquake.coordinates[0].toFixed(4)}
           </Badge>
         </div>
 

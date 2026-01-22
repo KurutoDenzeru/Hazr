@@ -383,11 +383,13 @@ function EarthquakeFlyTo({
     if (prevEarthquakeId.current === earthquake.id) return;
     prevEarthquakeId.current = earthquake.id;
 
-    map.flyTo({
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    map.stop();
+    map.easeTo({
       center: [earthquake.coordinates[0], earthquake.coordinates[1]],
-      zoom: 8,
-      duration: 2000,
-      curve: 1.42,
+      zoom: Math.max(map.getZoom(), 8),
+      duration: 900,
+      easing: easeOut,
       essential: true,
     });
   }, [map, earthquake]);
