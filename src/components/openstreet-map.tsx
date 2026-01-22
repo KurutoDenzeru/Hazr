@@ -3,21 +3,12 @@
 import * as React from "react";
 import {
   Menu,
-  Search,
-  X,
   Plus,
   Minus,
   Locate,
   Map as MapIcon,
-  Navigation,
-  Utensils,
-  Fuel,
-  Hotel,
-  Coffee,
-  ShoppingBag,
-  MoreHorizontal,
-  Star,
-  Clock,
+  Activity,
+  Cloud,
   Maximize,
   Sun,
   Moon,
@@ -25,19 +16,13 @@ import {
   Loader2,
 } from "lucide-react";
 
+import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   Map as MapComponent,
   useMap,
   MapMarker,
   MarkerContent,
 } from "@/components/ui/map";
-import { Button } from "@/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import { useTheme } from "next-themes";
 import {
   Tooltip,
@@ -47,20 +32,22 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { NaeroMenuPanel } from "@/components/naero-menu-panel";
-import { NaeroSidebar } from "@/components/naero-sidebar";
+import { HazrMenuPanel } from "@/components/hazr-menu-panel";
+import { HazrSidebar } from "@/components/hazr-sidebar";
+import { EarthquakeItem } from "@/components/hazr-earthquake-item";
+import { WeatherDock } from "@/components/map/weather-dock";
+import { useEarthquakes } from "@/hooks/use-earthquakes";
+import type { ProcessedEarthquake } from "@/types/api";
+import { getMagnitudeColor } from "@/types/api";
+import { Separator } from "@/components/ui/separator";
+import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -79,23 +66,19 @@ const getInitialLocation = () => {
   return locations[tz] || [-122.4194, 37.7749]; // Default to SF
 };
 
-const CATEGORIES = [
-  { label: "Restaurants", icon: Utensils },
-  { label: "Gas", icon: Fuel },
-  { label: "Coffee", icon: Coffee },
-  { label: "Hotels", icon: Hotel },
-  { label: "Shopping", icon: ShoppingBag },
-  { label: "Groceries", icon: ShoppingBag },
-  { label: "More", icon: MoreHorizontal },
-];
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = React.useState(false);
 
-const HIDDEN_SCROLLBAR_CLASS =
-  "scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)");
+    const handleChange = () => setIsMobile(media.matches);
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
 
-const BAR_SURFACE_CLASS =
-  "rounded-2xl border border-border/60 bg-background/80 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl";
-
-const MOBILE_BAR_SURFACE_CLASS = cn(BAR_SURFACE_CLASS, "p-2");
+  return isMobile;
+};
 
 type MapViewState = {
   center: [number, number];
@@ -103,13 +86,78 @@ type MapViewState = {
 };
 
 export default function GoogleMapsClone() {
-  const [searchValue, setSearchValue] = React.useState("");
-  const [userLocation, setUserLocation] = React.useState<
+  const [userLocation, setUserLocationState] = React.useState<
     [number, number] | null
-  >(null);
+  >(() => {
+    if (typeof window === "undefined") return null;
+    const saved = localStorage.getItem("user-location");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length === 2 &&
+          typeof parsed[0] === "number" &&
+          typeof parsed[1] === "number"
+        ) {
+          return parsed as [number, number];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  });
+
+  // Wrapper to persist user location to localStorage
+  const setUserLocation = React.useCallback((coords: [number, number]) => {
+    setUserLocationState(coords);
+    localStorage.setItem("user-location", JSON.stringify(coords));
+  }, []);
+
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
+  const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
+  const hasRequestedLocationRef = React.useRef(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
+  const [selectedEarthquake, setSelectedEarthquake] =
+    React.useState<ProcessedEarthquake | null>(null);
+
+  // Fetch earthquake data
+  const { earthquakes } = useEarthquakes({
+    magnitude: "2.5",
+    range: "day",
+  });
+
+  const [now] = React.useState(() => Date.now());
+  const getPulseSize = (magnitude: number) => {
+    if (magnitude >= 7) return 56;
+    if (magnitude >= 6) return 48;
+    if (magnitude >= 5) return 40;
+    if (magnitude >= 4) return 34;
+    return 28;
+  };
+
+  const getPulseDuration = (magnitude: number) => {
+    if (magnitude >= 7) return 2200;
+    if (magnitude >= 6) return 2000;
+    if (magnitude >= 5) return 1850;
+    if (magnitude >= 4) return 1700;
+    return 1500;
+  };
+
+  // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
+  const handleEarthquakeSelect = React.useCallback(
+    (earthquake: ProcessedEarthquake) => {
+      setSelectedEarthquake(earthquake);
+    },
+    []
+  );
+
+  // Close the earthquake popover
+  const handleCloseEarthquakePopover = React.useCallback(() => {
+    setSelectedEarthquake(null);
+  }, []);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -132,6 +180,29 @@ export default function GoogleMapsClone() {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (userLocation || hasRequestedLocationRef.current) return;
+    if (typeof window === "undefined") return;
+    if (!("geolocation" in navigator)) return;
+
+    hasRequestedLocationRef.current = true;
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [number, number] = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+        setUserLocation(coords);
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, [userLocation, setUserLocation]);
+
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: 12 };
@@ -152,7 +223,11 @@ export default function GoogleMapsClone() {
       onOpenChange={setIsDesktopSidebarOpen}
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
-        <NaeroSidebar />
+        <HazrSidebar
+          userLocation={userLocation}
+          isLocating={isLocating}
+          onEarthquakeSelect={handleEarthquakeSelect}
+        />
 
         <SidebarInset>
           <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
@@ -196,11 +271,64 @@ export default function GoogleMapsClone() {
                   </MapMarker>
                 )}
 
+                {/* Earthquake Markers */}
+                {earthquakes.map((eq) => (
+                  <MapMarker
+                    key={eq.id}
+                    longitude={eq.coordinates[0]}
+                    latitude={eq.coordinates[1]}
+                  >
+                    <MarkerContent>
+                      <button
+                        type="button"
+                        onClick={() => handleEarthquakeSelect(eq)}
+                        className="group relative flex items-center justify-center cursor-pointer"
+                        aria-label={`Earthquake: ${eq.title}`}
+                      >
+                        {/* Pulse ring for recent earthquakes */}
+                        {now - eq.time.getTime() < 3600000 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute rounded-full animate-ping"
+                            style={{
+                              backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
+                              width: `${getPulseSize(eq.magnitude)}px`,
+                              height: `${getPulseSize(eq.magnitude)}px`,
+                              animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
+                            }}
+                          />
+                        )}
+                        {/* Main marker */}
+                        <div
+                          className="relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110"
+                          style={{
+                            backgroundColor: getMagnitudeColor(eq.magnitude),
+                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                          }}
+                        >
+                          {eq.magnitude.toFixed(1)}
+                        </div>
+                      </button>
+                    </MarkerContent>
+                  </MapMarker>
+                ))}
+
+                {/* Fly to selected earthquake */}
+                <EarthquakeFlyTo earthquake={selectedEarthquake} />
+
+                {/* Earthquake detail popover */}
+                <EarthquakePopover
+                  earthquake={selectedEarthquake}
+                  onClose={handleCloseEarthquakePopover}
+                />
+
                 <MapOverlayUI
-                  searchValue={searchValue}
-                  setSearchValue={setSearchValue}
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
+                  userLocation={userLocation}
+                  isLocating={isLocating}
+                  earthquakes={earthquakes}
+                  onEarthquakeSelect={handleEarthquakeSelect}
                 />
               </MapComponent>
             </div>
@@ -239,135 +367,70 @@ function MapStateSync({
   return null;
 }
 
-function MapOverlayUI({
-  searchValue,
-  setSearchValue,
-  setUserLocation,
-  onLocateAnimation,
+// Component to fly to earthquake location when selected
+function EarthquakeFlyTo({
+  earthquake,
 }: {
-  searchValue: string;
-  setSearchValue: (v: string) => void;
-  setUserLocation: (l: [number, number]) => void;
-  onLocateAnimation: () => void;
+  earthquake: ProcessedEarthquake | null;
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
-  const mobileSearchInputRef = React.useRef<HTMLInputElement | null>(null);
-  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
+  const { map } = useMap();
+  const prevEarthquakeId = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (!isMobileSearchOpen) return;
-    const id = window.setTimeout(() => {
-      mobileSearchInputRef.current?.focus();
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [isMobileSearchOpen]);
+    if (!map || !earthquake) return;
+
+    // Only fly if it's a new earthquake selection
+    if (prevEarthquakeId.current === earthquake.id) return;
+    prevEarthquakeId.current = earthquake.id;
+
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    map.stop();
+    map.easeTo({
+      center: [earthquake.coordinates[0], earthquake.coordinates[1]],
+      zoom: Math.max(map.getZoom(), 8),
+      duration: 900,
+      easing: easeOut,
+      essential: true,
+    });
+  }, [map, earthquake]);
+
+  return null;
+}
+
+
+
+function MapOverlayUI({
+  setUserLocation,
+  onLocateAnimation,
+  userLocation,
+  isLocating,
+  earthquakes,
+  onEarthquakeSelect,
+}: {
+  setUserLocation: (l: [number, number]) => void;
+  onLocateAnimation: () => void;
+  userLocation: [number, number] | null;
+  isLocating: boolean;
+  earthquakes: ProcessedEarthquake[];
+  onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
+}) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
+  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
+  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
+
+  const handleQuakeClick = (eq: ProcessedEarthquake) => {
+    setIsQuakesDrawerOpen(false);
+    onEarthquakeSelect(eq);
+  };
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
-      {/* Top Section: Search & Filters */}
-      <div className="flex flex-col gap-3 p-2 md:p-4 pointer-events-auto z-20 [padding-top:calc(env(safe-area-inset-top)+0.5rem)]">
-        {/* Floating Search (Desktop) */}
-        <div className="hidden md:block w-full md:max-w-xl">
-          <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
-            <InputGroupAddon align="inline-start" className="gap-1.5 pl-1.5">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="hidden md:inline-flex size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
-                        aria-label="Toggle sidebar"
-                      >
-                        <Menu className="size-5" />
-                      </Button>
-                    </SidebarTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Menu</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </InputGroupAddon>
+      {/* Top Section: Desktop Sidebar Toggle */}
 
-            <InputGroupInput
-              placeholder="Search Naero Maps"
-              aria-label="Search Naero Maps"
-              value={searchValue}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setSearchValue(event.target.value)
-              }
-              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Escape") {
-                  setSearchValue("");
-                  return;
-                }
-
-                if (event.key === "Enter") {
-                  event.currentTarget.blur();
-                }
-              }}
-              className="h-12 text-base"
-            />
-
-            <InputGroupAddon align="inline-end" className="gap-1 pr-1.5">
-              {searchValue ? (
-                <InputGroupButton
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Clear search"
-                  onClick={() => setSearchValue("")}
-                  className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                >
-                  <X className="size-4" />
-                </InputGroupButton>
-              ) : null}
-
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InputGroupButton
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Search"
-                      className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                    >
-                      <Search className="size-4" />
-                    </InputGroupButton>
-                  </TooltipTrigger>
-                  <TooltipContent>Search</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </InputGroupAddon>
-          </InputGroup>
-        </div>
-
-        {/* Filter Pills */}
-        <div
-          className={cn(
-            "hidden md:flex w-full md:max-w-xl items-center gap-1.5 overflow-x-auto p-2",
-            BAR_SURFACE_CLASS,
-            HIDDEN_SCROLLBAR_CLASS,
-          )}
-        >
-          {CATEGORIES.map((cat) => (
-            <Button
-              key={cat.label}
-              variant="ghost"
-              size="sm"
-              className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <cat.icon className="mr-2 size-4" />
-              {cat.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom Section: Controls & Info */}
-      <div className="pointer-events-auto p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        {/* Bottom Right: Map Controls */}
-        <div className="flex flex-col gap-4 items-end w-full sm:w-auto">
+      {/* Bottom Section: Controls */}
+      <div className="pointer-events-none p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
+        <div className="pointer-events-auto flex flex-col gap-4 items-end w-auto">
           <CustomMapControls
             setUserLocation={setUserLocation}
             onLocateAnimation={onLocateAnimation}
@@ -375,217 +438,121 @@ function MapOverlayUI({
         </div>
       </div>
 
-      {/* Mobile Filter Pills + Floating Search */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 flex flex-col gap-2">
-        <div
-          className={cn(
-            MOBILE_BAR_SURFACE_CLASS,
-            "flex overflow-x-auto px-2 py-1.5",
-            HIDDEN_SCROLLBAR_CLASS,
-          )}
-        >
-          {CATEGORIES.map((cat) => (
-            <Button
-              key={cat.label}
-              variant="ghost"
-              size="sm"
-              className="shrink-0 rounded-2xl px-3 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <cat.icon className="mr-2 size-4" />
-              {cat.label}
-            </Button>
-          ))}
-        </div>
+      {/* Mobile Menu Drawer */}
+      <Drawer
+        open={isMobileMenuOpen}
+        onOpenChange={setIsMobileMenuOpen}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <div className="flex h-full flex-col p-4">
+            <div className="flex-1 overflow-auto">
+              <HazrMenuPanel
+                onSelect={handleCloseMobileMenu}
+                userLocation={userLocation}
+                isLocating={isLocating}
+              />
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
-        <div
-          className={cn(MOBILE_BAR_SURFACE_CLASS, "flex items-center gap-2")}
-        >
-          <Drawer
-            direction="left"
-            open={isMobileMenuOpen}
-            onOpenChange={setIsMobileMenuOpen}
-          >
-            <DrawerTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-10 rounded-2xl text-muted-foreground hover:bg-muted/70"
-                aria-label="Open menu"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </DrawerTrigger>
-
-            <DrawerContent className="h-full w-[18.5rem] rounded-none rounded-r-2xl border-y-0 border-l-0 bg-sidebar text-sidebar-foreground supports-backdrop-filter:bg-sidebar/85 supports-backdrop-filter:backdrop-blur-xl">
-              <div className="flex h-full flex-col">
-                <div className="flex items-center gap-2 border-b px-3 py-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
-                      <MapIcon className="size-5" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-none tracking-tight">
-                        Naero Maps
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Explore • Save • Plan
-                      </p>
-                    </div>
+      {/* Mobile Quakes Drawer (bottom) */}
+      <Drawer
+        open={isQuakesDrawerOpen}
+        onOpenChange={setIsQuakesDrawerOpen}
+      >
+        <DrawerContent className="max-h-[80vh]">
+          <div className="overflow-y-auto max-h-[80vh] p-4">
+            {earthquakes.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No recent earthquakes
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
+                    <Activity className="size-5 text-white" />
                   </div>
-
-                  <DrawerClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="rounded-xl text-muted-foreground hover:bg-muted/70"
-                      aria-label="Close menu"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </DrawerClose>
+                  <div>
+                    <h3 className="font-semibold text-lg">Live Earthquakes</h3>
+                    <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
+                  </div>
                 </div>
-
-                <div className="flex-1 overflow-auto py-2">
-                  <NaeroMenuPanel onSelect={handleCloseMobileMenu} />
-                </div>
-              </div>
-            </DrawerContent>
-          </Drawer>
-
-          <Drawer
-            direction="bottom"
-            open={isMobileSearchOpen}
-            onOpenChange={setIsMobileSearchOpen}
-          >
-            <DrawerTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open search"
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                <Search className="size-4 shrink-0" />
-                <span className="truncate">
-                  {searchValue ? searchValue : "Search Naero Maps"}
-                </span>
-              </button>
-            </DrawerTrigger>
-
-            {searchValue ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Clear search"
-                className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                onClick={() => setSearchValue("")}
-              >
-                <X className="size-4" />
-              </Button>
-            ) : null}
-
-            <DrawerContent className="px-2 pb-2">
-              <DrawerHeader className="px-4 pt-4 pb-2">
-                <div className="flex items-center justify-between gap-3">
-                  <DrawerTitle>Search</DrawerTitle>
-                  <DrawerClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="rounded-xl text-muted-foreground hover:bg-muted/70"
-                      aria-label="Close search"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </DrawerClose>
-                </div>
-              </DrawerHeader>
-
-              <div className="px-4 pb-4 [padding-bottom:calc(env(safe-area-inset-bottom)+1rem)]">
-                <InputGroup className={cn("h-12", BAR_SURFACE_CLASS)}>
-                  <InputGroupAddon
-                    align="inline-start"
-                    className="gap-1.5 pl-1.5"
-                  >
-                    <InputGroupButton
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Search"
-                      className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                    >
-                      <Search className="size-4" />
-                    </InputGroupButton>
-                  </InputGroupAddon>
-
-                  <InputGroupInput
-                    ref={mobileSearchInputRef}
-                    placeholder="Search Naero Maps"
-                    aria-label="Search Naero Maps"
-                    value={searchValue}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      setSearchValue(event.target.value)
-                    }
-                    onKeyDown={(
-                      event: React.KeyboardEvent<HTMLInputElement>,
-                    ) => {
-                      if (event.key === "Escape") {
-                        setIsMobileSearchOpen(false);
-                        return;
-                      }
-
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur();
-                      }
-                    }}
-                    className="h-12 text-base"
+                <Separator className="my-2" />
+                {earthquakes.map((eq) => (
+                  <EarthquakeItem
+                    key={eq.id}
+                    earthquake={eq}
+                    onClick={() => handleQuakeClick(eq)}
                   />
-
-                  <InputGroupAddon align="inline-end" className="gap-1 pr-1.5">
-                    {searchValue ? (
-                      <InputGroupButton
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Clear search"
-                        onClick={() => setSearchValue("")}
-                        className="rounded-2xl text-muted-foreground hover:bg-muted/70"
-                      >
-                        <X className="size-4" />
-                      </InputGroupButton>
-                    ) : null}
-                  </InputGroupAddon>
-                </InputGroup>
+                ))}
               </div>
-            </DrawerContent>
-          </Drawer>
-        </div>
-      </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Mobile Weather Drawer (bottom) */}
+      <Drawer
+        open={isWeatherDrawerOpen}
+        onOpenChange={setIsWeatherDrawerOpen}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <div className="p-4 overflow-y-auto max-h-[85vh]">
+            <WeatherDock
+              latitude={userLocation?.[1] ?? null}
+              longitude={userLocation?.[0] ?? null}
+              unstyled
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-5 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
-        <BottomNavItem icon={MapIcon} label="Explore" active />
-        <BottomNavItem icon={Star} label="Saved" />
-        <BottomNavItem icon={Navigation} label="Go" />
-        <BottomNavItem icon={Plus} label="Contribute" />
-        <BottomNavItem icon={Clock} label="Updates" />
+      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <BottomNavItem
+          icon={MapIcon}
+          label="Explore"
+          active
+        />
+        <BottomNavItem
+          icon={Activity}
+          label="Quakes"
+          onClick={() => setIsQuakesDrawerOpen(true)}
+        />
+        <BottomNavItem
+          icon={Cloud}
+          label="Weather"
+          onClick={() => setIsWeatherDrawerOpen(true)}
+        />
+        <BottomNavItem
+          icon={Menu}
+          label="Menu"
+          onClick={() => setIsMobileMenuOpen(true)}
+        />
       </div>
     </div>
   );
 }
 
+
 function BottomNavItem({
   icon: Icon,
   label,
   active = false,
+  onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       aria-current={active ? "page" : undefined}
+      onClick={onClick}
       className={cn(
         "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors",
         active
@@ -658,6 +625,7 @@ function CustomMapControls({
 }) {
   const { map } = useMap();
   const { resolvedTheme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [is3D, setIs3D] = React.useState(false);
   const [waitingForLocation, setWaitingForLocation] = React.useState(false);
   const compassRef = React.useRef<SVGSVGElement>(null);
@@ -686,19 +654,21 @@ function CustomMapControls({
   React.useEffect(() => {
     if (!map) return;
 
+    const globeMap = map as GlobeCapableMap;
     const layerId = "3d-buildings";
 
     const handle3DBuildings = () => {
+      globeMap.setProjection({ name: is3D ? "globe" : "mercator" });
+
       if (is3D) {
-        if (!map.getLayer(layerId)) {
-          // Find building source - usually 'openmaptiles' or 'carto'
+        if (!globeMap.getLayer(layerId)) {
           const sources = map.getStyle().sources;
           const buildingSource = Object.keys(sources).find(
             (s) => s.includes("maptiles") || s.includes("carto"),
           );
 
           if (buildingSource) {
-            map.addLayer(
+            globeMap.addLayer(
               {
                 id: layerId,
                 source: buildingSource,
@@ -736,31 +706,54 @@ function CustomMapControls({
                   "fill-extrusion-opacity": 0.8,
                 },
               },
-              // Add below labels if possible
               map
                 .getStyle()
                 .layers.find((l) => l.type === "symbol")?.id,
             );
           }
         } else {
-          map.setLayoutProperty(layerId, "visibility", "visible");
+          globeMap.setLayoutProperty(layerId, "visibility", "visible");
         }
-      } else {
-        if (map.getLayer(layerId)) {
-          map.setLayoutProperty(layerId, "visibility", "none");
-        }
+      } else if (globeMap.getLayer(layerId)) {
+        globeMap.setLayoutProperty(layerId, "visibility", "none");
       }
     };
 
-    if (map.isStyleLoaded()) {
+    globeMap.on("styledata", handle3DBuildings);
+    if (globeMap.isStyleLoaded()) {
       handle3DBuildings();
-    } else {
-      map.once("styledata", handle3DBuildings);
     }
+
+    return () => {
+      globeMap.off("styledata", handle3DBuildings);
+    };
   }, [map, is3D]);
 
-  const handleZoomIn = () => map?.zoomTo(map.getZoom() + 1, { duration: 300 });
-  const handleZoomOut = () => map?.zoomTo(map.getZoom() - 1, { duration: 300 });
+  type GlobeCapableMap = MapLibreMap & {
+    setProjection: (projection: { name: "globe" | "mercator" }) => void;
+    setFog?: (fog?: {
+      color?: string;
+      "high-color"?: string;
+      "horizon-blend"?: number;
+      range?: [number, number];
+    }) => void;
+  };
+
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
+  const animateZoom = (delta: number) => {
+    if (!map) return;
+    map.flyTo({
+      zoom: map.getZoom() + delta,
+      duration: 500,
+      easing: ease,
+      curve: 1.3,
+      essential: true,
+    });
+  };
+
+  const handleZoomIn = () => animateZoom(1);
+  const handleZoomOut = () => animateZoom(-1);
 
   const handleLocate = () => {
     if (navigator.geolocation && map) {
@@ -789,7 +782,8 @@ function CustomMapControls({
     }
   };
 
-  const handleResetBearing = () => map?.resetNorthPitch({ duration: 300 });
+  const handleResetBearing = () =>
+    map?.easeTo({ bearing: 0, pitch: 0, duration: 900, easing: ease, essential: true });
   const handleFullscreen = () => {
     const container = map?.getContainer();
     if (!container) return;
@@ -800,7 +794,31 @@ function CustomMapControls({
   const toggle3D = () => {
     const new3D = !is3D;
     setIs3D(new3D);
-    map?.easeTo({ pitch: new3D ? 60 : 0, duration: 300 });
+    if (!map) return;
+
+    const globeMap = map as GlobeCapableMap;
+    globeMap.setProjection({ name: new3D ? "globe" : "mercator" });
+
+    if (new3D) {
+      globeMap.setFog?.({
+        color: "#dbeafe",
+        "high-color": "#0b172a",
+        "horizon-blend": 0.15,
+        range: [0.6, 10],
+      });
+      const targetZoom = Math.min(map.getZoom(), 3.2);
+      map.easeTo({
+        pitch: 55,
+        bearing: 0,
+        zoom: targetZoom,
+        duration: 800,
+        easing: ease,
+        essential: true,
+      });
+    } else {
+      globeMap.setFog?.(undefined);
+      map.easeTo({ pitch: 0, duration: 600, easing: ease, essential: true });
+    }
   };
 
   const toggleTheme = () => {
@@ -835,14 +853,16 @@ function CustomMapControls({
             <TooltipContent side="left" sideOffset={8}>Toggle 3D</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={handleFullscreen} label="Fullscreen">
-                <Maximize className="size-4" />
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
-          </Tooltip>
+          {!isMobile && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ControlButton onClick={handleFullscreen} label="Fullscreen">
+                  <Maximize className="size-4" />
+                </ControlButton>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
+            </Tooltip>
+          )}
         </ControlGroup>
 
         {/* Compass/Locate */}

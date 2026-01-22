@@ -1,8 +1,16 @@
 "use client"
 
-import { Map as MapIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import React from "react"
 
-import { NaeroMenuPanel } from "@/components/naero-menu-panel"
+const Image: React.FC<
+  React.ImgHTMLAttributes<HTMLImageElement> & { src: string; width?: number; height?: number; alt: string }
+> = ({ src, alt, width, height, className, ...rest }) => (
+  <img src={src} alt={alt} width={width} height={height} className={className} {...rest} />
+)
+
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+
+import { HazrMenuPanel } from "@/components/hazr-menu-panel"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -18,31 +26,44 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import type { ProcessedEarthquake } from "@/types/api"
 
-function NaeroSidebar() {
+type HazrSidebarProps = {
+  userLocation?: [number, number] | null
+  isLocating?: boolean
+  onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
+}
+
+function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSidebarProps) {
   const { isOpen } = useSidebar()
 
   return (
-    <Sidebar widthClassName="w-80" collapsedWidthClassName="w-16">
+    <Sidebar widthClassName="w-auto" collapsedWidthClassName="w-16" resizable>
       <SidebarHeader className="relative group-data-[state=collapsed]/sidebar:pb-14">
         <TooltipProvider delayDuration={0}>
           {isOpen ? (
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground",
-                  "group-data-[state=collapsed]/sidebar:size-10"
+                  "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                  "group-data-[state=collapsed]/sidebar:size-12"
                 )}
               >
-                <MapIcon className="size-5" />
+                <Image
+                  src="/brand.webp"
+                  alt="Hazr Logo"
+                  width={25}
+                  height={25}
+                  className="size-12 object-contain"
+                />
               </div>
 
               <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                 <p className="text-sm font-semibold leading-none tracking-tight">
-                  Naero Maps
+                  Hazr
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Explore • Save • Plan
+                  Live Quakes & Weather
                 </p>
               </div>
             </div>
@@ -52,24 +73,30 @@ function NaeroSidebar() {
                 <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
                   <div
                     className={cn(
-                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground",
-                      "group-data-[state=collapsed]/sidebar:size-10"
+                      "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                      "group-data-[state=collapsed]/sidebar:size-12"
                     )}
                   >
-                    <MapIcon className="size-5" />
+                    <Image
+                      src="/brand.webp"
+                      alt="Hazr Logo"
+                      width={25}
+                      height={25}
+                      className="size-12 object-contain"
+                    />
                   </div>
 
                   <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
                     <p className="text-sm font-semibold leading-none tracking-tight">
-                      Naero Maps
+                      Hazr
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Explore • Save • Plan
+                      Live Quakes & Weather
                     </p>
                   </div>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right">Naero Maps</TooltipContent>
+              <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
             </Tooltip>
           )}
 
@@ -80,7 +107,7 @@ function NaeroSidebar() {
                   variant="ghost"
                   size="icon-sm"
                   className={cn(
-                    "absolute right-2 top-2 rounded-xl text-muted-foreground hover:bg-muted/70",
+                    "absolute right-2 top-2 rounded-md text-muted-foreground hover:bg-muted/70",
                     "group-data-[state=collapsed]/sidebar:top-auto group-data-[state=collapsed]/sidebar:bottom-2 group-data-[state=collapsed]/sidebar:right-1/2 group-data-[state=collapsed]/sidebar:translate-x-1/2"
                   )}
                   aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
@@ -100,11 +127,16 @@ function NaeroSidebar() {
         </TooltipProvider>
       </SidebarHeader>
 
-      <SidebarContent className="py-2">
-        <NaeroMenuPanel collapsed={!isOpen} />
+      <SidebarContent className="overflow-y-auto scrollbar-hide">
+        <HazrMenuPanel
+          collapsed={!isOpen}
+          userLocation={userLocation}
+          isLocating={isLocating}
+          onEarthquakeSelect={onEarthquakeSelect}
+        />
       </SidebarContent>
     </Sidebar>
   )
 }
 
-export { NaeroSidebar }
+export { HazrSidebar }
