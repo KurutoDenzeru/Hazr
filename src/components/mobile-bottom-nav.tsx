@@ -19,7 +19,7 @@ const MobileBottomNav = ({ items, className }: MobileBottomNavProps) => {
     <nav
       aria-label="Mobile navigation"
       className={cn(
-        "md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]",
+        "md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl pb-[calc(env(safe-area-inset-bottom)+0.75rem)]",
         className,
       )}
     >
@@ -52,7 +52,7 @@ const MobileBottomNavItem = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 text-muted-foreground transition-all duration-200 ease-out hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20",
+        "group relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 text-muted-foreground transition-all duration-200 ease-out hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 active:scale-[0.98] active:translate-y-[1px]",
         active && "text-foreground",
       )}
     >
@@ -61,8 +61,12 @@ const MobileBottomNavItem = ({
         className={cn(
           "absolute inset-0 -z-10 rounded-2xl bg-muted/0 transition-all duration-200",
           active && "bg-muted/70",
-          !active && "group-hover:bg-muted/50",
+          !active && "group-hover:bg-muted/50 group-active:bg-muted/60",
         )}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 -z-20 rounded-2xl opacity-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-opacity duration-200 group-hover:opacity-100"
       />
       <Icon className="size-6" />
       <span className="text-[10px] font-medium leading-none">{label}</span>
