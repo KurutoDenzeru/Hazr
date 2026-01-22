@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   CircleDot,
@@ -18,7 +19,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPopup } from "@/components/ui/map";
+import { useMap } from "@/components/ui/map";
 import { cn } from "@/lib/utils";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 import type { ProcessedEarthquake } from "@/types/api";
@@ -58,6 +59,18 @@ export function EarthquakePopover({
   onClose: () => void;
 }) {
   const isMobile = useIsMobile();
+  const { map } = useMap();
+  const overlayContainer = React.useMemo(() => document.createElement("div"), []);
+
+  React.useEffect(() => {
+    if (!map) return;
+    const container = map.getContainer();
+    overlayContainer.className = "absolute left-3 right-3 top-3 z-30 pointer-events-auto sm:left-auto sm:right-4 sm:top-4";
+    container.appendChild(overlayContainer);
+    return () => {
+      overlayContainer.remove();
+    };
+  }, [map, overlayContainer]);
 
   if (!earthquake) return null;
 
@@ -105,18 +118,12 @@ export function EarthquakePopover({
   }>;
 
   const visibleDetailItems = isMobile ? detailItems.slice(0, 6) : detailItems;
-  const popupOffset = isMobile ? 24 : 18;
 
-  return (
-    <MapPopup
-      key={earthquake.id}
-      longitude={earthquake.coordinates[0]}
-      latitude={earthquake.coordinates[1]}
-      onClose={onClose}
-      closeOnClick={false}
-      anchor="bottom"
-      offset={popupOffset}
-      className="w-[92vw] max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
+  if (!map) return null;
+
+  return createPortal(
+    <div
+      className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
     >
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -234,6 +241,7 @@ export function EarthquakePopover({
         </Button>
 
       </div>
-    </MapPopup>
+    </div>,
+    overlayContainer
   );
 }
