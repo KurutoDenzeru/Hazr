@@ -509,7 +509,7 @@ function MapOverlayUI({
       </Drawer>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="relative md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 overflow-hidden rounded-[24px] border border-white/10 bg-background/70 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.25)] supports-backdrop-filter:bg-background/40 supports-backdrop-filter:backdrop-blur-2xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[24px] before:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_60%)] before:opacity-80 before:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-[24px] after:bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%,rgba(255,255,255,0.06))] after:content-['']">
         <BottomNavItem
           icon={MapIcon}
           label="Explore"
@@ -536,41 +536,75 @@ function MapOverlayUI({
 }
 
 
-function BottomNavItem({
-  icon: Icon,
-  label,
-  active = false,
-  onClick,
-}: {
+type BottomNavItemProps = {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active?: boolean;
   onClick?: () => void;
-}) {
+};
+
+const BottomNavItem = ({
+  icon: Icon,
+  label,
+  active = false,
+  onClick,
+}: BottomNavItemProps) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!onClick) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onClick();
+  };
+
   return (
     <button
       type="button"
       aria-label={label}
       aria-current={active ? "page" : undefined}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground",
+        "group relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 text-muted-foreground transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95",
+        active && "text-foreground",
       )}
     >
-      {active ? (
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 rounded-2xl bg-muted/70"
-        />
-      ) : null}
-      <Icon className="size-6" />
-      <span className="text-[10px] font-medium leading-none">{label}</span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 -z-10 rounded-2xl bg-white/10 opacity-0 blur-sm transition-all duration-300",
+          active && "opacity-100",
+          !active && "group-hover:opacity-80",
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 -z-10 rounded-2xl bg-muted/60 opacity-0 transition-all duration-300",
+          active && "opacity-100 scale-100",
+          !active && "scale-90 group-hover:opacity-60",
+        )}
+      />
+      <span
+        className={cn(
+          "flex items-center justify-center rounded-xl p-2 transition-transform duration-300",
+          active && "-translate-y-0.5",
+          !active && "group-hover:-translate-y-0.5",
+        )}
+      >
+        <Icon className="size-6" />
+      </span>
+      <span
+        className={cn(
+          "text-[10px] font-medium leading-none transition-all duration-300",
+          active && "text-foreground",
+          !active && "text-muted-foreground group-hover:text-foreground",
+        )}
+      >
+        {label}
+      </span>
     </button>
   );
-}
+};
 
 function ControlGroup({ children }: { children: React.ReactNode }) {
   return (
