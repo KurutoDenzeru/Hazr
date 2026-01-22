@@ -72,8 +72,8 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
         {/* Header */}
         <div className="flex items-center justify-between px-0 my-2">
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-red-500 p-2.5 shadow-lg shadow-red-500/20">
-              <Mountain className="size-5 text-white" />
+            <div className="rounded-md bg-red-500/20 p-2.5 shadow-lg shadow-red-500/20 dark:bg-red-500/30">
+              <Mountain className="size-5 text-red-700 dark:text-red-200" />
             </div>
             <div>
               <h3 className="text-sm font-medium">Live Earthquakes</h3>
@@ -86,7 +86,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="rounded-md text-muted-foreground hover:bg-muted/70"
+                className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
                 onClick={() => refetch()}
                 aria-label="Refresh earthquakes"
               >
@@ -118,10 +118,10 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
             </div>
           ) : (
             <>
-              <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
                 History
               </p>
-              <ScrollArea className="h-70 pr-3">
+              <ScrollArea className="h-70 rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
                 <div className="flex flex-col gap-1">
                   {earthquakes.slice(0, 10).map((eq) => (
                     <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />

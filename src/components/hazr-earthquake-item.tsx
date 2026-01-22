@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { ProcessedEarthquake } from "@/types/api";
-import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
+import { getMagnitudeColor } from "@/types/api";
 import {
   Tooltip,
   TooltipContent,
@@ -52,7 +52,7 @@ const EarthquakeItem = ({
           <button
             type="button"
             onClick={onClick}
-            className="flex size-10 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
+            className="flex size-10 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
             aria-label={earthquake.title}
           >
             <div
@@ -79,32 +79,37 @@ const EarthquakeItem = ({
     {
       label: `Magnitude ${earthquake.magnitude.toFixed(1)}`,
       icon: Gauge,
-      className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+      className: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
     },
     {
       label: `Depth ${earthquake.depth.toFixed(1)}km`,
       icon: Ruler,
-      className: "bg-muted/40 text-muted-foreground",
+      className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+    },
+    {
+      label: `Time ${formatRelativeTime(earthquake.time)}`,
+      icon: Clock,
+      className: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
     },
     earthquake.felt !== null
       ? {
           label: `${earthquake.felt} felt`,
           icon: Users,
-          className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+          className: "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
         }
       : null,
     earthquake.mmi !== null
       ? {
           label: `MMI ${earthquake.mmi.toFixed(1)}`,
           icon: Gauge,
-          className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+          className: "bg-violet-500/20 text-violet-700 dark:bg-violet-500/30 dark:text-violet-200",
         }
       : null,
     earthquake.tsunami
       ? {
           label: "Tsunami",
           icon: Waves,
-          className: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+          className: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
         }
       : null,
     earthquake.alert
@@ -112,10 +117,10 @@ const EarthquakeItem = ({
           label: `Alert ${earthquake.alert}`,
           icon: AlertTriangle,
           className: cn(
-            "bg-red-500/10 text-red-600 dark:text-red-400",
-            earthquake.alert === "yellow" && "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-            earthquake.alert === "orange" && "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-            earthquake.alert === "green" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+            "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+            earthquake.alert === "yellow" && "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+            earthquake.alert === "orange" && "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+            earthquake.alert === "green" && "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
           ),
         }
       : null,
@@ -129,7 +134,7 @@ const EarthquakeItem = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-2 rounded-md px-2 py-2 text-left transition-all hover:bg-muted/70 dark:hover:bg-muted/30"
+      className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
       aria-label={earthquake.title}
     >
       <div className="flex items-center gap-3">
@@ -149,16 +154,6 @@ const EarthquakeItem = ({
               {earthquake.place}
             </p>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-medium text-foreground/70">
-              {getMagnitudeLabel(earthquake.magnitude)}
-            </span>
-            <span className="opacity-50">•</span>
-            <span className="flex items-center gap-1">
-              <Clock className="size-3" />
-              {formatRelativeTime(earthquake.time)}
-            </span>
           </div>
         </div>
       </div>
