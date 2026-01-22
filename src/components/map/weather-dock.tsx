@@ -219,8 +219,8 @@ export const WeatherDock = ({
       <div className={containerClasses}>
         {/* Header with location */}
         <div className={cn(
-          "flex items-center justify-between gap-2 border-b border-border/30 px-4 py-3",
-          unstyled && "border-none px-0 py-2",
+          "flex items-center justify-between gap-2 border-b border-border/30 px-4",
+          unstyled && "border-none px-0",
         )}>
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="size-4 shrink-0 text-muted-foreground" />
@@ -249,7 +249,7 @@ export const WeatherDock = ({
         <div className={cn("p-4", unstyled && "p-0 my-2!")}> 
           <div className="flex items-start justify-between gap-4!">
             <div className="flex items-center gap-3">
-              <div className="rounded-md bg-sky-500 p-2.5 shadow-lg shadow-sky-500/20">
+              <div className="rounded-md bg-sky-500 p-2.5">
                 <WeatherIcon
                   code={current.weatherCode}
                   isDay={current.isDay}

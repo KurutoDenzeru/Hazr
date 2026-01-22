@@ -72,7 +72,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
         {/* Header */}
         <div className="flex items-center justify-between px-0 my-2">
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-red-500/20 p-2.5 shadow-lg shadow-red-500/20 dark:bg-red-500/30">
+            <div className="rounded-md bg-red-500/20 p-2.5 dark:bg-red-500/30">
               <Mountain className="size-5 text-red-700 dark:text-red-200" />
             </div>
             <div>
@@ -118,7 +118,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
             </div>
           ) : (
             <>
-              <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
                 History
               </p>
               <ScrollArea className="h-70 rounded-md bg-muted/30 dark:bg-muted/15 pr-3">

@@ -127,7 +127,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
         </TooltipProvider>
       </SidebarHeader>
 
-      <SidebarContent className="py-2 overflow-y-auto scrollbar-hide">
+      <SidebarContent className="overflow-y-auto scrollbar-hide">
         <HazrMenuPanel
           collapsed={!isOpen}
           userLocation={userLocation}

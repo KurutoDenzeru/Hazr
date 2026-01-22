@@ -87,7 +87,7 @@ const EarthquakeItem = ({
       className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
     },
     {
-      label: `Time ${formatRelativeTime(earthquake.time)}`,
+      label: `${formatRelativeTime(earthquake.time)}`,
       icon: Clock,
       className: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
     },
