@@ -154,6 +154,7 @@ const processCurrentWeather = (data: WeatherResponse): ProcessedWeather | null =
     isDay: current.is_day === 1,
     description: WEATHER_CODE_DESCRIPTIONS[current.weather_code] || "Unknown",
     uvIndex: current.uv_index,
+    visibility: data.hourly?.visibility?.[0] ?? 0,
   };
 };
 

@@ -265,6 +265,7 @@ export type ProcessedWeather = {
   isDay: boolean;
   description: string;
   uvIndex: number;
+  visibility: number;
 };
 
 // Helper type for processed hourly forecast

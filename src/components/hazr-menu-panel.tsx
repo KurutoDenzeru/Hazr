@@ -39,7 +39,7 @@ function HazrMenuPanel({
       <div className={cn("flex flex-col", collapsed ? "p-2" : "p-4")}>
         {/* Weather Section */}
         {!collapsed && (
-          <p className="px-2 pb-2 text-sm font-medium text-muted-foreground">
+          <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Weather
           </p>
         )}
@@ -57,7 +57,7 @@ function HazrMenuPanel({
 
         {/* Earthquakes Section */}
         {!collapsed && (
-          <p className="px-0 pb-1 text-sm font-medium text-muted-foreground">
+          <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Seismic Activity
           </p>
         )}

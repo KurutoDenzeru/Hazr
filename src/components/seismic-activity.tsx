@@ -3,6 +3,7 @@
 import { Mountain, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
@@ -13,18 +14,13 @@ type SeismicActivityProps = {
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
 };
 
-// Format relative time (kept here for feed footer text)
-const formatRelativeTime = (date: Date): string => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
+// Format time for display
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivityProps) => {
@@ -121,18 +117,25 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
               <p className="text-sm text-muted-foreground">No recent earthquakes</p>
             </div>
           ) : (
-            <div className="flex max-h-70 flex-col gap-0 overflow-y-auto scrollbar-hide">
-              {earthquakes.slice(0, 10).map((eq) => (
-                <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />
-              ))}
-            </div>
+            <>
+              <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                History
+              </p>
+              <ScrollArea className="h-70 pr-3">
+                <div className="flex flex-col gap-1">
+                  {earthquakes.slice(0, 10).map((eq) => (
+                    <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />
+                  ))}
+                </div>
+              </ScrollArea>
+            </>
           )}
         </div>
 
         {/* Footer */}
         {lastUpdated && (
           <div className="pt-2">
-            <p className="text-xs text-muted-foreground/60">Updated {formatRelativeTime(lastUpdated)}</p>
+            <p className="text-xs text-muted-foreground/60">Updated {formatTime(lastUpdated)}</p>
           </div>
         )}
       </div>
