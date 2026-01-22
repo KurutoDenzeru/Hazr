@@ -52,7 +52,7 @@ const MobileBottomNavItem = ({
       onKeyDown={handleKeyDown}
       tabIndex={0}
       className={cn(
-        "group relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 text-muted-foreground transition-all duration-200 ease-out hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 active:scale-[0.98] active:translate-y-[1px]",
+        "group/nav-item relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 text-muted-foreground transition-all duration-200 ease-out hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 active:scale-[0.98] active:translate-y-[1px]",
         active && "text-foreground",
       )}
     >
@@ -61,12 +61,12 @@ const MobileBottomNavItem = ({
         className={cn(
           "absolute inset-0 -z-10 rounded-2xl bg-muted/0 transition-all duration-200",
           active && "bg-muted/70",
-          !active && "group-hover:bg-muted/50 group-active:bg-muted/60",
+          !active && "group-hover/nav-item:bg-muted/50 group-active/nav-item:bg-muted/60",
         )}
       />
       <span
         aria-hidden="true"
-        className="absolute inset-0 -z-20 rounded-2xl opacity-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-opacity duration-200 group-hover:opacity-100"
+        className="absolute inset-0 -z-20 rounded-2xl opacity-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-opacity duration-200 group-hover/nav-item:opacity-100"
       />
       <Icon className="size-6" />
       <span className="text-[10px] font-medium leading-none">{label}</span>
