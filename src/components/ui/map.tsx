@@ -603,8 +603,10 @@ function MapControls({
     map?.zoomTo(map.getZoom() - 1, { duration: 300 });
   }, [map]);
 
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+
   const handleResetBearing = useCallback(() => {
-    map?.resetNorthPitch({ duration: 300 });
+    map?.easeTo({ bearing: 0, pitch: 0, duration: 900, easing: ease, essential: true });
   }, [map]);
 
   const handleLocate = useCallback(() => {

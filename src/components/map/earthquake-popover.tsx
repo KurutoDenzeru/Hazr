@@ -74,12 +74,18 @@ export function EarthquakePopover({
       : earthquake.status === "deleted"
         ? AlertTriangle
         : CircleDot;
-  const typeList = earthquake.types
+  const typeBadges = earthquake.types
     .split(",")
     .map((type) => type.trim())
     .filter(Boolean)
-    .slice(0, 4)
-    .join(", ");
+    .map((type) => type.toUpperCase());
+
+  const statusBadgeClass = cn(
+    "gap-1",
+    earthquake.status === "reviewed" && "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
+    earthquake.status === "deleted" && "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+    earthquake.status === "automatic" && "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+  );
 
   const detailItems = [
     { label: "Depth", value: `${earthquake.depth.toFixed(1)} km`, icon: Ruler },
@@ -95,6 +101,9 @@ export function EarthquakePopover({
       : null,
     earthquake.gap !== null
       ? { label: "Gap", value: `${earthquake.gap.toFixed(0)}°`, icon: CircleDot }
+      : null,
+    earthquake.dmin !== null
+      ? { label: "Dmin", value: earthquake.dmin.toFixed(2), icon: MapPin }
       : null,
     earthquake.rms !== null
       ? { label: "RMS", value: earthquake.rms.toFixed(2), icon: Radio }
@@ -148,42 +157,45 @@ export function EarthquakePopover({
                 <X className="size-4" />
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Badge className="bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200">
                 {getMagnitudeLabel(earthquake.magnitude)}
-              </span>
-              <span className="opacity-50">•</span>
-              <span className="flex items-center gap-1">
+              </Badge>
+              <Badge className="gap-1 bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200">
                 <Clock className="size-3" />
                 {formatRelativeTime(earthquake.time)}
-              </span>
-            </div>
-            <div className="mt-1 text-[10px] text-muted-foreground/70">
-              Updated {formatRelativeTime(earthquake.updated)}
+              </Badge>
+              <Badge className="gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
+                <Clock className="size-3" />
+                Updated {formatRelativeTime(earthquake.updated)}
+              </Badge>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="gap-1">
+          <Badge className={statusBadgeClass}>
             <StatusIcon className="size-3" />
             {statusLabel}
           </Badge>
           {earthquake.magType ? (
-            <Badge variant="outline">Mag: {earthquake.magType.toUpperCase()}</Badge>
+            <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
+              Mag: {earthquake.magType.toUpperCase()}
+            </Badge>
           ) : null}
           {earthquake.net ? (
-            <Badge variant="outline">Net: {earthquake.net.toUpperCase()}</Badge>
+            <Badge className="bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200">
+              Net: {earthquake.net.toUpperCase()}
+            </Badge>
           ) : null}
           {earthquake.alert ? (
             <Badge
-              variant="destructive"
               className={cn(
                 "gap-1",
-                earthquake.alert === "yellow" && "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-                earthquake.alert === "orange" && "bg-orange-500/10 text-orange-700 border-orange-500/20",
-                earthquake.alert === "red" && "bg-red-500/10 text-red-700 border-red-500/20",
-                earthquake.alert === "green" && "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+                earthquake.alert === "yellow" && "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+                earthquake.alert === "orange" && "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+                earthquake.alert === "red" && "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+                earthquake.alert === "green" && "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
               )}
             >
               <AlertTriangle className="size-3" />
@@ -191,16 +203,22 @@ export function EarthquakePopover({
             </Badge>
           ) : null}
           {earthquake.tsunami ? (
-            <Badge variant="outline" className="gap-1 border-blue-500/40 text-blue-600">
+            <Badge className="gap-1 bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200">
               <Waves className="size-3" />
               Tsunami risk
             </Badge>
           ) : null}
+          <Badge className="bg-muted/60 text-foreground/80 dark:bg-muted/25 dark:text-foreground">
+            ID: {earthquake.id}
+          </Badge>
+          <Badge className="max-w-full truncate bg-muted/60 text-foreground/80 dark:bg-muted/25 dark:text-foreground">
+            Title: {earthquake.title}
+          </Badge>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           {detailItems.map((item) => (
-            <div key={item.label} className="rounded-lg bg-muted/30 px-3 py-2">
+            <div key={item.label} className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
                 <item.icon className="size-3" />
                 <span>{item.label}</span>
@@ -210,11 +228,34 @@ export function EarthquakePopover({
           ))}
         </div>
 
-        {typeList ? (
-          <div className="text-[10px] text-muted-foreground/70">
-            Types: {typeList}
+        {typeBadges.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              Types
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {typeBadges.map((type) => (
+                <Badge
+                  key={type}
+                  className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200"
+                >
+                  {type}
+                </Badge>
+              ))}
+            </div>
           </div>
         ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+            <MapPin className="size-3" />
+            Lat {earthquake.coordinates[1].toFixed(4)}
+          </Badge>
+          <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+            <MapPin className="size-3" />
+            Lng {earthquake.coordinates[0].toFixed(4)}
+          </Badge>
+        </div>
 
         <a
           href={earthquake.url}
@@ -226,9 +267,6 @@ export function EarthquakePopover({
           <ExternalLink className="size-4" />
         </a>
 
-        <p className="text-[10px] text-muted-foreground/60">
-          {earthquake.coordinates[1].toFixed(4)}°, {earthquake.coordinates[0].toFixed(4)}°
-        </p>
       </div>
     </MapPopup>
   );

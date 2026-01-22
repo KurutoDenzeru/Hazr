@@ -130,6 +130,21 @@ export default function GoogleMapsClone() {
   });
 
   const [now] = React.useState(() => Date.now());
+  const getPulseSize = (magnitude: number) => {
+    if (magnitude >= 7) return 56;
+    if (magnitude >= 6) return 48;
+    if (magnitude >= 5) return 40;
+    if (magnitude >= 4) return 34;
+    return 28;
+  };
+
+  const getPulseDuration = (magnitude: number) => {
+    if (magnitude >= 7) return 2200;
+    if (magnitude >= 6) return 2000;
+    if (magnitude >= 5) return 1850;
+    if (magnitude >= 4) return 1700;
+    return 1500;
+  };
 
   // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
@@ -274,9 +289,12 @@ export default function GoogleMapsClone() {
                         {now - eq.time.getTime() < 3600000 && (
                           <span
                             aria-hidden="true"
-                            className="absolute size-8 rounded-full animate-ping"
+                            className="absolute rounded-full animate-ping"
                             style={{
                               backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
+                              width: `${getPulseSize(eq.magnitude)}px`,
+                              height: `${getPulseSize(eq.magnitude)}px`,
+                              animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
                             }}
                           />
                         )}
@@ -763,7 +781,7 @@ function CustomMapControls({
   };
 
   const handleResetBearing = () =>
-    map?.easeTo({ bearing: 0, pitch: 0, duration: 600, easing: ease });
+    map?.easeTo({ bearing: 0, pitch: 0, duration: 900, easing: ease, essential: true });
   const handleFullscreen = () => {
     const container = map?.getContainer();
     if (!container) return;
