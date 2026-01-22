@@ -1,6 +1,14 @@
 "use client"
 
-import { PanelLeftClose, PanelLeftOpen, Activity } from "lucide-react"
+import React from "react"
+
+const Image: React.FC<
+  React.ImgHTMLAttributes<HTMLImageElement> & { src: string; width?: number; height?: number; alt: string }
+> = ({ src, alt, width, height, className, ...rest }) => (
+  <img src={src} alt={alt} width={width} height={height} className={className} {...rest} />
+)
+
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
 import { HazrMenuPanel } from "@/components/hazr-menu-panel"
 import { Button } from "@/components/ui/button"
@@ -37,11 +45,17 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20",
-                  "group-data-[state=collapsed]/sidebar:size-10"
+                  "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                  "group-data-[state=collapsed]/sidebar:size-12"
                 )}
               >
-                <Activity className="size-5" />
+                <Image
+                  src="/brand.webp"
+                  alt="Hazr Logo"
+                  width={25}
+                  height={25}
+                  className="size-12 object-contain"
+                />
               </div>
 
               <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
@@ -59,11 +73,17 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
                 <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
                   <div
                     className={cn(
-                      "mt-0.5 flex size-9 items-center justify-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20",
-                      "group-data-[state=collapsed]/sidebar:size-10"
+                      "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                      "group-data-[state=collapsed]/sidebar:size-12"
                     )}
                   >
-                    <Activity className="size-5" />
+                    <Image
+                      src="/brand.webp"
+                      alt="Hazr Logo"
+                      width={25}
+                      height={25}
+                      className="size-12 object-contain"
+                    />
                   </div>
 
                   <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
@@ -87,7 +107,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
                   variant="ghost"
                   size="icon-sm"
                   className={cn(
-                    "absolute right-2 top-2 rounded-xl text-muted-foreground hover:bg-muted/70",
+                    "absolute right-2 top-2 rounded-md text-muted-foreground hover:bg-muted/70",
                     "group-data-[state=collapsed]/sidebar:top-auto group-data-[state=collapsed]/sidebar:bottom-2 group-data-[state=collapsed]/sidebar:right-1/2 group-data-[state=collapsed]/sidebar:translate-x-1/2"
                   )}
                   aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}

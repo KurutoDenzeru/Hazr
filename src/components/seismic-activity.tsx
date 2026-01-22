@@ -74,14 +74,14 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
     <TooltipProvider delayDuration={0}>
       <div className="overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-0 pb-1">
+        <div className="flex items-center justify-between px-0 my-2">
           <div className="flex items-center gap-2">
             <div className="rounded-md bg-red-500 p-2.5 shadow-lg shadow-red-500/20">
               <Mountain className="size-5 text-white" />
             </div>
             <div>
               <h3 className="text-sm font-medium">Live Earthquakes</h3>
-              <p className="text-[10px] text-muted-foreground">{metadata?.count ?? 0} in the last 24h</p>
+              <p className="text-sm text-muted-foreground">{metadata?.count ?? 0} in the last 24h</p>
             </div>
           </div>
 

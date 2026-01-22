@@ -72,7 +72,7 @@ const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
-          className="flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-white cursor-help border-none"
+          className="flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-white cursor-pointer border-none"
           style={{ backgroundColor: info.color }}
         >
           <Sun className="size-3" />
@@ -97,7 +97,7 @@ const PrecipBadge = ({ probability, amount }: { probability: number; amount: num
         <Badge
           variant="secondary"
           className={cn(
-            "flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium cursor-help border-none",
+            "flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium cursor-pointer border-none",
             hasRain
               ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
               : "bg-muted/50 text-muted-foreground"
@@ -329,7 +329,7 @@ export const WeatherDock = ({
         </div>
 
         {/* Current/Selected weather display */}
-        <div className={cn("p-4", unstyled && "p-0 pt-2")}> 
+        <div className={cn("p-4", unstyled && "p-0 my-2!")}> 
           <div className="flex items-start justify-between gap-4!">
             <div className="flex items-center gap-3">
               <div className="rounded-md bg-sky-500 p-2.5 shadow-lg shadow-sky-500/20">
@@ -365,10 +365,10 @@ export const WeatherDock = ({
           </div>
 
           {/* Weather stats grid */}
-          <div className="mt-4 grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2 mt-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-help">
+                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-pointer">
                   <Thermometer className="size-4 text-orange-500" />
                   <span className="text-sm font-medium">
                     {Math.round(displayData?.feelsLike ?? current.feelsLike)}°
@@ -381,7 +381,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-help">
+                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-pointer">
                   <Wind className="size-4 text-cyan-500" />
                   <span className="text-sm font-medium">
                     {Math.round(displayData?.windSpeed ?? current.windSpeed)}
@@ -399,7 +399,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-help">
+                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-pointer">
                   <Droplets className="size-4 text-blue-500" />
                   <span className="text-sm font-medium">
                     {displayData?.humidity ?? current.humidity}%
@@ -412,7 +412,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-help">
+                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/30 px-2 py-2 cursor-pointer">
                   {displayData?.visibility ? (
                     <>
                       <Eye className="size-4 text-violet-500" />
@@ -504,7 +504,7 @@ export const WeatherDock = ({
               {daily.slice(0, 7).map((day) => (
                 <Tooltip key={day.date.toISOString()}>
                   <TooltipTrigger asChild>
-                    <div className="flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-2 hover:bg-muted/50 cursor-help">
+                    <div className="flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-2 hover:bg-muted/50 cursor-pointer">
                       <span className="text-[10px] font-medium text-muted-foreground">
                         {day.date.toDateString() === new Date().toDateString()
                           ? "Today"
