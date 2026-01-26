@@ -12,6 +12,20 @@ import { WEATHER_CODE_DESCRIPTIONS } from "@/types/api";
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 
+type WeatherCacheEntry = {
+  current: ProcessedWeather | null;
+  hourly: ProcessedHourlyForecast[];
+  daily: ProcessedDailyForecast[];
+  locationInfo: LocationInfo | null;
+  lastUpdated: Date | null;
+  selectedHourIndex: number;
+};
+
+const weatherCache = new Map<string, WeatherCacheEntry>();
+
+const getCacheKey = (lat: number, lng: number): string =>
+  `${lat.toFixed(3)}:${lng.toFixed(3)}`;
+
 type UseWeatherOptions = {
   latitude: number | null;
   longitude: number | null;
@@ -241,6 +255,21 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
 
   const resolvedLatitude = latitude ?? ipLocation?.latitude ?? null;
   const resolvedLongitude = longitude ?? ipLocation?.longitude ?? null;
+  const cacheKey = resolvedLatitude !== null && resolvedLongitude !== null
+    ? getCacheKey(resolvedLatitude, resolvedLongitude)
+    : null;
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    const cached = weatherCache.get(cacheKey);
+    if (!cached) return;
+    setCurrent(cached.current);
+    setHourly(cached.hourly);
+    setDaily(cached.daily);
+    setLocationInfo(cached.locationInfo);
+    setLastUpdated(cached.lastUpdated);
+    setSelectedHourIndex(cached.selectedHourIndex);
+  }, [cacheKey]);
 
   const fetchWeather = useCallback(async () => {
     if (resolvedLatitude === null || resolvedLongitude === null) {
@@ -302,7 +331,35 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
         });
       }
 
-      setLastUpdated(new Date());
+      const updatedAt = new Date();
+      setLastUpdated(updatedAt);
+
+      if (cacheKey) {
+        weatherCache.set(cacheKey, {
+          current: processedCurrent,
+          hourly: processedHourly,
+          daily: processedDaily,
+          locationInfo: locationData
+            ? {
+                ...locationData,
+                elevation: data.elevation,
+                timezone: data.timezone,
+              }
+            : {
+                city: "",
+                region: "",
+                country: "",
+                countryCode: "",
+                displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                elevation: data.elevation,
+                timezone: data.timezone,
+              },
+          lastUpdated: updatedAt,
+          selectedHourIndex: 0,
+        });
+      }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -311,7 +368,17 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [resolvedLatitude, resolvedLongitude, forecastHours]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey]);
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    const cached = weatherCache.get(cacheKey);
+    if (!cached) return;
+    weatherCache.set(cacheKey, {
+      ...cached,
+      selectedHourIndex,
+    });
+  }, [cacheKey, selectedHourIndex]);
 
   useEffect(() => {
     if (latitude !== null && longitude !== null) return;
