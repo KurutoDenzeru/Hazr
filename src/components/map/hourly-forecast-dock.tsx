@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 import { WeatherIcon } from "@/components/hazr-weather-icon";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
 
@@ -86,9 +87,8 @@ const HourlyForecastDock = ({
     setSelectedHourIndex(safeIndex + 1);
   };
 
-  const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const nextIndex = Number(event.target.value);
-    if (Number.isNaN(nextIndex)) return;
+  const handleSliderChange = (value: number[]) => {
+    const nextIndex = value[0] ?? 0;
     setIsPlaying(false);
     setSelectedHourIndex(nextIndex);
   };
@@ -218,15 +218,14 @@ const HourlyForecastDock = ({
       </div>
 
       <div className="mt-4">
-        <input
-          type="range"
+        <Slider
           aria-label="Forecast hour"
           min={0}
           max={maxIndex}
           step={1}
-          value={safeIndex}
-          onChange={handleSliderChange}
-          className="h-2 w-full cursor-pointer accent-foreground"
+          value={[safeIndex]}
+          onValueChange={handleSliderChange}
+          className="[&_[data-slot=slider-range]]:transition-[width] [&_[data-slot=slider-range]]:duration-500 [&_[data-slot=slider-range]]:ease-out [&_[data-slot=slider-thumb]]:transition-transform [&_[data-slot=slider-thumb]]:duration-500 [&_[data-slot=slider-thumb]]:ease-out"
         />
         <div className="mt-3 grid grid-cols-6 gap-2 text-[10px] text-muted-foreground sm:grid-cols-12">
           {visibleHours.map((hour, index) => (

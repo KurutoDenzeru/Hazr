@@ -182,29 +182,6 @@ export default function GoogleMapsClone() {
     };
   }, []);
 
-  React.useEffect(() => {
-    if (userLocation || hasRequestedLocationRef.current) return;
-    if (typeof window === "undefined") return;
-    if (!("geolocation" in navigator)) return;
-
-    hasRequestedLocationRef.current = true;
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords: [number, number] = [
-          position.coords.longitude,
-          position.coords.latitude,
-        ];
-        setUserLocation(coords);
-        setIsLocating(false);
-      },
-      () => {
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
-  }, [userLocation, setUserLocation]);
-
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: 12 };
@@ -218,6 +195,41 @@ export default function GoogleMapsClone() {
     }
     return { center: getInitialLocation(), zoom: 12 };
   });
+
+  React.useEffect(() => {
+    if (userLocation || hasRequestedLocationRef.current) return;
+    if (typeof window === "undefined") return;
+    hasRequestedLocationRef.current = true;
+    const controller = new AbortController();
+
+    const fetchIpLocation = async () => {
+      try {
+        setIsLocating(true);
+        const response = await fetch("https://ipapi.co/json/", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const latitude = Number(data?.latitude);
+        const longitude = Number(data?.longitude);
+        if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
+        const coords: [number, number] = [longitude, latitude];
+        setUserLocation(coords);
+
+        const hasSavedView = Boolean(localStorage.getItem("map-view-state"));
+        if (!hasSavedView) {
+          setViewState({ center: coords, zoom: 10 });
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsLocating(false);
+      }
+    };
+
+    fetchIpLocation();
+    return () => controller.abort();
+  }, [userLocation, setUserLocation]);
 
   return (
     <SidebarProvider
