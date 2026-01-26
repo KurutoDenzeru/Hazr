@@ -800,11 +800,8 @@ function CustomMapControls({
         "horizon-blend": 0.15,
         range: [0.6, 10],
       });
-      const targetZoom = Math.min(map.getZoom(), 3.2);
       map.easeTo({
         pitch: 55,
-        bearing: 0,
-        zoom: targetZoom,
         duration: 800,
         easing: ease,
         essential: true,
