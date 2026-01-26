@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
+import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
@@ -435,6 +436,15 @@ function MapOverlayUI({
           <CustomMapControls
             setUserLocation={setUserLocation}
             onLocateAnimation={onLocateAnimation}
+          />
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
+        <div className="pointer-events-auto">
+          <HourlyForecastDock
+            latitude={userLocation?.[1] ?? null}
+            longitude={userLocation?.[0] ?? null}
           />
         </div>
       </div>
