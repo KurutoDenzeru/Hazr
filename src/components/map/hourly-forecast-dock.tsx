@@ -69,11 +69,11 @@ const HourlyForecastDock = ({
       setIsVisible(false);
       return;
     }
-    const frame = window.requestAnimationFrame(() => {
+    const timer = window.setTimeout(() => {
       setIsVisible(true);
-    });
+    }, 10);
 
-    return () => window.cancelAnimationFrame(frame);
+    return () => window.clearTimeout(timer);
   }, [error, isLoading, selectedHour]);
 
   React.useEffect(() => {
@@ -116,8 +116,8 @@ const HourlyForecastDock = ({
   return (
     <div
       className={cn(
-        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-500 ease-out",
-        isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0",
+        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform",
+        isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
     >
@@ -206,7 +206,7 @@ const HourlyForecastDock = ({
           step={1}
           value={[safeIndex]}
           onValueChange={handleSliderChange}
-          className="[&_[data-slot=slider-range]]:transition-[width] [&_[data-slot=slider-range]]:duration-500 [&_[data-slot=slider-range]]:ease-out [&_[data-slot=slider-thumb]]:transition-transform [&_[data-slot=slider-thumb]]:duration-500 [&_[data-slot=slider-thumb]]:ease-out"
+          className="**:data-[slot=slider-range]:transition-[width] **:data-[slot=slider-range]:duration-250 **:data-[slot=slider-range]:ease-out **:data-[slot=slider-thumb]:transition-transform **:data-[slot=slider-thumb]:duration-250 **:data-[slot=slider-thumb]:ease-out"
         />
         <div className="mt-3 grid grid-cols-6 gap-2 text-[10px] text-muted-foreground sm:grid-cols-12">
           {visibleHours.map((hour, index) => (
