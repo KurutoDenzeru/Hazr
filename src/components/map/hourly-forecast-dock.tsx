@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
 import { WeatherIcon } from "@/components/hazr-weather-icon";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,12 @@ const HourlyForecastDock = ({
   const maxIndex = Math.max(0, visibleHours.length - 1);
   const safeIndex = Math.min(selectedHourIndex, maxIndex);
   const selectedHour = visibleHours[safeIndex];
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const selectedIndexRef = React.useRef(safeIndex);
+
+  React.useEffect(() => {
+    selectedIndexRef.current = safeIndex;
+  }, [safeIndex]);
 
   React.useEffect(() => {
     if (hourly.length === 0) return;
@@ -56,20 +62,40 @@ const HourlyForecastDock = ({
     setSelectedHourIndex(maxIndex);
   }, [hourly.length, maxIndex, selectedHourIndex, setSelectedHourIndex]);
 
+  React.useEffect(() => {
+    if (!isPlaying) return;
+    if (visibleHours.length === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      const nextIndex = selectedIndexRef.current >= maxIndex ? 0 : selectedIndexRef.current + 1;
+      setSelectedHourIndex(nextIndex);
+    }, 1200);
+
+    return () => window.clearInterval(intervalId);
+  }, [isPlaying, maxIndex, setSelectedHourIndex, visibleHours.length]);
+
   const handlePrev = () => {
     if (safeIndex <= 0) return;
+    setIsPlaying(false);
     setSelectedHourIndex(safeIndex - 1);
   };
 
   const handleNext = () => {
     if (safeIndex >= maxIndex) return;
+    setIsPlaying(false);
     setSelectedHourIndex(safeIndex + 1);
   };
 
   const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextIndex = Number(event.target.value);
     if (Number.isNaN(nextIndex)) return;
+    setIsPlaying(false);
     setSelectedHourIndex(nextIndex);
+  };
+
+  const handleTogglePlay = () => {
+    if (visibleHours.length === 0) return;
+    setIsPlaying((prev) => !prev);
   };
 
   if (isLoading && hourly.length === 0) {
@@ -116,6 +142,20 @@ const HourlyForecastDock = ({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label={isPlaying ? "Pause forecast playback" : "Play forecast playback"}
+            onClick={handleTogglePlay}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              handleTogglePlay();
+            }}
+            tabIndex={0}
+            className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+          >
+            {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
+          </button>
           <div className="flex size-10 items-center justify-center rounded-xl bg-muted/70">
             <WeatherIcon
               code={selectedHour.weatherCode}
@@ -188,7 +228,7 @@ const HourlyForecastDock = ({
           onChange={handleSliderChange}
           className="h-2 w-full cursor-pointer accent-foreground"
         />
-        <div className="mt-3 grid grid-cols-12 gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-3 grid grid-cols-6 gap-2 text-[10px] text-muted-foreground sm:grid-cols-12">
           {visibleHours.map((hour, index) => (
             <button
               key={hour.time.toISOString()}
@@ -198,6 +238,7 @@ const HourlyForecastDock = ({
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
                 event.preventDefault();
+                setIsPlaying(false);
                 setSelectedHourIndex(index);
               }}
               tabIndex={0}

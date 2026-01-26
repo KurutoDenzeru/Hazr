@@ -515,6 +515,11 @@ function MapOverlayUI({
               longitude={userLocation?.[0] ?? null}
               unstyled
             />
+            <HourlyForecastDock
+              latitude={userLocation?.[1] ?? null}
+              longitude={userLocation?.[0] ?? null}
+              className="mt-4 md:hidden"
+            />
           </div>
         </DrawerContent>
       </Drawer>
