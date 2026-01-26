@@ -12,6 +12,20 @@ import { WEATHER_CODE_DESCRIPTIONS } from "@/types/api";
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 
+type WeatherCacheEntry = {
+  current: ProcessedWeather | null;
+  hourly: ProcessedHourlyForecast[];
+  daily: ProcessedDailyForecast[];
+  locationInfo: LocationInfo | null;
+  lastUpdated: Date | null;
+  selectedHourIndex: number;
+};
+
+const weatherCache = new Map<string, WeatherCacheEntry>();
+
+const getCacheKey = (lat: number, lng: number): string =>
+  `${lat.toFixed(3)}:${lng.toFixed(3)}`;
+
 type UseWeatherOptions = {
   latitude: number | null;
   longitude: number | null;
@@ -234,11 +248,31 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [selectedHourIndex, setSelectedHourIndex] = useState(0);
+  const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const resolvedLatitude = latitude ?? ipLocation?.latitude ?? null;
+  const resolvedLongitude = longitude ?? ipLocation?.longitude ?? null;
+  const cacheKey = resolvedLatitude !== null && resolvedLongitude !== null
+    ? getCacheKey(resolvedLatitude, resolvedLongitude)
+    : null;
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    const cached = weatherCache.get(cacheKey);
+    if (!cached) return;
+    setCurrent(cached.current);
+    setHourly(cached.hourly);
+    setDaily(cached.daily);
+    setLocationInfo(cached.locationInfo);
+    setLastUpdated(cached.lastUpdated);
+    setSelectedHourIndex(cached.selectedHourIndex);
+  }, [cacheKey]);
+
   const fetchWeather = useCallback(async () => {
-    if (latitude === null || longitude === null) {
+    if (resolvedLatitude === null || resolvedLongitude === null) {
       return;
     }
 
@@ -255,10 +289,10 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     try {
       // Fetch weather and location in parallel
       const [weatherResponse, locationData] = await Promise.all([
-        fetch(buildWeatherUrl(latitude, longitude), {
+        fetch(buildWeatherUrl(resolvedLatitude, resolvedLongitude), {
           signal: abortControllerRef.current.signal,
         }),
-        fetchLocationName(latitude, longitude),
+        fetchLocationName(resolvedLatitude, resolvedLongitude),
       ]);
 
       if (!weatherResponse.ok) {
@@ -289,7 +323,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
           region: "",
           country: "",
           countryCode: "",
-          displayName: `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`,
+          displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
           latitude: data.latitude,
           longitude: data.longitude,
           elevation: data.elevation,
@@ -297,7 +331,35 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
         });
       }
 
-      setLastUpdated(new Date());
+      const updatedAt = new Date();
+      setLastUpdated(updatedAt);
+
+      if (cacheKey) {
+        weatherCache.set(cacheKey, {
+          current: processedCurrent,
+          hourly: processedHourly,
+          daily: processedDaily,
+          locationInfo: locationData
+            ? {
+                ...locationData,
+                elevation: data.elevation,
+                timezone: data.timezone,
+              }
+            : {
+                city: "",
+                region: "",
+                country: "",
+                countryCode: "",
+                displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                elevation: data.elevation,
+                timezone: data.timezone,
+              },
+          lastUpdated: updatedAt,
+          selectedHourIndex: 0,
+        });
+      }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -306,11 +368,49 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [latitude, longitude, forecastHours]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey]);
+
+  useEffect(() => {
+    if (!cacheKey) return;
+    const cached = weatherCache.get(cacheKey);
+    if (!cached) return;
+    weatherCache.set(cacheKey, {
+      ...cached,
+      selectedHourIndex,
+    });
+  }, [cacheKey, selectedHourIndex]);
+
+  useEffect(() => {
+    if (latitude !== null && longitude !== null) return;
+    if (ipLocation || isResolvingLocation) return;
+
+    const controller = new AbortController();
+    const fetchIpLocation = async () => {
+      try {
+        setIsResolvingLocation(true);
+        const response = await fetch("https://ipapi.co/json/", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const latitudeValue = Number(data?.latitude);
+        const longitudeValue = Number(data?.longitude);
+        if (Number.isNaN(latitudeValue) || Number.isNaN(longitudeValue)) return;
+        setIpLocation({ latitude: latitudeValue, longitude: longitudeValue });
+      } catch {
+        // ignore
+      } finally {
+        setIsResolvingLocation(false);
+      }
+    };
+
+    fetchIpLocation();
+    return () => controller.abort();
+  }, [latitude, longitude, ipLocation, isResolvingLocation]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
-    if (latitude === null || longitude === null) {
+    if (resolvedLatitude === null || resolvedLongitude === null) {
       setCurrent(null);
       setHourly([]);
       setDaily([]);
@@ -330,7 +430,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchWeather, autoRefresh, refreshInterval, latitude, longitude]);
+  }, [fetchWeather, autoRefresh, refreshInterval, resolvedLatitude, resolvedLongitude]);
 
   // Navigation helpers
   const canGoNext = selectedHourIndex < hourly.length - 1;

@@ -147,22 +147,21 @@ const EarthquakeItem = ({
             </p>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
           </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 pl-13">
-        {detailBadges.map((badge) => (
-          <div
-            key={badge.label}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium",
-              badge.className,
-            )}
-          >
-            <badge.icon className="size-3" />
-            <span>{badge.label}</span>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {detailBadges.map((badge) => (
+              <div
+                key={badge.label}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium",
+                  badge.className,
+                )}
+              >
+                <badge.icon className="size-3" />
+                <span>{badge.label}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </button>
   );

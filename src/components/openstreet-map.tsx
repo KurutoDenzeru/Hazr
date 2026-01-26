@@ -42,7 +42,9 @@ import { cn } from "@/lib/utils";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
+import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
@@ -180,29 +182,6 @@ export default function GoogleMapsClone() {
     };
   }, []);
 
-  React.useEffect(() => {
-    if (userLocation || hasRequestedLocationRef.current) return;
-    if (typeof window === "undefined") return;
-    if (!("geolocation" in navigator)) return;
-
-    hasRequestedLocationRef.current = true;
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords: [number, number] = [
-          position.coords.longitude,
-          position.coords.latitude,
-        ];
-        setUserLocation(coords);
-        setIsLocating(false);
-      },
-      () => {
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
-  }, [userLocation, setUserLocation]);
-
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: 12 };
@@ -216,6 +195,41 @@ export default function GoogleMapsClone() {
     }
     return { center: getInitialLocation(), zoom: 12 };
   });
+
+  React.useEffect(() => {
+    if (userLocation || hasRequestedLocationRef.current) return;
+    if (typeof window === "undefined") return;
+    hasRequestedLocationRef.current = true;
+    const controller = new AbortController();
+
+    const fetchIpLocation = async () => {
+      try {
+        setIsLocating(true);
+        const response = await fetch("https://ipapi.co/json/", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const latitude = Number(data?.latitude);
+        const longitude = Number(data?.longitude);
+        if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
+        const coords: [number, number] = [longitude, latitude];
+        setUserLocation(coords);
+
+        const hasSavedView = Boolean(localStorage.getItem("map-view-state"));
+        if (!hasSavedView) {
+          setViewState({ center: coords, zoom: 10 });
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsLocating(false);
+      }
+    };
+
+    fetchIpLocation();
+    return () => controller.abort();
+  }, [userLocation, setUserLocation]);
 
   return (
     <SidebarProvider
@@ -438,6 +452,15 @@ function MapOverlayUI({
         </div>
       </div>
 
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
+        <div className="pointer-events-auto">
+          <HourlyForecastDock
+            latitude={userLocation?.[1] ?? null}
+            longitude={userLocation?.[0] ?? null}
+          />
+        </div>
+      </div>
+
       {/* Mobile Menu Drawer */}
       <Drawer
         open={isMobileMenuOpen}
@@ -504,73 +527,44 @@ function MapOverlayUI({
               longitude={userLocation?.[0] ?? null}
               unstyled
             />
+            <HourlyForecastDock
+              latitude={userLocation?.[1] ?? null}
+              longitude={userLocation?.[0] ?? null}
+              className="mt-4 md:hidden"
+            />
           </div>
         </DrawerContent>
       </Drawer>
 
       {/* Mobile Bottom Bar */}
-      <div className="md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
-        <BottomNavItem
-          icon={MapIcon}
-          label="Explore"
-          active
-        />
-        <BottomNavItem
-          icon={Activity}
-          label="Quakes"
-          onClick={() => setIsQuakesDrawerOpen(true)}
-        />
-        <BottomNavItem
-          icon={Cloud}
-          label="Weather"
-          onClick={() => setIsWeatherDrawerOpen(true)}
-        />
-        <BottomNavItem
-          icon={Menu}
-          label="Menu"
-          onClick={() => setIsMobileMenuOpen(true)}
-        />
-      </div>
+      <MobileBottomNav
+        items={[
+          {
+            icon: MapIcon,
+            label: "Explore",
+            active: true,
+          },
+          {
+            icon: Activity,
+            label: "Quakes",
+            onClick: () => setIsQuakesDrawerOpen(true),
+          },
+          {
+            icon: Cloud,
+            label: "Weather",
+            onClick: () => setIsWeatherDrawerOpen(true),
+          },
+          {
+            icon: Menu,
+            label: "Menu",
+            onClick: () => setIsMobileMenuOpen(true),
+          },
+        ]}
+      />
     </div>
   );
 }
 
-
-function BottomNavItem({
-  icon: Icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      onClick={onClick}
-      className={cn(
-        "relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {active ? (
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 rounded-2xl bg-muted/70"
-        />
-      ) : null}
-      <Icon className="size-6" />
-      <span className="text-[10px] font-medium leading-none">{label}</span>
-    </button>
-  );
-}
 
 function ControlGroup({ children }: { children: React.ReactNode }) {
   return (
