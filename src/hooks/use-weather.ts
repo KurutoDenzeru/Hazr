@@ -234,11 +234,16 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [selectedHourIndex, setSelectedHourIndex] = useState(0);
+  const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const resolvedLatitude = latitude ?? ipLocation?.latitude ?? null;
+  const resolvedLongitude = longitude ?? ipLocation?.longitude ?? null;
+
   const fetchWeather = useCallback(async () => {
-    if (latitude === null || longitude === null) {
+    if (resolvedLatitude === null || resolvedLongitude === null) {
       return;
     }
 
@@ -255,10 +260,10 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     try {
       // Fetch weather and location in parallel
       const [weatherResponse, locationData] = await Promise.all([
-        fetch(buildWeatherUrl(latitude, longitude), {
+        fetch(buildWeatherUrl(resolvedLatitude, resolvedLongitude), {
           signal: abortControllerRef.current.signal,
         }),
-        fetchLocationName(latitude, longitude),
+        fetchLocationName(resolvedLatitude, resolvedLongitude),
       ]);
 
       if (!weatherResponse.ok) {
@@ -289,7 +294,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
           region: "",
           country: "",
           countryCode: "",
-          displayName: `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`,
+          displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
           latitude: data.latitude,
           longitude: data.longitude,
           elevation: data.elevation,
@@ -306,11 +311,39 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [latitude, longitude, forecastHours]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours]);
+
+  useEffect(() => {
+    if (latitude !== null && longitude !== null) return;
+    if (ipLocation || isResolvingLocation) return;
+
+    const controller = new AbortController();
+    const fetchIpLocation = async () => {
+      try {
+        setIsResolvingLocation(true);
+        const response = await fetch("https://ipapi.co/json/", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const latitudeValue = Number(data?.latitude);
+        const longitudeValue = Number(data?.longitude);
+        if (Number.isNaN(latitudeValue) || Number.isNaN(longitudeValue)) return;
+        setIpLocation({ latitude: latitudeValue, longitude: longitudeValue });
+      } catch {
+        // ignore
+      } finally {
+        setIsResolvingLocation(false);
+      }
+    };
+
+    fetchIpLocation();
+    return () => controller.abort();
+  }, [latitude, longitude, ipLocation, isResolvingLocation]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
-    if (latitude === null || longitude === null) {
+    if (resolvedLatitude === null || resolvedLongitude === null) {
       setCurrent(null);
       setHourly([]);
       setDaily([]);
@@ -330,7 +363,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchWeather, autoRefresh, refreshInterval, latitude, longitude]);
+  }, [fetchWeather, autoRefresh, refreshInterval, resolvedLatitude, resolvedLongitude]);
 
   // Navigation helpers
   const canGoNext = selectedHourIndex < hourly.length - 1;

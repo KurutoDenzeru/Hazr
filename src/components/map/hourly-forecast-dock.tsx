@@ -51,6 +51,7 @@ const HourlyForecastDock = ({
   const safeIndex = Math.min(selectedHourIndex, maxIndex);
   const selectedHour = visibleHours[safeIndex];
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [isVisible, setIsVisible] = React.useState(false);
   const selectedIndexRef = React.useRef(safeIndex);
 
   React.useEffect(() => {
@@ -62,6 +63,18 @@ const HourlyForecastDock = ({
     if (selectedHourIndex <= maxIndex) return;
     setSelectedHourIndex(maxIndex);
   }, [hourly.length, maxIndex, selectedHourIndex, setSelectedHourIndex]);
+
+  React.useEffect(() => {
+    if (isLoading || error || !selectedHour) {
+      setIsVisible(false);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [error, isLoading, selectedHour]);
 
   React.useEffect(() => {
     if (!isPlaying) return;
@@ -98,45 +111,13 @@ const HourlyForecastDock = ({
     setIsPlaying((prev) => !prev);
   };
 
-  if (isLoading && hourly.length === 0) {
-    return (
-      <div
-        className={cn(
-          "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl",
-          className,
-        )}
-      >
-        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-          Loading forecast...
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !selectedHour) {
-    return (
-      <div
-        className={cn(
-          "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl",
-          className,
-        )}
-      >
-        <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-          <span>{error ? "Forecast unavailable" : "Select a location to view forecast"}</span>
-          {locationInfo?.displayName && (
-            <span className="truncate text-xs text-muted-foreground/70">
-              {locationInfo.displayName}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  }
+  if (isLoading || error || !selectedHour) return null;
 
   return (
     <div
       className={cn(
-        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl",
+        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-500 ease-out",
+        isVisible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0",
         className,
       )}
     >
