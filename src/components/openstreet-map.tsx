@@ -51,6 +51,8 @@ import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
+const DEFAULT_COUNTRY_ZOOM = 6;
+
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -88,11 +90,11 @@ type MapViewState = {
 };
 
 export default function GoogleMapsClone() {
-  const [userLocation, setUserLocationState] = React.useState<
+  const [approximateLocation, setApproximateLocationState] = React.useState<
     [number, number] | null
   >(() => {
     if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("user-location");
+    const saved = localStorage.getItem("approximate-location");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -111,10 +113,11 @@ export default function GoogleMapsClone() {
     return null;
   });
 
-  // Wrapper to persist user location to localStorage
-  const setUserLocation = React.useCallback((coords: [number, number]) => {
-    setUserLocationState(coords);
-    localStorage.setItem("user-location", JSON.stringify(coords));
+  const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
+
+  const setApproximateLocation = React.useCallback((coords: [number, number]) => {
+    setApproximateLocationState(coords);
+    localStorage.setItem("approximate-location", JSON.stringify(coords));
   }, []);
 
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
@@ -184,7 +187,7 @@ export default function GoogleMapsClone() {
 
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
-      return { center: [-122.4194, 37.7749], zoom: 12 };
+      return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
     const saved = localStorage.getItem("map-view-state");
     if (saved) {
       try {
@@ -193,11 +196,13 @@ export default function GoogleMapsClone() {
         // ignore
       }
     }
-    return { center: getInitialLocation(), zoom: 12 };
+    return { center: getInitialLocation(), zoom: DEFAULT_COUNTRY_ZOOM };
   });
 
+  const resolvedLocation = userLocation ?? approximateLocation;
+
   React.useEffect(() => {
-    if (userLocation || hasRequestedLocationRef.current) return;
+    if (approximateLocation || hasRequestedLocationRef.current) return;
     if (typeof window === "undefined") return;
     hasRequestedLocationRef.current = true;
     const controller = new AbortController();
@@ -214,11 +219,11 @@ export default function GoogleMapsClone() {
         const longitude = Number(data?.longitude);
         if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
         const coords: [number, number] = [longitude, latitude];
-        setUserLocation(coords);
+        setApproximateLocation(coords);
 
         const hasSavedView = Boolean(localStorage.getItem("map-view-state"));
         if (!hasSavedView) {
-          setViewState({ center: coords, zoom: 10 });
+          setViewState({ center: coords, zoom: DEFAULT_COUNTRY_ZOOM });
         }
       } catch {
         // ignore
@@ -229,7 +234,7 @@ export default function GoogleMapsClone() {
 
     fetchIpLocation();
     return () => controller.abort();
-  }, [userLocation, setUserLocation]);
+  }, [approximateLocation, setApproximateLocation]);
 
   return (
     <SidebarProvider
@@ -238,7 +243,7 @@ export default function GoogleMapsClone() {
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
         <HazrSidebar
-          userLocation={userLocation}
+          userLocation={resolvedLocation}
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
         />
@@ -339,7 +344,7 @@ export default function GoogleMapsClone() {
                 <MapOverlayUI
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
-                  userLocation={userLocation}
+                  resolvedLocation={resolvedLocation}
                   isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
@@ -416,14 +421,14 @@ function EarthquakeFlyTo({
 function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
-  userLocation,
+  resolvedLocation,
   isLocating,
   earthquakes,
   onEarthquakeSelect,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
-  userLocation: [number, number] | null;
+  resolvedLocation: [number, number] | null;
   isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
@@ -455,9 +460,9 @@ function MapOverlayUI({
       <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
         <div className="pointer-events-auto">
           <HourlyForecastDock
-            latitude={userLocation?.[1] ?? null}
-            longitude={userLocation?.[0] ?? null}
-          />
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
+            />
         </div>
       </div>
 
@@ -471,7 +476,7 @@ function MapOverlayUI({
             <div className="flex-1 overflow-auto">
               <HazrMenuPanel
                 onSelect={handleCloseMobileMenu}
-                userLocation={userLocation}
+                userLocation={resolvedLocation}
                 isLocating={isLocating}
               />
             </div>
@@ -523,13 +528,13 @@ function MapOverlayUI({
         <DrawerContent className="max-h-[85vh]">
           <div className="p-4 overflow-y-auto max-h-[85vh]">
             <WeatherDock
-              latitude={userLocation?.[1] ?? null}
-              longitude={userLocation?.[0] ?? null}
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
               unstyled
             />
             <HourlyForecastDock
-              latitude={userLocation?.[1] ?? null}
-              longitude={userLocation?.[0] ?? null}
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
               className="mt-4 md:hidden"
             />
           </div>
