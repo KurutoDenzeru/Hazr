@@ -355,51 +355,56 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     }
   }, [resolvedLatitude, resolvedLongitude, forecastHours, ipMeta]);
 
+  const resolveIpLocationIfNeeded = useCallback(async (force = false) => {
+    if (latitude !== null && longitude !== null) return true;
+    if (ipLocation && !force) return true;
+    if (isResolvingLocation) return false;
+    if (!force && hasResolvedIpRef.current) return false;
+
+    const controller = new AbortController();
+    try {
+      setIsResolvingLocation(true);
+      hasResolvedIpRef.current = true;
+      const result = await resolveIpLocation(controller.signal, {
+        allowTimezoneFallback: false,
+      });
+      if (!result) {
+        setError(new Error("Unable to resolve IP location"));
+        return false;
+      }
+      setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
+      if (result.meta) {
+        setIpMeta({
+          ip: result.meta.ip,
+          city: result.meta.city,
+          region: result.meta.region,
+          country: result.meta.country,
+          countryCode: result.meta.countryCode,
+          timezone: result.meta.timezone,
+        });
+      }
+      if (result.meta?.ip) {
+        console.log("[useWeather] IP location", {
+          ip: result.meta.ip,
+          coords: result.coords,
+          country: result.meta.country,
+          city: result.meta.city,
+        });
+      } else {
+        console.log("[useWeather] IP location", { coords: result.coords });
+      }
+      return true;
+    } finally {
+      setIsResolvingLocation(false);
+      controller.abort();
+    }
+  }, [latitude, longitude, ipLocation, isResolvingLocation]);
+
   useEffect(() => {
     if (latitude !== null && longitude !== null) return;
     if (ipLocation || isResolvingLocation || hasResolvedIpRef.current) return;
-
-    const controller = new AbortController();
-    const fetchIpLocation = async () => {
-      try {
-        setIsResolvingLocation(true);
-        hasResolvedIpRef.current = true;
-        const result = await resolveIpLocation(controller.signal, {
-          allowTimezoneFallback: false,
-        });
-        if (!result) {
-          setError(new Error("Unable to resolve IP location"));
-          return;
-        }
-        setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
-        if (result.meta) {
-          setIpMeta({
-            ip: result.meta.ip,
-            city: result.meta.city,
-            region: result.meta.region,
-            country: result.meta.country,
-            countryCode: result.meta.countryCode,
-            timezone: result.meta.timezone,
-          });
-        }
-        if (result.meta?.ip) {
-          console.log("[useWeather] IP location", {
-            ip: result.meta.ip,
-            coords: result.coords,
-            country: result.meta.country,
-            city: result.meta.city,
-          });
-        } else {
-          console.log("[useWeather] IP location", { coords: result.coords });
-        }
-      } finally {
-        setIsResolvingLocation(false);
-      }
-    };
-
-    fetchIpLocation();
-    return () => controller.abort();
-  }, [latitude, longitude, ipLocation, isResolvingLocation]);
+    void resolveIpLocationIfNeeded(false);
+  }, [latitude, longitude, ipLocation, isResolvingLocation, resolveIpLocationIfNeeded]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
@@ -441,6 +446,14 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     }
   }, [canGoPrev]);
 
+  const refetch = useCallback(async () => {
+    const canFetch = await resolveIpLocationIfNeeded(true);
+    if (!canFetch && (resolvedLatitude === null || resolvedLongitude === null)) {
+      return;
+    }
+    await fetchWeather();
+  }, [fetchWeather, resolveIpLocationIfNeeded, resolvedLatitude, resolvedLongitude]);
+
   return {
     current,
     hourly,
@@ -448,7 +461,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     isLoading,
     error,
     lastUpdated,
-    refetch: fetchWeather,
+    refetch,
     locationInfo,
     selectedHourIndex,
     setSelectedHourIndex,
