@@ -94,6 +94,35 @@ const parseIpApi = (data: Record<string, unknown>): IpLocationResult | null => {
   return { coords, meta, source: "ip" };
 };
 
+const parseIpWhoIs = (data: Record<string, unknown>): IpLocationResult | null => {
+  if (data?.success === false) return null;
+
+  const latitude = Number(data?.latitude);
+  const longitude = Number(data?.longitude);
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+
+  const coords: [number, number] = [longitude, latitude];
+  if (!isValidCoords(coords)) return null;
+
+  const timezoneData = data?.timezone as { id?: string } | undefined;
+  const connectionData = data?.connection as { isp?: string } | undefined;
+  const currencyData = data?.currency as { code?: string } | undefined;
+
+  const meta: IpLocationMeta = {
+    ip: data?.ip as string | undefined,
+    provider: "ipwhois",
+    country: data?.country as string | undefined,
+    countryCode: data?.country_code as string | undefined,
+    region: data?.region as string | undefined,
+    city: data?.city as string | undefined,
+    timezone: timezoneData?.id,
+    isp: connectionData?.isp,
+    currency: currencyData?.code,
+  };
+
+  return { coords, meta, source: "ip" };
+};
+
 export const resolveIpLocation = async (
   signal?: AbortSignal,
   options: { allowTimezoneFallback?: boolean } = {},
@@ -112,6 +141,11 @@ export const resolveIpLocation = async (
     try {
     const providers = [
       {
+        key: "ipwhois",
+        url: "https://ipwho.is/",
+        parser: parseIpWhoIs,
+      },
+      {
         key: "ipapi",
         url: "https://ipapi.co/json/",
         parser: parseIpApi,
@@ -124,18 +158,22 @@ export const resolveIpLocation = async (
           continue;
         }
 
-        const response = await fetchWithTimeout(provider.url, signal);
-        if (response.status === 429) {
-          providerBackoff[provider.key] = Date.now();
+        try {
+          const response = await fetchWithTimeout(provider.url, signal);
+          if (response.status === 429) {
+            providerBackoff[provider.key] = Date.now();
+            continue;
+          }
+          if (!response.ok) continue;
+          const data = await response.json();
+          const parsed = provider.parser(data as Record<string, unknown>);
+          if (!parsed) continue;
+          lastResult = parsed;
+          lastResolvedAt = Date.now();
+          return parsed;
+        } catch {
           continue;
         }
-        if (!response.ok) continue;
-        const data = await response.json();
-        const parsed = provider.parser(data as Record<string, unknown>);
-        if (!parsed) continue;
-        lastResult = parsed;
-        lastResolvedAt = Date.now();
-        return parsed;
       }
 
       throw new Error("all ip providers failed");
