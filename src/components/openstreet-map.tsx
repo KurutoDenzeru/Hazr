@@ -39,6 +39,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { resolveIpLocation } from "@/lib/ip-location";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
@@ -55,24 +56,6 @@ const DEFAULT_COUNTRY_ZOOM = 6;
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
 const APPROXIMATE_LOCATION_KEY = "approximate-location";
-const IP_LOCATION_META_KEY = "ip-location-meta";
-
-// Helper to get approximate location based on timezone
-const getInitialLocation = () => {
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  const locations: Record<string, [number, number]> = {
-    "America/Los_Angeles": [-122.4194, 37.7749],
-    "America/New_York": [-74.006, 40.7128],
-    "Europe/London": [-0.1278, 51.5074],
-    "Asia/Tokyo": [139.6917, 35.6895],
-    "Asia/Manila": [120.9842, 14.5995],
-    "Europe/Paris": [2.3522, 48.8566],
-    "Australia/Sydney": [151.2093, -33.8688],
-  };
-
-  return locations[tz] || [-122.4194, 37.7749]; // Default to SF
-};
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -93,16 +76,6 @@ type MapViewState = {
   zoom: number;
 };
 
-type IpLocationMeta = {
-  country?: string;
-  countryCode?: string;
-  region?: string;
-  city?: string;
-  timezone?: string;
-  isp?: string;
-  languages?: string;
-  currency?: string;
-};
 
 export default function GoogleMapsClone() {
   const [approximateLocation, setApproximateLocationState] = React.useState<
@@ -212,7 +185,7 @@ export default function GoogleMapsClone() {
         // ignore
       }
     }
-    return { center: getInitialLocation(), zoom: DEFAULT_COUNTRY_ZOOM };
+    return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
   });
 
   const resolvedLocation = userLocation ?? approximateLocation;
@@ -226,36 +199,14 @@ export default function GoogleMapsClone() {
     const fetchIpLocation = async () => {
       try {
         setIsLocating(true);
-        const response = await fetch("https://ipapi.co/json/", {
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const latitude = Number(data?.latitude);
-        const longitude = Number(data?.longitude);
-        if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
-        const coords: [number, number] = [longitude, latitude];
-        setApproximateLocation(coords);
-
-        const ipMeta: IpLocationMeta = {
-          country: data?.country_name,
-          countryCode: data?.country_code,
-          region: data?.region,
-          city: data?.city,
-          timezone: data?.timezone,
-          isp: data?.org ?? data?.asn,
-          languages: data?.languages,
-          currency: data?.currency,
-        };
-        localStorage.setItem(IP_LOCATION_META_KEY, JSON.stringify(ipMeta));
+        const result = await resolveIpLocation(controller.signal);
+        setApproximateLocation(result.coords);
 
         const hasSavedView =
           localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
         if (!hasSavedView) {
-          setViewState({ center: coords, zoom: DEFAULT_COUNTRY_ZOOM });
+          setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
         }
-      } catch {
-        // ignore
       } finally {
         setIsLocating(false);
       }

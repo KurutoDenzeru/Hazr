@@ -8,6 +8,7 @@ import type {
   WeatherCode,
 } from "@/types/api";
 import { WEATHER_CODE_DESCRIPTIONS } from "@/types/api";
+import { resolveIpLocation } from "@/lib/ip-location";
 
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
@@ -249,6 +250,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [selectedHourIndex, setSelectedHourIndex] = useState(0);
   const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [ipMeta, setIpMeta] = useState<{ city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -318,16 +320,20 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
           timezone: data.timezone,
         });
       } else {
+        const fallbackDisplay = ipMeta?.city || ipMeta?.region || ipMeta?.country
+          ? [ipMeta?.city, ipMeta?.region, ipMeta?.country].filter(Boolean).join(", ")
+          : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`;
+
         setLocationInfo({
-          city: "",
-          region: "",
-          country: "",
-          countryCode: "",
-          displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
+          city: ipMeta?.city ?? "",
+          region: ipMeta?.region ?? "",
+          country: ipMeta?.country ?? "",
+          countryCode: ipMeta?.countryCode ?? "",
+          displayName: fallbackDisplay,
           latitude: data.latitude,
           longitude: data.longitude,
           elevation: data.elevation,
-          timezone: data.timezone,
+          timezone: ipMeta?.timezone ?? data.timezone,
         });
       }
 
@@ -346,15 +352,20 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
                 timezone: data.timezone,
               }
             : {
-                city: "",
-                region: "",
-                country: "",
-                countryCode: "",
-                displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
+                city: ipMeta?.city ?? "",
+                region: ipMeta?.region ?? "",
+                country: ipMeta?.country ?? "",
+                countryCode: ipMeta?.countryCode ?? "",
+                displayName:
+                  ipMeta?.city || ipMeta?.region || ipMeta?.country
+                    ? [ipMeta?.city, ipMeta?.region, ipMeta?.country]
+                        .filter(Boolean)
+                        .join(", ")
+                    : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
                 latitude: data.latitude,
                 longitude: data.longitude,
                 elevation: data.elevation,
-                timezone: data.timezone,
+                timezone: ipMeta?.timezone ?? data.timezone,
               },
           lastUpdated: updatedAt,
           selectedHourIndex: 0,
@@ -368,7 +379,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey, ipMeta]);
 
   useEffect(() => {
     if (!cacheKey) return;
@@ -388,17 +399,17 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     const fetchIpLocation = async () => {
       try {
         setIsResolvingLocation(true);
-        const response = await fetch("https://ipapi.co/json/", {
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const latitudeValue = Number(data?.latitude);
-        const longitudeValue = Number(data?.longitude);
-        if (Number.isNaN(latitudeValue) || Number.isNaN(longitudeValue)) return;
-        setIpLocation({ latitude: latitudeValue, longitude: longitudeValue });
-      } catch {
-        // ignore
+        const result = await resolveIpLocation(controller.signal);
+        setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
+        if (result.meta) {
+          setIpMeta({
+            city: result.meta.city,
+            region: result.meta.region,
+            country: result.meta.country,
+            countryCode: result.meta.countryCode,
+            timezone: result.meta.timezone,
+          });
+        }
       } finally {
         setIsResolvingLocation(false);
       }
