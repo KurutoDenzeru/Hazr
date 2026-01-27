@@ -101,8 +101,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 
 const getImpactRadiusBase = (magnitude: number) => {
   const clampedMagnitude = clampMagnitude(magnitude);
-  const minRadius = 34;
-  const maxRadius = 140;
+  const minRadius = 15;
+  const maxRadius = 35;
   const ratio = (clampedMagnitude - 2) / 6;
   return minRadius + (maxRadius - minRadius) * ratio;
 };
@@ -139,7 +139,7 @@ const getImpactRadiusPixels = (
   const radiusMeters = baseRadius * baseMetersPerPixel;
   const metersPerPixel = getMetersPerPixel(zoom, latitude);
   const pixelRadius = radiusMeters / metersPerPixel;
-  return Math.min(280, Math.max(22, pixelRadius));
+  return Math.min(220, Math.max(18, pixelRadius));
 };
 
 
@@ -375,6 +375,7 @@ export default function GoogleMapsClone() {
                   now={now}
                   getPulseSize={getPulseSize}
                   getPulseDuration={getPulseDuration}
+                  selectedEarthquakeId={selectedEarthquake?.id ?? null}
                 />
 
                 {/* Fly to selected earthquake */}
@@ -525,6 +526,7 @@ type EarthquakeMarkersProps = {
   now: number;
   getPulseSize: (magnitude: number) => number;
   getPulseDuration: (magnitude: number) => number;
+  selectedEarthquakeId: string | null;
 };
 
 function EarthquakeMarkers({
@@ -533,6 +535,7 @@ function EarthquakeMarkers({
   now,
   getPulseSize,
   getPulseDuration,
+  selectedEarthquakeId,
 }: EarthquakeMarkersProps) {
   const { map } = useMap();
   const [mapZoom, setMapZoom] = React.useState(
@@ -554,6 +557,7 @@ function EarthquakeMarkers({
   return (
     <>
       {earthquakes.map((eq) => {
+        const isSelected = selectedEarthquakeId === eq.id;
         const impactRadius = getImpactRadiusPixels(
           eq.magnitude,
           eq.coordinates[1],
@@ -590,29 +594,33 @@ function EarthquakeMarkers({
                     backgroundColor: hexToRgba(impactColor, impactAlpha * 0.4),
                   }}
                 />
-                <span
-                  aria-hidden="true"
-                  className="absolute rounded-full animate-ping"
-                  style={{
-                    width: `${impactRadius}px`,
-                    height: `${impactRadius}px`,
-                    backgroundColor: impactFill,
-                    animationDuration: `${impactPulseDuration}ms`,
-                  }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute rounded-full animate-ping [animation-delay:450ms]"
-                  style={{
-                    width: `${impactRadius * 0.74}px`,
-                    height: `${impactRadius * 0.74}px`,
-                    borderColor: impactRing,
-                    borderWidth: "1px",
-                    animationDuration: `${impactPulseDuration * 1.1}ms`,
-                  }}
-                />
+                {isSelected && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="absolute rounded-full animate-ping"
+                      style={{
+                        width: `${impactRadius}px`,
+                        height: `${impactRadius}px`,
+                        backgroundColor: impactFill,
+                        animationDuration: `${impactPulseDuration}ms`,
+                      }}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="absolute rounded-full animate-ping [animation-delay:450ms]"
+                      style={{
+                        width: `${impactRadius * 0.74}px`,
+                        height: `${impactRadius * 0.74}px`,
+                        borderColor: impactRing,
+                        borderWidth: "1px",
+                        animationDuration: `${impactPulseDuration * 1.1}ms`,
+                      }}
+                    />
+                  </>
+                )}
                 {/* Pulse ring for recent earthquakes */}
-                {now - eq.time.getTime() < 3600000 && (
+                {isSelected && now - eq.time.getTime() < 3600000 && (
                   <span
                     aria-hidden="true"
                     className="absolute rounded-full animate-ping"
