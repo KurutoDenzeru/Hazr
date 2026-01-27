@@ -583,7 +583,16 @@ function EarthquakeMarkers({
               >
                 <span
                   aria-hidden="true"
-                  className="absolute rounded-full motion-safe:animate-ping"
+                  className="absolute rounded-full"
+                  style={{
+                    width: `${impactRadius}px`,
+                    height: `${impactRadius}px`,
+                    backgroundColor: hexToRgba(impactColor, impactAlpha * 0.4),
+                  }}
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute rounded-full animate-ping"
                   style={{
                     width: `${impactRadius}px`,
                     height: `${impactRadius}px`,
@@ -593,21 +602,13 @@ function EarthquakeMarkers({
                 />
                 <span
                   aria-hidden="true"
-                  className="absolute rounded-full motion-safe:animate-pulse"
-                  style={{
-                    width: `${impactRadius * 0.74}px`,
-                    height: `${impactRadius * 0.74}px`,
-                    backgroundColor: impactFill,
-                    animationDuration: `${impactPulseDuration * 1.1}ms`,
-                  }}
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute rounded-full border"
+                  className="absolute rounded-full animate-ping [animation-delay:450ms]"
                   style={{
                     width: `${impactRadius * 0.74}px`,
                     height: `${impactRadius * 0.74}px`,
                     borderColor: impactRing,
+                    borderWidth: "1px",
+                    animationDuration: `${impactPulseDuration * 1.1}ms`,
                   }}
                 />
                 {/* Pulse ring for recent earthquakes */}
