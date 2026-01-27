@@ -1,4 +1,5 @@
 type IpLocationMeta = {
+  ip?: string;
   country?: string;
   countryCode?: string;
   region?: string;
@@ -12,7 +13,7 @@ type IpLocationMeta = {
 type IpLocationResult = {
   coords: [number, number];
   meta: IpLocationMeta | null;
-  source: "ip" | "timezone";
+  source: "ip" | "timezone" | "ip-cache";
 };
 
 type CachedIpLocation = {
@@ -67,10 +68,15 @@ const isCacheFresh = (timestamp: number) =>
 
 export const resolveIpLocation = async (
   signal?: AbortSignal,
-): Promise<IpLocationResult> => {
+  options: { allowTimezoneFallback?: boolean } = {},
+): Promise<IpLocationResult | null> => {
+  const { allowTimezoneFallback = true } = options;
   const cached = readCachedIpLocation();
   if (cached && isCacheFresh(cached.timestamp)) {
     return { coords: cached.coords, meta: cached.meta, source: "ip" };
+  }
+  if (cached && !allowTimezoneFallback) {
+    return { coords: cached.coords, meta: cached.meta, source: "ip-cache" };
   }
 
   try {
@@ -85,6 +91,7 @@ export const resolveIpLocation = async (
 
     const coords: [number, number] = [longitude, latitude];
     const meta: IpLocationMeta = {
+      ip: data?.ip,
       country: data?.country_name,
       countryCode: data?.country_code,
       region: data?.region,
@@ -99,6 +106,7 @@ export const resolveIpLocation = async (
 
     return { coords, meta, source: "ip" };
   } catch {
+    if (!allowTimezoneFallback) return null;
     const coords = getInitialLocation();
     return { coords, meta: null, source: "timezone" };
   }

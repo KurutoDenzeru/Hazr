@@ -200,12 +200,14 @@ export default function GoogleMapsClone() {
       try {
         setIsLocating(true);
         const result = await resolveIpLocation(controller.signal);
-        setApproximateLocation(result.coords);
+        if (result) {
+          setApproximateLocation(result.coords);
 
-        const hasSavedView =
-          localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
-        if (!hasSavedView) {
-          setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
+          const hasSavedView =
+            localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
+          if (!hasSavedView) {
+            setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
+          }
         }
       } finally {
         setIsLocating(false);

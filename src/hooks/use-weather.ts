@@ -250,7 +250,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [selectedHourIndex, setSelectedHourIndex] = useState(0);
   const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [ipMeta, setIpMeta] = useState<{ city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
+  const [ipMeta, setIpMeta] = useState<{ ip?: string; city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -399,16 +399,30 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     const fetchIpLocation = async () => {
       try {
         setIsResolvingLocation(true);
-        const result = await resolveIpLocation(controller.signal);
+        const result = await resolveIpLocation(controller.signal, {
+          allowTimezoneFallback: false,
+        });
+        if (!result) return;
         setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
         if (result.meta) {
           setIpMeta({
+            ip: result.meta.ip,
             city: result.meta.city,
             region: result.meta.region,
             country: result.meta.country,
             countryCode: result.meta.countryCode,
             timezone: result.meta.timezone,
           });
+        }
+        if (result.meta?.ip) {
+          console.log("[useWeather] IP location", {
+            ip: result.meta.ip,
+            coords: result.coords,
+            country: result.meta.country,
+            city: result.meta.city,
+          });
+        } else {
+          console.log("[useWeather] IP location", { coords: result.coords });
         }
       } finally {
         setIsResolvingLocation(false);
