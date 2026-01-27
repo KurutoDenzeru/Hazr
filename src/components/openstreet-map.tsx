@@ -39,6 +39,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { resolveIpLocation } from "@/lib/ip-location";
 import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
@@ -51,22 +52,10 @@ import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
-// Helper to get approximate location based on timezone
-const getInitialLocation = () => {
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  const locations: Record<string, [number, number]> = {
-    "America/Los_Angeles": [-122.4194, 37.7749],
-    "America/New_York": [-74.006, 40.7128],
-    "Europe/London": [-0.1278, 51.5074],
-    "Asia/Tokyo": [139.6917, 35.6895],
-    "Asia/Manila": [120.9842, 14.5995],
-    "Europe/Paris": [2.3522, 48.8566],
-    "Australia/Sydney": [151.2093, -33.8688],
-  };
-
-  return locations[tz] || [-122.4194, 37.7749]; // Default to SF
-};
+const DEFAULT_COUNTRY_ZOOM = 6;
+const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
+const MAP_VIEW_STATE_KEY = "map-view-state";
+const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -87,40 +76,29 @@ type MapViewState = {
   zoom: number;
 };
 
-export default function GoogleMapsClone() {
-  const [userLocation, setUserLocationState] = React.useState<
-    [number, number] | null
-  >(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("user-location");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (
-          Array.isArray(parsed) &&
-          parsed.length === 2 &&
-          typeof parsed[0] === "number" &&
-          typeof parsed[1] === "number"
-        ) {
-          return parsed as [number, number];
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return null;
-  });
 
-  // Wrapper to persist user location to localStorage
-  const setUserLocation = React.useCallback((coords: [number, number]) => {
-    setUserLocationState(coords);
-    localStorage.setItem("user-location", JSON.stringify(coords));
+export default function GoogleMapsClone() {
+  const [approximateLocation, setApproximateLocationState] = React.useState<
+    [number, number] | null
+  >(null);
+
+  const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
+
+  const setApproximateLocation = React.useCallback((coords: [number, number]) => {
+    setApproximateLocationState(coords);
   }, []);
 
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
   const hasRequestedLocationRef = React.useRef(false);
+  const [shouldAutoCenter, setShouldAutoCenter] = React.useState(() => {
+    try {
+      return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) !== "user";
+    } catch {
+      return true;
+    }
+  });
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
@@ -184,20 +162,43 @@ export default function GoogleMapsClone() {
 
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
-      return { center: [-122.4194, 37.7749], zoom: 12 };
-    const saved = localStorage.getItem("map-view-state");
-    if (saved) {
+      return { center: DEFAULT_FALLBACK_CENTER, zoom: DEFAULT_COUNTRY_ZOOM };
+    let saved: string | null = null;
+    let source: string | null = null;
+    try {
+      saved = localStorage.getItem(MAP_VIEW_STATE_KEY);
+      source = localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY);
+    } catch {
+      saved = null;
+      source = null;
+    }
+    if (saved && source === "user") {
       try {
         return JSON.parse(saved);
       } catch {
         // ignore
       }
     }
-    return { center: getInitialLocation(), zoom: 12 };
+    return { center: DEFAULT_FALLBACK_CENTER, zoom: DEFAULT_COUNTRY_ZOOM };
   });
 
+  const resolvedLocation = userLocation ?? approximateLocation;
+
+  const hasUserInteractedRef = React.useRef(false);
+  const handleUserInteraction = React.useCallback(() => {
+    hasUserInteractedRef.current = true;
+    setShouldAutoCenter(false);
+  }, []);
+
+  const isDefaultCenter = React.useCallback((center: [number, number]) => {
+    return (
+      Math.abs(center[0] - DEFAULT_FALLBACK_CENTER[0]) < 0.01 &&
+      Math.abs(center[1] - DEFAULT_FALLBACK_CENTER[1]) < 0.01
+    );
+  }, []);
+
   React.useEffect(() => {
-    if (userLocation || hasRequestedLocationRef.current) return;
+    if (approximateLocation || hasRequestedLocationRef.current) return;
     if (typeof window === "undefined") return;
     hasRequestedLocationRef.current = true;
     const controller = new AbortController();
@@ -205,23 +206,26 @@ export default function GoogleMapsClone() {
     const fetchIpLocation = async () => {
       try {
         setIsLocating(true);
-        const response = await fetch("https://ipapi.co/json/", {
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const latitude = Number(data?.latitude);
-        const longitude = Number(data?.longitude);
-        if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
-        const coords: [number, number] = [longitude, latitude];
-        setUserLocation(coords);
+        const result = await resolveIpLocation(controller.signal);
+        if (result) {
+          setApproximateLocation(result.coords);
 
-        const hasSavedView = Boolean(localStorage.getItem("map-view-state"));
-        if (!hasSavedView) {
-          setViewState({ center: coords, zoom: 10 });
+          const hasSavedView =
+            (() => {
+              try {
+                return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
+              } catch {
+                return false;
+              }
+            })();
+          if (
+            shouldAutoCenter &&
+            !hasUserInteractedRef.current &&
+            (!hasSavedView || isDefaultCenter(viewState.center))
+          ) {
+            setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
+          }
         }
-      } catch {
-        // ignore
       } finally {
         setIsLocating(false);
       }
@@ -229,7 +233,13 @@ export default function GoogleMapsClone() {
 
     fetchIpLocation();
     return () => controller.abort();
-  }, [userLocation, setUserLocation]);
+  }, [
+    approximateLocation,
+    setApproximateLocation,
+    isDefaultCenter,
+    viewState.center,
+    shouldAutoCenter,
+  ]);
 
   return (
     <SidebarProvider
@@ -238,7 +248,7 @@ export default function GoogleMapsClone() {
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
         <HazrSidebar
-          userLocation={userLocation}
+          userLocation={resolvedLocation}
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
         />
@@ -251,7 +261,14 @@ export default function GoogleMapsClone() {
                 zoom={viewState.zoom}
                 scrollZoom={true}
               >
-                <MapStateSync setViewState={setViewState} />
+                <MapViewController
+                  viewState={viewState}
+                  shouldAutoCenter={shouldAutoCenter}
+                />
+                <MapStateSync
+                  setViewState={setViewState}
+                  onUserInteract={handleUserInteraction}
+                />
 
                 {userLocation && (
                   <MapMarker
@@ -339,7 +356,7 @@ export default function GoogleMapsClone() {
                 <MapOverlayUI
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
-                  userLocation={userLocation}
+                  resolvedLocation={resolvedLocation}
                   isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
@@ -355,28 +372,85 @@ export default function GoogleMapsClone() {
 
 function MapStateSync({
   setViewState,
+  onUserInteract,
 }: {
   setViewState: (s: MapViewState) => void;
+  onUserInteract?: () => void;
 }) {
   const { map } = useMap();
+  const hasUserInteractedRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!map) return;
 
+    const markUserInteraction = () => {
+      hasUserInteractedRef.current = true;
+      onUserInteract?.();
+    };
+
     const handleMoveEnd = () => {
+      if (!hasUserInteractedRef.current) return;
       const newState = {
         center: [map.getCenter().lng, map.getCenter().lat] as [number, number],
         zoom: map.getZoom(),
       };
       setViewState(newState);
-      localStorage.setItem("map-view-state", JSON.stringify(newState));
+      try {
+        localStorage.setItem(MAP_VIEW_STATE_KEY, JSON.stringify(newState));
+        localStorage.setItem(MAP_VIEW_STATE_SOURCE_KEY, "user");
+      } catch {
+        // ignore storage errors
+      }
     };
 
+    map.on("dragstart", markUserInteraction);
+    map.on("zoomstart", markUserInteraction);
+    map.on("rotatestart", markUserInteraction);
+    map.on("pitchstart", markUserInteraction);
     map.on("moveend", handleMoveEnd);
     return () => {
+      map.off("dragstart", markUserInteraction);
+      map.off("zoomstart", markUserInteraction);
+      map.off("rotatestart", markUserInteraction);
+      map.off("pitchstart", markUserInteraction);
       map.off("moveend", handleMoveEnd);
     };
-  }, [map, setViewState]);
+  }, [map, setViewState, onUserInteract]);
+
+  return null;
+}
+
+function MapViewController({
+  viewState,
+  shouldAutoCenter,
+}: {
+  viewState: MapViewState;
+  shouldAutoCenter: boolean;
+}) {
+  const { map, isLoaded } = useMap();
+  const lastAppliedRef = React.useRef<MapViewState | null>(null);
+
+  React.useEffect(() => {
+    if (!map || !isLoaded || !shouldAutoCenter) return;
+
+    const lastApplied = lastAppliedRef.current;
+    if (
+      lastApplied &&
+      lastApplied.center[0] === viewState.center[0] &&
+      lastApplied.center[1] === viewState.center[1] &&
+      lastApplied.zoom === viewState.zoom
+    ) {
+      return;
+    }
+
+    map.easeTo({
+      center: viewState.center,
+      zoom: viewState.zoom,
+      duration: 900,
+      essential: true,
+    });
+    lastAppliedRef.current = viewState;
+  }, [map, isLoaded, shouldAutoCenter, viewState]);
 
   return null;
 }
@@ -416,14 +490,14 @@ function EarthquakeFlyTo({
 function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
-  userLocation,
+  resolvedLocation,
   isLocating,
   earthquakes,
   onEarthquakeSelect,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
-  userLocation: [number, number] | null;
+  resolvedLocation: [number, number] | null;
   isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
@@ -455,9 +529,9 @@ function MapOverlayUI({
       <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
         <div className="pointer-events-auto">
           <HourlyForecastDock
-            latitude={userLocation?.[1] ?? null}
-            longitude={userLocation?.[0] ?? null}
-          />
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
+            />
         </div>
       </div>
 
@@ -471,7 +545,7 @@ function MapOverlayUI({
             <div className="flex-1 overflow-auto">
               <HazrMenuPanel
                 onSelect={handleCloseMobileMenu}
-                userLocation={userLocation}
+                userLocation={resolvedLocation}
                 isLocating={isLocating}
               />
             </div>
@@ -523,13 +597,13 @@ function MapOverlayUI({
         <DrawerContent className="max-h-[85vh]">
           <div className="p-4 overflow-y-auto max-h-[85vh]">
             <WeatherDock
-              latitude={userLocation?.[1] ?? null}
-              longitude={userLocation?.[0] ?? null}
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
               unstyled
             />
             <HourlyForecastDock
-              latitude={userLocation?.[1] ?? null}
-              longitude={userLocation?.[0] ?? null}
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
               className="mt-4 md:hidden"
             />
           </div>
@@ -800,11 +874,8 @@ function CustomMapControls({
         "horizon-blend": 0.15,
         range: [0.6, 10],
       });
-      const targetZoom = Math.min(map.getZoom(), 3.2);
       map.easeTo({
         pitch: 55,
-        bearing: 0,
-        zoom: targetZoom,
         duration: 800,
         easing: ease,
         essential: true,

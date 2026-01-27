@@ -8,23 +8,13 @@ import type {
   WeatherCode,
 } from "@/types/api";
 import { WEATHER_CODE_DESCRIPTIONS } from "@/types/api";
+import { resolveIpLocation } from "@/lib/ip-location";
 
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+let lastWeatherIpLogKey: string | null = null;
+const LOCATION_LOOKUP_TIMEOUT_MS = 1800;
 
-type WeatherCacheEntry = {
-  current: ProcessedWeather | null;
-  hourly: ProcessedHourlyForecast[];
-  daily: ProcessedDailyForecast[];
-  locationInfo: LocationInfo | null;
-  lastUpdated: Date | null;
-  selectedHourIndex: number;
-};
-
-const weatherCache = new Map<string, WeatherCacheEntry>();
-
-const getCacheKey = (lat: number, lng: number): string =>
-  `${lat.toFixed(3)}:${lng.toFixed(3)}`;
 
 type UseWeatherOptions = {
   latitude: number | null;
@@ -105,7 +95,11 @@ const buildWeatherUrl = (lat: number, lng: number, forecastDays: number = 7): st
   return `${OPEN_METEO_BASE_URL}?${params.toString()}`;
 };
 
-const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo | null> => {
+const fetchLocationName = async (
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<LocationInfo | null> => {
   try {
     const params = new URLSearchParams({
       lat: lat.toString(),
@@ -115,6 +109,7 @@ const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo
     });
 
     const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
+      signal,
       headers: {
         "Accept-Language": "en",
         "User-Agent": "Naero Weather App",
@@ -148,6 +143,25 @@ const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo
     };
   } catch {
     return null;
+  }
+};
+
+const fetchLocationNameWithTimeout = async (
+  lat: number,
+  lng: number,
+): Promise<LocationInfo | null> => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(
+    () => controller.abort(),
+    LOCATION_LOOKUP_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetchLocationName(lat, lng, controller.signal);
+  } catch {
+    return null;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 };
 
@@ -249,27 +263,14 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [selectedHourIndex, setSelectedHourIndex] = useState(0);
   const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [ipMeta, setIpMeta] = useState<{ ip?: string; city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const hasResolvedIpRef = useRef(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const resolvedLatitude = latitude ?? ipLocation?.latitude ?? null;
   const resolvedLongitude = longitude ?? ipLocation?.longitude ?? null;
-  const cacheKey = resolvedLatitude !== null && resolvedLongitude !== null
-    ? getCacheKey(resolvedLatitude, resolvedLongitude)
-    : null;
-
-  useEffect(() => {
-    if (!cacheKey) return;
-    const cached = weatherCache.get(cacheKey);
-    if (!cached) return;
-    setCurrent(cached.current);
-    setHourly(cached.hourly);
-    setDaily(cached.daily);
-    setLocationInfo(cached.locationInfo);
-    setLastUpdated(cached.lastUpdated);
-    setSelectedHourIndex(cached.selectedHourIndex);
-  }, [cacheKey]);
 
   const fetchWeather = useCallback(async () => {
     if (resolvedLatitude === null || resolvedLongitude === null) {
@@ -287,19 +288,20 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     setError(null);
 
     try {
-      // Fetch weather and location in parallel
-      const [weatherResponse, locationData] = await Promise.all([
-        fetch(buildWeatherUrl(resolvedLatitude, resolvedLongitude), {
-          signal: abortControllerRef.current.signal,
-        }),
-        fetchLocationName(resolvedLatitude, resolvedLongitude),
-      ]);
+      const weatherResponse = await fetch(
+        buildWeatherUrl(resolvedLatitude, resolvedLongitude),
+        { signal: abortControllerRef.current.signal },
+      );
 
       if (!weatherResponse.ok) {
         throw new Error(`Failed to fetch weather: ${weatherResponse.statusText}`);
       }
 
       const data: WeatherResponse = await weatherResponse.json();
+      const locationPromise = fetchLocationNameWithTimeout(
+        resolvedLatitude,
+        resolvedLongitude,
+      );
 
       const processedCurrent = processCurrentWeather(data);
       const processedHourly = processHourlyForecast(data, forecastHours);
@@ -310,56 +312,40 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
       setDaily(processedDaily);
       setSelectedHourIndex(0); // Reset to current hour
       
-      // Merge location data with weather location info
-      if (locationData) {
-        setLocationInfo({
-          ...locationData,
-          elevation: data.elevation,
-          timezone: data.timezone,
-        });
-      } else {
-        setLocationInfo({
-          city: "",
-          region: "",
-          country: "",
-          countryCode: "",
-          displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          elevation: data.elevation,
-          timezone: data.timezone,
-        });
-      }
+      const fallbackDisplay = ipMeta?.city || ipMeta?.region || ipMeta?.country
+        ? [ipMeta?.city, ipMeta?.region, ipMeta?.country]
+            .filter(Boolean)
+            .join(", ")
+        : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`;
+
+      const baseLocationInfo: LocationInfo = {
+        city: ipMeta?.city ?? "",
+        region: ipMeta?.region ?? "",
+        country: ipMeta?.country ?? "",
+        countryCode: ipMeta?.countryCode ?? "",
+        displayName: fallbackDisplay,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        elevation: data.elevation,
+        timezone: ipMeta?.timezone ?? data.timezone,
+      };
+
+      setLocationInfo(baseLocationInfo);
 
       const updatedAt = new Date();
       setLastUpdated(updatedAt);
 
-      if (cacheKey) {
-        weatherCache.set(cacheKey, {
-          current: processedCurrent,
-          hourly: processedHourly,
-          daily: processedDaily,
-          locationInfo: locationData
-            ? {
-                ...locationData,
-                elevation: data.elevation,
-                timezone: data.timezone,
-              }
-            : {
-                city: "",
-                region: "",
-                country: "",
-                countryCode: "",
-                displayName: `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
-                latitude: data.latitude,
-                longitude: data.longitude,
-                elevation: data.elevation,
-                timezone: data.timezone,
-              },
-          lastUpdated: updatedAt,
-          selectedHourIndex: 0,
-        });
-      }
+      locationPromise
+        .then((locationData) => {
+          if (!locationData) return;
+          const enrichedLocation = {
+            ...locationData,
+            elevation: data.elevation,
+            timezone: data.timezone,
+          };
+          setLocationInfo(enrichedLocation);
+        })
+        .catch(() => null);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -368,45 +354,62 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours, ipMeta]);
 
-  useEffect(() => {
-    if (!cacheKey) return;
-    const cached = weatherCache.get(cacheKey);
-    if (!cached) return;
-    weatherCache.set(cacheKey, {
-      ...cached,
-      selectedHourIndex,
-    });
-  }, [cacheKey, selectedHourIndex]);
+  const resolveIpLocationIfNeeded = useCallback(async (force = false) => {
+    if (latitude !== null && longitude !== null) return true;
+    if (ipLocation && !force) return true;
+    if (isResolvingLocation) return false;
+    if (!force && hasResolvedIpRef.current) return false;
+
+    const controller = new AbortController();
+    try {
+      setIsResolvingLocation(true);
+      hasResolvedIpRef.current = true;
+      const result = await resolveIpLocation(controller.signal, {
+        allowTimezoneFallback: false,
+      });
+      if (!result) {
+        setError(new Error("Unable to resolve IP location"));
+        return false;
+      }
+      setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
+      if (result.meta) {
+        setIpMeta({
+          ip: result.meta.ip,
+          city: result.meta.city,
+          region: result.meta.region,
+          country: result.meta.country,
+          countryCode: result.meta.countryCode,
+          timezone: result.meta.timezone,
+        });
+      }
+      const logKey = result.meta?.ip ?? `${result.coords[0]}:${result.coords[1]}`;
+      if (lastWeatherIpLogKey !== logKey) {
+        lastWeatherIpLogKey = logKey;
+        if (result.meta?.ip) {
+          console.log("[useWeather] IP location", {
+            ip: result.meta.ip,
+            coords: result.coords,
+            country: result.meta.country,
+            city: result.meta.city,
+          });
+        } else {
+          console.log("[useWeather] IP location", { coords: result.coords });
+        }
+      }
+      return true;
+    } finally {
+      setIsResolvingLocation(false);
+      controller.abort();
+    }
+  }, [latitude, longitude, ipLocation, isResolvingLocation]);
 
   useEffect(() => {
     if (latitude !== null && longitude !== null) return;
-    if (ipLocation || isResolvingLocation) return;
-
-    const controller = new AbortController();
-    const fetchIpLocation = async () => {
-      try {
-        setIsResolvingLocation(true);
-        const response = await fetch("https://ipapi.co/json/", {
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const latitudeValue = Number(data?.latitude);
-        const longitudeValue = Number(data?.longitude);
-        if (Number.isNaN(latitudeValue) || Number.isNaN(longitudeValue)) return;
-        setIpLocation({ latitude: latitudeValue, longitude: longitudeValue });
-      } catch {
-        // ignore
-      } finally {
-        setIsResolvingLocation(false);
-      }
-    };
-
-    fetchIpLocation();
-    return () => controller.abort();
-  }, [latitude, longitude, ipLocation, isResolvingLocation]);
+    if (ipLocation || isResolvingLocation || hasResolvedIpRef.current) return;
+    void resolveIpLocationIfNeeded(false);
+  }, [latitude, longitude, ipLocation, isResolvingLocation, resolveIpLocationIfNeeded]);
 
   // Initial fetch and auto-refresh
   useEffect(() => {
@@ -448,6 +451,14 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     }
   }, [canGoPrev]);
 
+  const refetch = useCallback(async () => {
+    const canFetch = await resolveIpLocationIfNeeded(true);
+    if (!canFetch && (resolvedLatitude === null || resolvedLongitude === null)) {
+      return;
+    }
+    await fetchWeather();
+  }, [fetchWeather, resolveIpLocationIfNeeded, resolvedLatitude, resolvedLongitude]);
+
   return {
     current,
     hourly,
@@ -455,7 +466,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     isLoading,
     error,
     lastUpdated,
-    refetch: fetchWeather,
+    refetch,
     locationInfo,
     selectedHourIndex,
     setSelectedHourIndex,
