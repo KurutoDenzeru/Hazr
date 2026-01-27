@@ -101,8 +101,8 @@ const hexToRgba = (hex: string, alpha: number) => {
 
 const getImpactRadiusBase = (magnitude: number) => {
   const clampedMagnitude = clampMagnitude(magnitude);
-  const minRadius = 15;
-  const maxRadius = 35;
+  const minRadius = 12;
+  const maxRadius = 28;
   const ratio = (clampedMagnitude - 2) / 6;
   return minRadius + (maxRadius - minRadius) * ratio;
 };
@@ -139,7 +139,7 @@ const getImpactRadiusPixels = (
   const radiusMeters = baseRadius * baseMetersPerPixel;
   const metersPerPixel = getMetersPerPixel(zoom, latitude);
   const pixelRadius = radiusMeters / metersPerPixel;
-  return Math.min(220, Math.max(18, pixelRadius));
+  return Math.min(150, Math.max(10, pixelRadius));
 };
 
 
@@ -546,9 +546,9 @@ function EarthquakeMarkers({
     if (!map) return;
     const handleZoom = () => setMapZoom(map.getZoom());
     handleZoom();
-    map.on("zoom", handleZoom);
+    map.on("zoomend", handleZoom);
     return () => {
-      map.off("zoom", handleZoom);
+      map.off("zoomend", handleZoom);
     };
   }, [map]);
 
@@ -571,6 +571,7 @@ function EarthquakeMarkers({
           Math.min(impactAlpha * 2.2, 0.32),
         );
         const impactPulseDuration = getImpactPulseDuration(eq.magnitude);
+        const staticRadius = impactRadius * 0.58;
 
         return (
           <MapMarker
@@ -589,8 +590,8 @@ function EarthquakeMarkers({
                   aria-hidden="true"
                   className="absolute rounded-full"
                   style={{
-                    width: `${impactRadius}px`,
-                    height: `${impactRadius}px`,
+                    width: `${staticRadius}px`,
+                    height: `${staticRadius}px`,
                     backgroundColor: hexToRgba(impactColor, impactAlpha * 0.4),
                   }}
                 />
@@ -608,13 +609,12 @@ function EarthquakeMarkers({
                     />
                     <span
                       aria-hidden="true"
-                      className="absolute rounded-full animate-ping [animation-delay:450ms]"
+                      className="absolute rounded-full border"
                       style={{
                         width: `${impactRadius * 0.74}px`,
                         height: `${impactRadius * 0.74}px`,
                         borderColor: impactRing,
                         borderWidth: "1px",
-                        animationDuration: `${impactPulseDuration * 1.1}ms`,
                       }}
                     />
                   </>
