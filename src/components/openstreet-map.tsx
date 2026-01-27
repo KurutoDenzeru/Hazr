@@ -52,6 +52,10 @@ import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
+const MAP_VIEW_STATE_KEY = "map-view-state";
+const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
+const APPROXIMATE_LOCATION_KEY = "approximate-location";
+const IP_LOCATION_META_KEY = "ip-location-meta";
 
 // Helper to get approximate location based on timezone
 const getInitialLocation = () => {
@@ -89,12 +93,23 @@ type MapViewState = {
   zoom: number;
 };
 
+type IpLocationMeta = {
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  city?: string;
+  timezone?: string;
+  isp?: string;
+  languages?: string;
+  currency?: string;
+};
+
 export default function GoogleMapsClone() {
   const [approximateLocation, setApproximateLocationState] = React.useState<
     [number, number] | null
   >(() => {
     if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("approximate-location");
+    const saved = localStorage.getItem(APPROXIMATE_LOCATION_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -117,7 +132,7 @@ export default function GoogleMapsClone() {
 
   const setApproximateLocation = React.useCallback((coords: [number, number]) => {
     setApproximateLocationState(coords);
-    localStorage.setItem("approximate-location", JSON.stringify(coords));
+    localStorage.setItem(APPROXIMATE_LOCATION_KEY, JSON.stringify(coords));
   }, []);
 
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
@@ -188,8 +203,9 @@ export default function GoogleMapsClone() {
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
-    const saved = localStorage.getItem("map-view-state");
-    if (saved) {
+    const saved = localStorage.getItem(MAP_VIEW_STATE_KEY);
+    const source = localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY);
+    if (saved && source === "user") {
       try {
         return JSON.parse(saved);
       } catch {
@@ -221,7 +237,20 @@ export default function GoogleMapsClone() {
         const coords: [number, number] = [longitude, latitude];
         setApproximateLocation(coords);
 
-        const hasSavedView = Boolean(localStorage.getItem("map-view-state"));
+        const ipMeta: IpLocationMeta = {
+          country: data?.country_name,
+          countryCode: data?.country_code,
+          region: data?.region,
+          city: data?.city,
+          timezone: data?.timezone,
+          isp: data?.org ?? data?.asn,
+          languages: data?.languages,
+          currency: data?.currency,
+        };
+        localStorage.setItem(IP_LOCATION_META_KEY, JSON.stringify(ipMeta));
+
+        const hasSavedView =
+          localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
         if (!hasSavedView) {
           setViewState({ center: coords, zoom: DEFAULT_COUNTRY_ZOOM });
         }
@@ -364,21 +393,36 @@ function MapStateSync({
   setViewState: (s: MapViewState) => void;
 }) {
   const { map } = useMap();
+  const hasUserInteractedRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!map) return;
 
+    const markUserInteraction = () => {
+      hasUserInteractedRef.current = true;
+    };
+
     const handleMoveEnd = () => {
+      if (!hasUserInteractedRef.current) return;
       const newState = {
         center: [map.getCenter().lng, map.getCenter().lat] as [number, number],
         zoom: map.getZoom(),
       };
       setViewState(newState);
-      localStorage.setItem("map-view-state", JSON.stringify(newState));
+      localStorage.setItem(MAP_VIEW_STATE_KEY, JSON.stringify(newState));
+      localStorage.setItem(MAP_VIEW_STATE_SOURCE_KEY, "user");
     };
 
+    map.on("dragstart", markUserInteraction);
+    map.on("zoomstart", markUserInteraction);
+    map.on("rotatestart", markUserInteraction);
+    map.on("pitchstart", markUserInteraction);
     map.on("moveend", handleMoveEnd);
     return () => {
+      map.off("dragstart", markUserInteraction);
+      map.off("zoomstart", markUserInteraction);
+      map.off("rotatestart", markUserInteraction);
+      map.off("pitchstart", markUserInteraction);
       map.off("moveend", handleMoveEnd);
     };
   }, [map, setViewState]);
