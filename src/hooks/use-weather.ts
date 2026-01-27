@@ -12,6 +12,7 @@ import { resolveIpLocation } from "@/lib/ip-location";
 
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+const LOCATION_LOOKUP_TIMEOUT_MS = 1800;
 
 type WeatherCacheEntry = {
   current: ProcessedWeather | null;
@@ -106,7 +107,11 @@ const buildWeatherUrl = (lat: number, lng: number, forecastDays: number = 7): st
   return `${OPEN_METEO_BASE_URL}?${params.toString()}`;
 };
 
-const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo | null> => {
+const fetchLocationName = async (
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<LocationInfo | null> => {
   try {
     const params = new URLSearchParams({
       lat: lat.toString(),
@@ -116,6 +121,7 @@ const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo
     });
 
     const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
+      signal,
       headers: {
         "Accept-Language": "en",
         "User-Agent": "Naero Weather App",
@@ -149,6 +155,25 @@ const fetchLocationName = async (lat: number, lng: number): Promise<LocationInfo
     };
   } catch {
     return null;
+  }
+};
+
+const fetchLocationNameWithTimeout = async (
+  lat: number,
+  lng: number,
+): Promise<LocationInfo | null> => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(
+    () => controller.abort(),
+    LOCATION_LOOKUP_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetchLocationName(lat, lng, controller.signal);
+  } catch {
+    return null;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 };
 
@@ -289,19 +314,20 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     setError(null);
 
     try {
-      // Fetch weather and location in parallel
-      const [weatherResponse, locationData] = await Promise.all([
-        fetch(buildWeatherUrl(resolvedLatitude, resolvedLongitude), {
-          signal: abortControllerRef.current.signal,
-        }),
-        fetchLocationName(resolvedLatitude, resolvedLongitude),
-      ]);
+      const weatherResponse = await fetch(
+        buildWeatherUrl(resolvedLatitude, resolvedLongitude),
+        { signal: abortControllerRef.current.signal },
+      );
 
       if (!weatherResponse.ok) {
         throw new Error(`Failed to fetch weather: ${weatherResponse.statusText}`);
       }
 
       const data: WeatherResponse = await weatherResponse.json();
+      const locationPromise = fetchLocationNameWithTimeout(
+        resolvedLatitude,
+        resolvedLongitude,
+      );
 
       const processedCurrent = processCurrentWeather(data);
       const processedHourly = processHourlyForecast(data, forecastHours);
@@ -312,30 +338,25 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
       setDaily(processedDaily);
       setSelectedHourIndex(0); // Reset to current hour
       
-      // Merge location data with weather location info
-      if (locationData) {
-        setLocationInfo({
-          ...locationData,
-          elevation: data.elevation,
-          timezone: data.timezone,
-        });
-      } else {
-        const fallbackDisplay = ipMeta?.city || ipMeta?.region || ipMeta?.country
-          ? [ipMeta?.city, ipMeta?.region, ipMeta?.country].filter(Boolean).join(", ")
-          : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`;
+      const fallbackDisplay = ipMeta?.city || ipMeta?.region || ipMeta?.country
+        ? [ipMeta?.city, ipMeta?.region, ipMeta?.country]
+            .filter(Boolean)
+            .join(", ")
+        : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`;
 
-        setLocationInfo({
-          city: ipMeta?.city ?? "",
-          region: ipMeta?.region ?? "",
-          country: ipMeta?.country ?? "",
-          countryCode: ipMeta?.countryCode ?? "",
-          displayName: fallbackDisplay,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          elevation: data.elevation,
-          timezone: ipMeta?.timezone ?? data.timezone,
-        });
-      }
+      const baseLocationInfo: LocationInfo = {
+        city: ipMeta?.city ?? "",
+        region: ipMeta?.region ?? "",
+        country: ipMeta?.country ?? "",
+        countryCode: ipMeta?.countryCode ?? "",
+        displayName: fallbackDisplay,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        elevation: data.elevation,
+        timezone: ipMeta?.timezone ?? data.timezone,
+      };
+
+      setLocationInfo(baseLocationInfo);
 
       const updatedAt = new Date();
       setLastUpdated(updatedAt);
@@ -345,32 +366,32 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
           current: processedCurrent,
           hourly: processedHourly,
           daily: processedDaily,
-          locationInfo: locationData
-            ? {
-                ...locationData,
-                elevation: data.elevation,
-                timezone: data.timezone,
-              }
-            : {
-                city: ipMeta?.city ?? "",
-                region: ipMeta?.region ?? "",
-                country: ipMeta?.country ?? "",
-                countryCode: ipMeta?.countryCode ?? "",
-                displayName:
-                  ipMeta?.city || ipMeta?.region || ipMeta?.country
-                    ? [ipMeta?.city, ipMeta?.region, ipMeta?.country]
-                        .filter(Boolean)
-                        .join(", ")
-                    : `${resolvedLatitude.toFixed(2)}°, ${resolvedLongitude.toFixed(2)}°`,
-                latitude: data.latitude,
-                longitude: data.longitude,
-                elevation: data.elevation,
-                timezone: ipMeta?.timezone ?? data.timezone,
-              },
+          locationInfo: baseLocationInfo,
           lastUpdated: updatedAt,
           selectedHourIndex: 0,
         });
       }
+
+      locationPromise
+        .then((locationData) => {
+          if (!locationData) return;
+          const enrichedLocation = {
+            ...locationData,
+            elevation: data.elevation,
+            timezone: data.timezone,
+          };
+          setLocationInfo(enrichedLocation);
+          if (cacheKey) {
+            const cached = weatherCache.get(cacheKey);
+            if (cached) {
+              weatherCache.set(cacheKey, {
+                ...cached,
+                locationInfo: enrichedLocation,
+              });
+            }
+          }
+        })
+        .catch(() => null);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;

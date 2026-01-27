@@ -1,5 +1,6 @@
 type IpLocationMeta = {
   ip?: string;
+  provider?: "ipapi" | "ipwhois" | "ipinfo";
   country?: string;
   countryCode?: string;
   region?: string;
@@ -24,6 +25,7 @@ type CachedIpLocation = {
 
 const IP_LOCATION_CACHE_KEY = "ip-location-cache";
 const IP_LOCATION_CACHE_TTL = 1000 * 60 * 60 * 12;
+const IP_LOCATION_TIMEOUT_MS = 2500;
 
 const getInitialLocation = (): [number, number] => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -66,11 +68,108 @@ const writeCachedIpLocation = (entry: CachedIpLocation) => {
 const isCacheFresh = (timestamp: number) =>
   Date.now() - timestamp < IP_LOCATION_CACHE_TTL;
 
+const fetchWithTimeout = async (url: string, signal?: AbortSignal) => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(
+    () => controller.abort(),
+    IP_LOCATION_TIMEOUT_MS,
+  );
+
+  const abortHandler = () => controller.abort();
+  if (signal) {
+    signal.addEventListener("abort", abortHandler, { once: true });
+  }
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    if (signal) {
+      signal.removeEventListener("abort", abortHandler);
+    }
+  }
+};
+
+const parseIpApi = (data: Record<string, unknown>): IpLocationResult | null => {
+  const latitude = Number(data?.latitude);
+  const longitude = Number(data?.longitude);
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+
+  const coords: [number, number] = [longitude, latitude];
+  if (!isValidCoords(coords)) return null;
+
+  const meta: IpLocationMeta = {
+    ip: data?.ip as string | undefined,
+    provider: "ipapi",
+    country: data?.country_name as string | undefined,
+    countryCode: data?.country_code as string | undefined,
+    region: data?.region as string | undefined,
+    city: data?.city as string | undefined,
+    timezone: data?.timezone as string | undefined,
+    isp: (data?.org as string | undefined) ?? (data?.asn as string | undefined),
+    languages: data?.languages as string | undefined,
+    currency: data?.currency as string | undefined,
+  };
+
+  return { coords, meta, source: "ip" };
+};
+
+const parseIpWhoIs = (data: Record<string, unknown>): IpLocationResult | null => {
+  const latitude = Number(data?.latitude);
+  const longitude = Number(data?.longitude);
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+
+  const coords: [number, number] = [longitude, latitude];
+  if (!isValidCoords(coords)) return null;
+
+  const timezone = (data?.timezone as { id?: string } | undefined)?.id;
+  const connection = data?.connection as { isp?: string } | undefined;
+  const currency = (data?.currency as { code?: string } | undefined)?.code;
+
+  const meta: IpLocationMeta = {
+    ip: data?.ip as string | undefined,
+    provider: "ipwhois",
+    country: data?.country as string | undefined,
+    countryCode: data?.country_code as string | undefined,
+    region: data?.region as string | undefined,
+    city: data?.city as string | undefined,
+    timezone,
+    isp: connection?.isp,
+    currency,
+  };
+
+  return { coords, meta, source: "ip" };
+};
+
+const parseIpInfo = (data: Record<string, unknown>): IpLocationResult | null => {
+  const loc = (data?.loc as string | undefined)?.split(",");
+  if (!loc || loc.length !== 2) return null;
+  const latitude = Number(loc[0]);
+  const longitude = Number(loc[1]);
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+
+  const coords: [number, number] = [longitude, latitude];
+  if (!isValidCoords(coords)) return null;
+
+  const meta: IpLocationMeta = {
+    ip: data?.ip as string | undefined,
+    provider: "ipinfo",
+    country: data?.country as string | undefined,
+    countryCode: data?.country as string | undefined,
+    region: data?.region as string | undefined,
+    city: data?.city as string | undefined,
+    timezone: data?.timezone as string | undefined,
+    isp: data?.org as string | undefined,
+  };
+
+  return { coords, meta, source: "ip" };
+};
+
 export const resolveIpLocation = async (
   signal?: AbortSignal,
   options: { allowTimezoneFallback?: boolean } = {},
 ): Promise<IpLocationResult | null> => {
-  const { allowTimezoneFallback = true } = options;
+  const { allowTimezoneFallback = false } = options;
   const cached = readCachedIpLocation();
   if (cached && isCacheFresh(cached.timestamp)) {
     return { coords: cached.coords, meta: cached.meta, source: "ip" };
@@ -80,31 +179,32 @@ export const resolveIpLocation = async (
   }
 
   try {
-    const response = await fetch("https://ipapi.co/json/", { signal });
-    if (!response.ok) throw new Error("ipapi request failed");
-    const data = await response.json();
-    const latitude = Number(data?.latitude);
-    const longitude = Number(data?.longitude);
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      throw new Error("invalid ip coordinates");
+    const providers = [
+      {
+        url: "https://ipwho.is/",
+        parser: parseIpWhoIs,
+      },
+      {
+        url: "https://ipapi.co/json/",
+        parser: parseIpApi,
+      },
+      {
+        url: "https://ipinfo.io/json",
+        parser: parseIpInfo,
+      },
+    ];
+
+    for (const provider of providers) {
+      const response = await fetchWithTimeout(provider.url, signal);
+      if (!response.ok) continue;
+      const data = await response.json();
+      const parsed = provider.parser(data as Record<string, unknown>);
+      if (!parsed) continue;
+      writeCachedIpLocation({ coords: parsed.coords, meta: parsed.meta, timestamp: Date.now() });
+      return parsed;
     }
 
-    const coords: [number, number] = [longitude, latitude];
-    const meta: IpLocationMeta = {
-      ip: data?.ip,
-      country: data?.country_name,
-      countryCode: data?.country_code,
-      region: data?.region,
-      city: data?.city,
-      timezone: data?.timezone,
-      isp: data?.org ?? data?.asn,
-      languages: data?.languages,
-      currency: data?.currency,
-    };
-
-    writeCachedIpLocation({ coords, meta, timestamp: Date.now() });
-
-    return { coords, meta, source: "ip" };
+    throw new Error("all ip providers failed");
   } catch {
     if (!allowTimezoneFallback) return null;
     const coords = getInitialLocation();
