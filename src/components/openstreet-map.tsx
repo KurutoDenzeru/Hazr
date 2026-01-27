@@ -56,8 +56,6 @@ const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
-const MAP_TILE_SIZE = 512;
-const EARTH_CIRCUMFERENCE_METERS = 2 * Math.PI * 6378137;
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -78,70 +76,6 @@ type MapViewState = {
   zoom: number;
 };
 
-const clampMagnitude = (magnitude: number) => Math.min(8, Math.max(2, magnitude));
-
-const hexToRgba = (hex: string, alpha: number) => {
-  const normalized = hex.replace("#", "");
-  const isShort = normalized.length === 3;
-  const fullHex = isShort
-    ? normalized
-        .split("")
-        .map((value) => `${value}${value}`)
-        .join("")
-    : normalized;
-  const hexValue = Number.parseInt(fullHex, 16);
-  if (Number.isNaN(hexValue)) {
-    return `rgba(255, 255, 255, ${alpha})`;
-  }
-  const red = (hexValue >> 16) & 255;
-  const green = (hexValue >> 8) & 255;
-  const blue = hexValue & 255;
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-};
-
-const getImpactRadiusBase = (magnitude: number) => {
-  const clampedMagnitude = clampMagnitude(magnitude);
-  const minRadius = 12;
-  const maxRadius = 28;
-  const ratio = (clampedMagnitude - 2) / 6;
-  return minRadius + (maxRadius - minRadius) * ratio;
-};
-
-const getImpactAlpha = (magnitude: number) => {
-  const clampedMagnitude = clampMagnitude(magnitude);
-  const minAlpha = 0.06;
-  const maxAlpha = 0.18;
-  const ratio = (clampedMagnitude - 2) / 6;
-  return minAlpha + (maxAlpha - minAlpha) * ratio;
-};
-
-const getImpactPulseDuration = (magnitude: number) => {
-  const clampedMagnitude = clampMagnitude(magnitude);
-  const minDuration = 1600;
-  const maxDuration = 2600;
-  const ratio = (clampedMagnitude - 2) / 6;
-  return minDuration + (maxDuration - minDuration) * ratio;
-};
-
-const getMetersPerPixel = (zoom: number, latitude: number) => {
-  const latRadians = (latitude * Math.PI) / 180;
-  const scale = MAP_TILE_SIZE * Math.pow(2, zoom);
-  return (Math.cos(latRadians) * EARTH_CIRCUMFERENCE_METERS) / scale;
-};
-
-const getImpactRadiusPixels = (
-  magnitude: number,
-  latitude: number,
-  zoom: number,
-) => {
-  const baseRadius = getImpactRadiusBase(magnitude);
-  const baseMetersPerPixel = getMetersPerPixel(DEFAULT_COUNTRY_ZOOM, latitude);
-  const radiusMeters = baseRadius * baseMetersPerPixel;
-  const metersPerPixel = getMetersPerPixel(zoom, latitude);
-  const pixelRadius = radiusMeters / metersPerPixel;
-  return Math.min(150, Math.max(10, pixelRadius));
-};
-
 
 export default function GoogleMapsClone() {
   const [approximateLocation, setApproximateLocationState] = React.useState<
@@ -157,6 +91,7 @@ export default function GoogleMapsClone() {
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
+  const [activeQuakePulseId, setActiveQuakePulseId] = React.useState<string | null>(null);
   const hasRequestedLocationRef = React.useRef(false);
   const [shouldAutoCenter, setShouldAutoCenter] = React.useState(() => {
     try {
@@ -192,12 +127,22 @@ export default function GoogleMapsClone() {
     return 1500;
   };
 
+  const handleTriggerQuakePulse = React.useCallback(
+    (earthquake: ProcessedEarthquake) => {
+      if (typeof window === "undefined") return;
+
+      setActiveQuakePulseId(earthquake.id);
+    },
+    []
+  );
+
   // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       setSelectedEarthquake(earthquake);
+      handleTriggerQuakePulse(earthquake);
     },
-    []
+    [handleTriggerQuakePulse]
   );
 
   // Close the earthquake popover
@@ -225,6 +170,7 @@ export default function GoogleMapsClone() {
       window.clearTimeout(locateAnimationTimeoutRef.current);
     };
   }, []);
+
 
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
@@ -369,14 +315,71 @@ export default function GoogleMapsClone() {
                 )}
 
                 {/* Earthquake Markers */}
-                <EarthquakeMarkers
-                  earthquakes={earthquakes}
-                  onEarthquakeSelect={handleEarthquakeSelect}
-                  now={now}
-                  getPulseSize={getPulseSize}
-                  getPulseDuration={getPulseDuration}
-                  selectedEarthquakeId={selectedEarthquake?.id ?? null}
-                />
+                {earthquakes.map((eq) => (
+                  <MapMarker
+                    key={eq.id}
+                    longitude={eq.coordinates[0]}
+                    latitude={eq.coordinates[1]}
+                  >
+                    <MarkerContent>
+                      <button
+                        type="button"
+                        onClick={() => handleEarthquakeSelect(eq)}
+                        className="group relative flex items-center justify-center cursor-pointer"
+                        aria-label={`Earthquake: ${eq.title}`}
+                      >
+                        {activeQuakePulseId === eq.id && (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className="absolute rounded-full animate-ping"
+                              style={{
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                width: `${getPulseSize(eq.magnitude)}px`,
+                                height: `${getPulseSize(eq.magnitude)}px`,
+                              }}
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute rounded-full animate-pulse"
+                              style={{
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
+                                width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                                height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                              }}
+                            />
+                          </>
+                        )}
+                        {/* Pulse ring for recent earthquakes */}
+                        {now - eq.time.getTime() < 3600000 && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute rounded-full animate-ping"
+                            style={{
+                              backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
+                              width: `${getPulseSize(eq.magnitude)}px`,
+                              height: `${getPulseSize(eq.magnitude)}px`,
+                              animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
+                            }}
+                          />
+                        )}
+                        {/* Main marker */}
+                        <div
+                          className={cn(
+                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                          )}
+                          style={{
+                            backgroundColor: getMagnitudeColor(eq.magnitude),
+                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                          }}
+                        >
+                          {eq.magnitude.toFixed(1)}
+                        </div>
+                      </button>
+                    </MarkerContent>
+                  </MapMarker>
+                ))}
 
                 {/* Fly to selected earthquake */}
                 <EarthquakeFlyTo earthquake={selectedEarthquake} />
@@ -517,138 +520,6 @@ function EarthquakeFlyTo({
   }, [map, earthquake]);
 
   return null;
-}
-
-
-type EarthquakeMarkersProps = {
-  earthquakes: ProcessedEarthquake[];
-  onEarthquakeSelect: (earthquake: ProcessedEarthquake) => void;
-  now: number;
-  getPulseSize: (magnitude: number) => number;
-  getPulseDuration: (magnitude: number) => number;
-  selectedEarthquakeId: string | null;
-};
-
-function EarthquakeMarkers({
-  earthquakes,
-  onEarthquakeSelect,
-  now,
-  getPulseSize,
-  getPulseDuration,
-  selectedEarthquakeId,
-}: EarthquakeMarkersProps) {
-  const { map } = useMap();
-  const [mapZoom, setMapZoom] = React.useState(
-    () => map?.getZoom() ?? DEFAULT_COUNTRY_ZOOM,
-  );
-
-  React.useEffect(() => {
-    if (!map) return;
-    const handleZoom = () => setMapZoom(map.getZoom());
-    handleZoom();
-    map.on("zoomend", handleZoom);
-    return () => {
-      map.off("zoomend", handleZoom);
-    };
-  }, [map]);
-
-  if (earthquakes.length === 0) return null;
-
-  return (
-    <>
-      {earthquakes.map((eq) => {
-        const isSelected = selectedEarthquakeId === eq.id;
-        const impactRadius = getImpactRadiusPixels(
-          eq.magnitude,
-          eq.coordinates[1],
-          mapZoom,
-        );
-        const impactAlpha = getImpactAlpha(eq.magnitude);
-        const impactColor = getMagnitudeColor(eq.magnitude);
-        const impactFill = hexToRgba(impactColor, impactAlpha);
-        const impactRing = hexToRgba(
-          impactColor,
-          Math.min(impactAlpha * 2.2, 0.32),
-        );
-        const impactPulseDuration = getImpactPulseDuration(eq.magnitude);
-        const staticRadius = impactRadius * 0.58;
-
-        return (
-          <MapMarker
-            key={eq.id}
-            longitude={eq.coordinates[0]}
-            latitude={eq.coordinates[1]}
-          >
-            <MarkerContent>
-              <button
-                type="button"
-                onClick={() => onEarthquakeSelect(eq)}
-                className="group relative flex items-center justify-center cursor-pointer"
-                aria-label={`Earthquake: ${eq.title}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="absolute rounded-full"
-                  style={{
-                    width: `${staticRadius}px`,
-                    height: `${staticRadius}px`,
-                    backgroundColor: hexToRgba(impactColor, impactAlpha * 0.4),
-                  }}
-                />
-                {isSelected && (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      className="absolute rounded-full animate-ping"
-                      style={{
-                        width: `${impactRadius}px`,
-                        height: `${impactRadius}px`,
-                        backgroundColor: impactFill,
-                        animationDuration: `${impactPulseDuration}ms`,
-                      }}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="absolute rounded-full border"
-                      style={{
-                        width: `${impactRadius * 0.74}px`,
-                        height: `${impactRadius * 0.74}px`,
-                        borderColor: impactRing,
-                        borderWidth: "1px",
-                      }}
-                    />
-                  </>
-                )}
-                {/* Pulse ring for recent earthquakes */}
-                {isSelected && now - eq.time.getTime() < 3600000 && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute rounded-full animate-ping"
-                    style={{
-                      backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
-                      width: `${getPulseSize(eq.magnitude)}px`,
-                      height: `${getPulseSize(eq.magnitude)}px`,
-                      animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
-                    }}
-                  />
-                )}
-                {/* Main marker */}
-                <div
-                  className="relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110"
-                  style={{
-                    backgroundColor: getMagnitudeColor(eq.magnitude),
-                    boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
-                  }}
-                >
-                  {eq.magnitude.toFixed(1)}
-                </div>
-              </button>
-            </MarkerContent>
-          </MapMarker>
-        );
-      })}
-    </>
-  );
 }
 
 
