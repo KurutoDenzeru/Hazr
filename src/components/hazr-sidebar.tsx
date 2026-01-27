@@ -45,7 +45,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
             <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
               <div
                 className={cn(
-                  "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                  "flex size-12 items-center justify-center rounded-md",
                   "group-data-[state=collapsed]/sidebar:size-12"
                 )}
               >
@@ -73,7 +73,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
                 <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
                   <div
                     className={cn(
-                      "mt-0.5 flex size-12 items-center justify-center rounded-md",
+                      "flex size-12 items-center justify-center rounded-md",
                       "group-data-[state=collapsed]/sidebar:size-12"
                     )}
                   >

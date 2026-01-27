@@ -51,7 +51,7 @@ const EarthquakeItem = ({
           <button
             type="button"
             onClick={onClick}
-            className="flex size-10 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
+            className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
             aria-label={earthquake.title}
           >
             <div
