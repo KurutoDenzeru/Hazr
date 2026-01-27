@@ -12,6 +12,7 @@ import { resolveIpLocation } from "@/lib/ip-location";
 
 const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+let lastWeatherIpLogKey: string | null = null;
 const LOCATION_LOOKUP_TIMEOUT_MS = 1800;
 
 
@@ -265,7 +266,6 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [ipMeta, setIpMeta] = useState<{ ip?: string; city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const hasResolvedIpRef = useRef(false);
-  const lastLoggedIpRef = useRef<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -385,8 +385,8 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
         });
       }
       const logKey = result.meta?.ip ?? `${result.coords[0]}:${result.coords[1]}`;
-      if (lastLoggedIpRef.current !== logKey) {
-        lastLoggedIpRef.current = logKey;
+      if (lastWeatherIpLogKey !== logKey) {
+        lastWeatherIpLogKey = logKey;
         if (result.meta?.ip) {
           console.log("[useWeather] IP location", {
             ip: result.meta.ip,

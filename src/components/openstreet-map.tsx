@@ -92,6 +92,13 @@ export default function GoogleMapsClone() {
   const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
   const hasRequestedLocationRef = React.useRef(false);
+  const [shouldAutoCenter, setShouldAutoCenter] = React.useState(() => {
+    try {
+      return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) !== "user";
+    } catch {
+      return true;
+    }
+  });
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
@@ -180,6 +187,7 @@ export default function GoogleMapsClone() {
   const hasUserInteractedRef = React.useRef(false);
   const handleUserInteraction = React.useCallback(() => {
     hasUserInteractedRef.current = true;
+    setShouldAutoCenter(false);
   }, []);
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
@@ -210,7 +218,11 @@ export default function GoogleMapsClone() {
                 return false;
               }
             })();
-          if (!hasUserInteractedRef.current && (!hasSavedView || isDefaultCenter(viewState.center))) {
+          if (
+            shouldAutoCenter &&
+            !hasUserInteractedRef.current &&
+            (!hasSavedView || isDefaultCenter(viewState.center))
+          ) {
             setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
           }
         }
@@ -221,7 +233,13 @@ export default function GoogleMapsClone() {
 
     fetchIpLocation();
     return () => controller.abort();
-  }, [approximateLocation, setApproximateLocation, isDefaultCenter, viewState.center]);
+  }, [
+    approximateLocation,
+    setApproximateLocation,
+    isDefaultCenter,
+    viewState.center,
+    shouldAutoCenter,
+  ]);
 
   return (
     <SidebarProvider
@@ -243,6 +261,10 @@ export default function GoogleMapsClone() {
                 zoom={viewState.zoom}
                 scrollZoom={true}
               >
+                <MapViewController
+                  viewState={viewState}
+                  shouldAutoCenter={shouldAutoCenter}
+                />
                 <MapStateSync
                   setViewState={setViewState}
                   onUserInteract={handleUserInteraction}
@@ -394,6 +416,41 @@ function MapStateSync({
       map.off("moveend", handleMoveEnd);
     };
   }, [map, setViewState, onUserInteract]);
+
+  return null;
+}
+
+function MapViewController({
+  viewState,
+  shouldAutoCenter,
+}: {
+  viewState: MapViewState;
+  shouldAutoCenter: boolean;
+}) {
+  const { map, isLoaded } = useMap();
+  const lastAppliedRef = React.useRef<MapViewState | null>(null);
+
+  React.useEffect(() => {
+    if (!map || !isLoaded || !shouldAutoCenter) return;
+
+    const lastApplied = lastAppliedRef.current;
+    if (
+      lastApplied &&
+      lastApplied.center[0] === viewState.center[0] &&
+      lastApplied.center[1] === viewState.center[1] &&
+      lastApplied.zoom === viewState.zoom
+    ) {
+      return;
+    }
+
+    map.easeTo({
+      center: viewState.center,
+      zoom: viewState.zoom,
+      duration: 900,
+      essential: true,
+    });
+    lastAppliedRef.current = viewState;
+  }, [map, isLoaded, shouldAutoCenter, viewState]);
 
   return null;
 }

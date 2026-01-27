@@ -94,30 +94,6 @@ const parseIpApi = (data: Record<string, unknown>): IpLocationResult | null => {
   return { coords, meta, source: "ip" };
 };
 
-const parseIpInfo = (data: Record<string, unknown>): IpLocationResult | null => {
-  const loc = (data?.loc as string | undefined)?.split(",");
-  if (!loc || loc.length !== 2) return null;
-  const latitude = Number(loc[0]);
-  const longitude = Number(loc[1]);
-  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
-
-  const coords: [number, number] = [longitude, latitude];
-  if (!isValidCoords(coords)) return null;
-
-  const meta: IpLocationMeta = {
-    ip: data?.ip as string | undefined,
-    provider: "ipinfo",
-    country: data?.country as string | undefined,
-    countryCode: data?.country as string | undefined,
-    region: data?.region as string | undefined,
-    city: data?.city as string | undefined,
-    timezone: data?.timezone as string | undefined,
-    isp: data?.org as string | undefined,
-  };
-
-  return { coords, meta, source: "ip" };
-};
-
 export const resolveIpLocation = async (
   signal?: AbortSignal,
   options: { allowTimezoneFallback?: boolean } = {},
@@ -134,18 +110,13 @@ export const resolveIpLocation = async (
 
   const resolver = async () => {
     try {
-      const providers = [
-        {
-          key: "ipapi",
-          url: "https://ipapi.co/json/",
-          parser: parseIpApi,
-        },
-        {
-          key: "ipinfo",
-          url: "https://ipinfo.io/json",
-          parser: parseIpInfo,
-        },
-      ];
+    const providers = [
+      {
+        key: "ipapi",
+        url: "https://ipapi.co/json/",
+        parser: parseIpApi,
+      },
+    ];
 
       for (const provider of providers) {
         const lastBackoff = providerBackoff[provider.key] ?? 0;
