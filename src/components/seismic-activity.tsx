@@ -33,7 +33,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
   if (collapsed) {
     if (isLoading) {
       return (
-        <div className="flex size-10 items-center justify-center">
+        <div className="flex size-12 items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       );
@@ -53,7 +53,7 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
         {earthquakes.length > 3 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex size-10 items-center justify-center rounded-md text-sm font-medium text-muted-foreground">
+              <div className="flex size-12 items-center justify-center rounded-md text-sm font-medium text-muted-foreground">
                 +{earthquakes.length - 3}
               </div>
             </TooltipTrigger>

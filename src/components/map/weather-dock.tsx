@@ -125,7 +125,7 @@ export const WeatherDock = ({
   if (collapsed) {
     if (isLoading) {
       return (
-        <div className="flex size-10 items-center justify-center">
+        <div className="flex size-12 items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       );
@@ -135,7 +135,7 @@ export const WeatherDock = ({
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex size-10 items-center justify-center rounded-md text-muted-foreground">
+            <div className="flex size-12 items-center justify-center rounded-md text-muted-foreground">
               <Loader2 className="size-5 animate-spin" />
             </div>
           </TooltipTrigger>
@@ -149,13 +149,13 @@ export const WeatherDock = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex size-10 flex-col items-center justify-center rounded-md">
+          <div className="flex size-12 flex-col items-center justify-center rounded-md text-center">
             <WeatherIcon
               code={current.weatherCode}
               isDay={current.isDay}
-              className="size-5 text-sky-500"
+              className="size-6 text-sky-500"
             />
-            <span className="text-[10px] font-medium">
+            <span className="text-xs font-medium leading-none">
               {Math.round(current.temperature)}°
             </span>
           </div>

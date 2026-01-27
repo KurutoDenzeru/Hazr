@@ -39,91 +39,78 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
 
   return (
     <Sidebar widthClassName="w-auto" collapsedWidthClassName="w-16" resizable>
-      <SidebarHeader className="relative group-data-[state=collapsed]/sidebar:pb-14">
+      <SidebarHeader className="group-data-[state=collapsed]/sidebar:pb-2">
         <TooltipProvider delayDuration={0}>
-          {isOpen ? (
-            <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
-              <div
-                className={cn(
-                  "mt-0.5 flex size-12 items-center justify-center rounded-md",
-                  "group-data-[state=collapsed]/sidebar:size-12"
-                )}
-              >
-                <Image
-                  src="/brand.webp"
-                  alt="Hazr Logo"
-                  width={25}
-                  height={25}
-                  className="size-12 object-contain"
-                />
-              </div>
-
-              <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
-                <p className="text-sm font-semibold leading-none tracking-tight">
-                  Hazr
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Live Quakes & Weather
-                </p>
-              </div>
-            </div>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex min-w-0 flex-1 items-center gap-3 group-data-[state=collapsed]/sidebar:justify-center">
-                  <div
-                    className={cn(
-                      "mt-0.5 flex size-12 items-center justify-center rounded-md",
-                      "group-data-[state=collapsed]/sidebar:size-12"
-                    )}
-                  >
-                    <Image
-                      src="/brand.webp"
-                      alt="Hazr Logo"
-                      width={25}
-                      height={25}
-                      className="size-12 object-contain"
-                    />
-                  </div>
-
-                  <div className="min-w-0 group-data-[state=collapsed]/sidebar:hidden">
-                    <p className="text-sm font-semibold leading-none tracking-tight">
-                      Hazr
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Live Quakes & Weather
-                    </p>
-                  </div>
+          <div
+            className={cn(
+              "flex w-full items-center",
+              isOpen ? "gap-3" : "flex-col gap-2"
+            )}
+          >
+            {isOpen ? (
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex size-12 items-center justify-center rounded-md">
+                  <Image
+                    src="/brand.webp"
+                    alt="Hazr Logo"
+                    width={25}
+                    height={25}
+                    className="size-12 object-contain"
+                  />
                 </div>
-              </TooltipTrigger>
-              <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
-            </Tooltip>
-          )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={cn(
-                    "absolute right-2 top-2 rounded-md text-muted-foreground hover:bg-muted/70",
-                    "group-data-[state=collapsed]/sidebar:top-auto group-data-[state=collapsed]/sidebar:bottom-2 group-data-[state=collapsed]/sidebar:right-1/2 group-data-[state=collapsed]/sidebar:translate-x-1/2"
-                  )}
-                  aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-                >
-                  {isOpen ? (
-                    <PanelLeftClose className="size-4" />
-                  ) : (
-                    <PanelLeftOpen className="size-4" />
-                  )}
-                </Button>
-              </SidebarTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {isOpen ? "Collapse" : "Expand"}
-            </TooltipContent>
-          </Tooltip>
+                <div className="min-w-0">
+                  <p className="text-md font-semibold leading-none tracking-tight">
+                    Hazr
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Live Weather & Quakes
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex min-w-0 items-center justify-center">
+                    <div className="flex size-12 items-center justify-center rounded-md">
+                      <Image
+                        src="/brand.webp"
+                        alt="Hazr Logo"
+                        width={25}
+                        height={25}
+                        className="size-12 object-contain"
+                      />
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
+              </Tooltip>
+            )}
+
+            <div className={cn(isOpen ? "ml-auto" : "flex justify-center")}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-lg"
+                      className="size-12 rounded-md text-muted-foreground hover:bg-muted/70"
+                      aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                    >
+                      {isOpen ? (
+                        <PanelLeftClose className="size-5" />
+                      ) : (
+                        <PanelLeftOpen className="size-5" />
+                      )}
+                    </Button>
+                  </SidebarTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {isOpen ? "Collapse" : "Expand"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
         </TooltipProvider>
       </SidebarHeader>
 

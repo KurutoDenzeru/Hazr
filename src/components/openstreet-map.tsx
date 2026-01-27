@@ -56,6 +56,7 @@ const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
+const SIDEBAR_STATE_KEY = "sidebar-state";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -71,6 +72,20 @@ const useIsMobile = () => {
   return isMobile;
 };
 
+const useIsTablet = () => {
+  const [isTablet, setIsTablet] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 1024px)");
+    const handleChange = () => setIsTablet(media.matches);
+    handleChange();
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  return isTablet;
+};
+
 type MapViewState = {
   center: [number, number];
   zoom: number;
@@ -78,6 +93,7 @@ type MapViewState = {
 
 
 export default function GoogleMapsClone() {
+  const hasSidebarPreferenceRef = React.useRef(false);
   const [approximateLocation, setApproximateLocationState] = React.useState<
     [number, number] | null
   >(null);
@@ -91,6 +107,7 @@ export default function GoogleMapsClone() {
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const locateAnimationTimeoutRef = React.useRef<number | null>(null);
+  const [activeQuakePulseId, setActiveQuakePulseId] = React.useState<string | null>(null);
   const hasRequestedLocationRef = React.useRef(false);
   const [shouldAutoCenter, setShouldAutoCenter] = React.useState(() => {
     try {
@@ -99,7 +116,19 @@ export default function GoogleMapsClone() {
       return true;
     }
   });
-  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(true);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = React.useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
+      if (saved) {
+        hasSidebarPreferenceRef.current = true;
+        return saved === "open";
+      }
+    } catch {
+      // ignore
+    }
+    return !window.matchMedia("(max-width: 1024px)").matches;
+  });
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
 
@@ -126,17 +155,39 @@ export default function GoogleMapsClone() {
     return 1500;
   };
 
-  // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
-  const handleEarthquakeSelect = React.useCallback(
+  const handleTriggerQuakePulse = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
-      setSelectedEarthquake(earthquake);
+      if (typeof window === "undefined") return;
+
+      setActiveQuakePulseId(earthquake.id);
     },
     []
   );
 
+  // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
+  const handleEarthquakeSelect = React.useCallback(
+    (earthquake: ProcessedEarthquake) => {
+      setSelectedEarthquake(earthquake);
+      handleTriggerQuakePulse(earthquake);
+    },
+    [handleTriggerQuakePulse]
+  );
+
+  const handleSidebarOpenChange = React.useCallback((open: boolean) => {
+    setIsDesktopSidebarOpen(open);
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(SIDEBAR_STATE_KEY, open ? "open" : "collapsed");
+      hasSidebarPreferenceRef.current = true;
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Close the earthquake popover
   const handleCloseEarthquakePopover = React.useCallback(() => {
     setSelectedEarthquake(null);
+    setActiveQuakePulseId(null);
   }, []);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
@@ -159,6 +210,14 @@ export default function GoogleMapsClone() {
       window.clearTimeout(locateAnimationTimeoutRef.current);
     };
   }, []);
+
+  const isTablet = useIsTablet();
+
+  React.useEffect(() => {
+    if (hasSidebarPreferenceRef.current) return;
+    setIsDesktopSidebarOpen(!isTablet);
+  }, [isTablet]);
+
 
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
@@ -244,7 +303,7 @@ export default function GoogleMapsClone() {
   return (
     <SidebarProvider
       open={isDesktopSidebarOpen}
-      onOpenChange={setIsDesktopSidebarOpen}
+      onOpenChange={handleSidebarOpenChange}
     >
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
         <HazrSidebar
@@ -316,8 +375,30 @@ export default function GoogleMapsClone() {
                         className="group relative flex items-center justify-center cursor-pointer"
                         aria-label={`Earthquake: ${eq.title}`}
                       >
+                        {activeQuakePulseId === eq.id && (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className="absolute rounded-full animate-ping"
+                              style={{
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                width: `${getPulseSize(eq.magnitude)}px`,
+                                height: `${getPulseSize(eq.magnitude)}px`,
+                              }}
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute rounded-full animate-pulse"
+                              style={{
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
+                                width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                                height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                              }}
+                            />
+                          </>
+                        )}
                         {/* Pulse ring for recent earthquakes */}
-                        {now - eq.time.getTime() < 3600000 && (
+                        {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
                           <span
                             aria-hidden="true"
                             className="absolute rounded-full animate-ping"
@@ -331,7 +412,10 @@ export default function GoogleMapsClone() {
                         )}
                         {/* Main marker */}
                         <div
-                          className="relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110"
+                          className={cn(
+                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                          )}
                           style={{
                             backgroundColor: getMagnitudeColor(eq.magnitude),
                             boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,

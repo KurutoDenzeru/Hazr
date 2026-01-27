@@ -79,7 +79,7 @@ function HazrMenuPanel({
               <Button
                 variant="ghost"
                 size="icon-lg"
-                className="justify-center rounded-md px-0 text-foreground/90 hover:bg-muted/70 hover:text-foreground"
+                className="size-12 justify-center rounded-md px-0 text-muted-foreground hover:bg-muted/70"
                 onClick={handleSettingsClick}
                 aria-label="Settings"
               >
