@@ -84,33 +84,6 @@ const parseIpApi = (data: Record<string, unknown>): IpLocationResult | null => {
   return { coords, meta, source: "ip" };
 };
 
-const parseIpWhoIs = (data: Record<string, unknown>): IpLocationResult | null => {
-  const latitude = Number(data?.latitude);
-  const longitude = Number(data?.longitude);
-  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
-
-  const coords: [number, number] = [longitude, latitude];
-  if (!isValidCoords(coords)) return null;
-
-  const timezone = (data?.timezone as { id?: string } | undefined)?.id;
-  const connection = data?.connection as { isp?: string } | undefined;
-  const currency = (data?.currency as { code?: string } | undefined)?.code;
-
-  const meta: IpLocationMeta = {
-    ip: data?.ip as string | undefined,
-    provider: "ipwhois",
-    country: data?.country as string | undefined,
-    countryCode: data?.country_code as string | undefined,
-    region: data?.region as string | undefined,
-    city: data?.city as string | undefined,
-    timezone,
-    isp: connection?.isp,
-    currency,
-  };
-
-  return { coords, meta, source: "ip" };
-};
-
 const parseIpInfo = (data: Record<string, unknown>): IpLocationResult | null => {
   const loc = (data?.loc as string | undefined)?.split(",");
   if (!loc || loc.length !== 2) return null;
@@ -144,16 +117,12 @@ export const resolveIpLocation = async (
   try {
     const providers = [
       {
-        url: "https://ipwho.is/",
-        parser: parseIpWhoIs,
+        url: "https://ipinfo.io/json",
+        parser: parseIpInfo,
       },
       {
         url: "https://ipapi.co/json/",
         parser: parseIpApi,
-      },
-      {
-        url: "https://ipinfo.io/json",
-        parser: parseIpInfo,
       },
     ];
 

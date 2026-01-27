@@ -264,6 +264,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [ipLocation, setIpLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [ipMeta, setIpMeta] = useState<{ ip?: string; city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const hasResolvedIpRef = useRef(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -356,16 +357,20 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
 
   useEffect(() => {
     if (latitude !== null && longitude !== null) return;
-    if (ipLocation || isResolvingLocation) return;
+    if (ipLocation || isResolvingLocation || hasResolvedIpRef.current) return;
 
     const controller = new AbortController();
     const fetchIpLocation = async () => {
       try {
         setIsResolvingLocation(true);
+        hasResolvedIpRef.current = true;
         const result = await resolveIpLocation(controller.signal, {
           allowTimezoneFallback: false,
         });
-        if (!result) return;
+        if (!result) {
+          setError(new Error("Unable to resolve IP location"));
+          return;
+        }
         setIpLocation({ latitude: result.coords[1], longitude: result.coords[0] });
         if (result.meta) {
           setIpMeta({
