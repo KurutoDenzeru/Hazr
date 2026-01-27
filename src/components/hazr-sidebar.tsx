@@ -60,11 +60,11 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-none tracking-tight">
+                  <p className="text-md font-semibold leading-none tracking-tight">
                     Hazr
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Live Quakes & Weather
+                  <p className="text-sm text-muted-foreground">
+                    Live Weather & Quakes
                   </p>
                 </div>
               </div>
@@ -98,7 +98,7 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
                       aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
                     >
                       {isOpen ? (
-                        <PanelLeftClose className="size-" />
+                        <PanelLeftClose className="size-5" />
                       ) : (
                         <PanelLeftOpen className="size-5" />
                       )}
