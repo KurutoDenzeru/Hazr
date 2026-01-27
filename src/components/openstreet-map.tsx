@@ -53,6 +53,7 @@ import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
+const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
 
@@ -154,7 +155,7 @@ export default function GoogleMapsClone() {
 
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
-      return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
+      return { center: DEFAULT_FALLBACK_CENTER, zoom: DEFAULT_COUNTRY_ZOOM };
     let saved: string | null = null;
     let source: string | null = null;
     try {
@@ -171,10 +172,22 @@ export default function GoogleMapsClone() {
         // ignore
       }
     }
-    return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
+    return { center: DEFAULT_FALLBACK_CENTER, zoom: DEFAULT_COUNTRY_ZOOM };
   });
 
   const resolvedLocation = userLocation ?? approximateLocation;
+
+  const hasUserInteractedRef = React.useRef(false);
+  const handleUserInteraction = React.useCallback(() => {
+    hasUserInteractedRef.current = true;
+  }, []);
+
+  const isDefaultCenter = React.useCallback((center: [number, number]) => {
+    return (
+      Math.abs(center[0] - DEFAULT_FALLBACK_CENTER[0]) < 0.01 &&
+      Math.abs(center[1] - DEFAULT_FALLBACK_CENTER[1]) < 0.01
+    );
+  }, []);
 
   React.useEffect(() => {
     if (approximateLocation || hasRequestedLocationRef.current) return;
@@ -190,14 +203,14 @@ export default function GoogleMapsClone() {
           setApproximateLocation(result.coords);
 
           const hasSavedView =
-          (() => {
-            try {
-              return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
-            } catch {
-              return false;
-            }
-          })();
-          if (!hasSavedView) {
+            (() => {
+              try {
+                return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
+              } catch {
+                return false;
+              }
+            })();
+          if (!hasUserInteractedRef.current && (!hasSavedView || isDefaultCenter(viewState.center))) {
             setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
           }
         }
@@ -208,7 +221,7 @@ export default function GoogleMapsClone() {
 
     fetchIpLocation();
     return () => controller.abort();
-  }, [approximateLocation, setApproximateLocation]);
+  }, [approximateLocation, setApproximateLocation, isDefaultCenter, viewState.center]);
 
   return (
     <SidebarProvider
@@ -230,7 +243,10 @@ export default function GoogleMapsClone() {
                 zoom={viewState.zoom}
                 scrollZoom={true}
               >
-                <MapStateSync setViewState={setViewState} />
+                <MapStateSync
+                  setViewState={setViewState}
+                  onUserInteract={handleUserInteraction}
+                />
 
                 {userLocation && (
                   <MapMarker
@@ -334,8 +350,10 @@ export default function GoogleMapsClone() {
 
 function MapStateSync({
   setViewState,
+  onUserInteract,
 }: {
   setViewState: (s: MapViewState) => void;
+  onUserInteract?: () => void;
 }) {
   const { map } = useMap();
   const hasUserInteractedRef = React.useRef(false);
@@ -345,6 +363,7 @@ function MapStateSync({
 
     const markUserInteraction = () => {
       hasUserInteractedRef.current = true;
+      onUserInteract?.();
     };
 
     const handleMoveEnd = () => {
@@ -374,7 +393,7 @@ function MapStateSync({
       map.off("pitchstart", markUserInteraction);
       map.off("moveend", handleMoveEnd);
     };
-  }, [map, setViewState]);
+  }, [map, setViewState, onUserInteract]);
 
   return null;
 }

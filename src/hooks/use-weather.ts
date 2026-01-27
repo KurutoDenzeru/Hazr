@@ -265,6 +265,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
   const [ipMeta, setIpMeta] = useState<{ ip?: string; city?: string; region?: string; country?: string; countryCode?: string; timezone?: string } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const hasResolvedIpRef = useRef(false);
+  const lastLoggedIpRef = useRef<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -383,15 +384,19 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
           timezone: result.meta.timezone,
         });
       }
-      if (result.meta?.ip) {
-        console.log("[useWeather] IP location", {
-          ip: result.meta.ip,
-          coords: result.coords,
-          country: result.meta.country,
-          city: result.meta.city,
-        });
-      } else {
-        console.log("[useWeather] IP location", { coords: result.coords });
+      const logKey = result.meta?.ip ?? `${result.coords[0]}:${result.coords[1]}`;
+      if (lastLoggedIpRef.current !== logKey) {
+        lastLoggedIpRef.current = logKey;
+        if (result.meta?.ip) {
+          console.log("[useWeather] IP location", {
+            ip: result.meta.ip,
+            coords: result.coords,
+            country: result.meta.country,
+            city: result.meta.city,
+          });
+        } else {
+          console.log("[useWeather] IP location", { coords: result.coords });
+        }
       }
       return true;
     } finally {

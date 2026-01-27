@@ -18,6 +18,13 @@ type IpLocationResult = {
 };
 
 const IP_LOCATION_TIMEOUT_MS = 2500;
+const PROVIDER_BACKOFF_MS = 60000;
+const RECENT_RESULT_TTL_MS = 5000;
+
+const providerBackoff: Record<string, number> = {};
+let inFlightPromise: Promise<IpLocationResult | null> | null = null;
+let lastResult: IpLocationResult | null = null;
+let lastResolvedAt = 0;
 
 const getInitialLocation = (): [number, number] => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -38,7 +45,10 @@ const getInitialLocation = (): [number, number] => {
 const isValidCoords = (coords: [number, number]) =>
   coords.length === 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
 
-const fetchWithTimeout = async (url: string, signal?: AbortSignal) => {
+const fetchWithTimeout = async (
+  url: string,
+  signal?: AbortSignal,
+) => {
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(
     () => controller.abort(),
@@ -114,33 +124,64 @@ export const resolveIpLocation = async (
 ): Promise<IpLocationResult | null> => {
   const { allowTimezoneFallback = false } = options;
 
-  try {
-    const providers = [
-      {
-        url: "https://ipinfo.io/json",
-        parser: parseIpInfo,
-      },
-      {
-        url: "https://ipapi.co/json/",
-        parser: parseIpApi,
-      },
-    ];
-
-    for (const provider of providers) {
-      const response = await fetchWithTimeout(provider.url, signal);
-      if (!response.ok) continue;
-      const data = await response.json();
-      const parsed = provider.parser(data as Record<string, unknown>);
-      if (!parsed) continue;
-      return parsed;
-    }
-
-    throw new Error("all ip providers failed");
-  } catch {
-    if (!allowTimezoneFallback) return null;
-    const coords = getInitialLocation();
-    return { coords, meta: null, source: "timezone" };
+  if (lastResult && Date.now() - lastResolvedAt < RECENT_RESULT_TTL_MS) {
+    return lastResult;
   }
+
+  if (inFlightPromise) {
+    return inFlightPromise;
+  }
+
+  const resolver = async () => {
+    try {
+      const providers = [
+        {
+          key: "ipapi",
+          url: "https://ipapi.co/json/",
+          parser: parseIpApi,
+        },
+        {
+          key: "ipinfo",
+          url: "https://ipinfo.io/json",
+          parser: parseIpInfo,
+        },
+      ];
+
+      for (const provider of providers) {
+        const lastBackoff = providerBackoff[provider.key] ?? 0;
+        if (Date.now() - lastBackoff < PROVIDER_BACKOFF_MS) {
+          continue;
+        }
+
+        const response = await fetchWithTimeout(provider.url, signal);
+        if (response.status === 429) {
+          providerBackoff[provider.key] = Date.now();
+          continue;
+        }
+        if (!response.ok) continue;
+        const data = await response.json();
+        const parsed = provider.parser(data as Record<string, unknown>);
+        if (!parsed) continue;
+        lastResult = parsed;
+        lastResolvedAt = Date.now();
+        return parsed;
+      }
+
+      throw new Error("all ip providers failed");
+    } catch {
+      if (!allowTimezoneFallback) return null;
+      const coords = getInitialLocation();
+      const fallback: IpLocationResult = { coords, meta: null, source: "timezone" };
+      lastResult = fallback;
+      lastResolvedAt = Date.now();
+      return fallback;
+    } finally {
+      inFlightPromise = null;
+    }
+  };
+
+  inFlightPromise = resolver();
+  return inFlightPromise;
 };
 
 export type { IpLocationMeta, IpLocationResult };
