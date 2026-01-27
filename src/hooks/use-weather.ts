@@ -14,19 +14,6 @@ const OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 const LOCATION_LOOKUP_TIMEOUT_MS = 1800;
 
-type WeatherCacheEntry = {
-  current: ProcessedWeather | null;
-  hourly: ProcessedHourlyForecast[];
-  daily: ProcessedDailyForecast[];
-  locationInfo: LocationInfo | null;
-  lastUpdated: Date | null;
-  selectedHourIndex: number;
-};
-
-const weatherCache = new Map<string, WeatherCacheEntry>();
-
-const getCacheKey = (lat: number, lng: number): string =>
-  `${lat.toFixed(3)}:${lng.toFixed(3)}`;
 
 type UseWeatherOptions = {
   latitude: number | null;
@@ -282,21 +269,6 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
 
   const resolvedLatitude = latitude ?? ipLocation?.latitude ?? null;
   const resolvedLongitude = longitude ?? ipLocation?.longitude ?? null;
-  const cacheKey = resolvedLatitude !== null && resolvedLongitude !== null
-    ? getCacheKey(resolvedLatitude, resolvedLongitude)
-    : null;
-
-  useEffect(() => {
-    if (!cacheKey) return;
-    const cached = weatherCache.get(cacheKey);
-    if (!cached) return;
-    setCurrent(cached.current);
-    setHourly(cached.hourly);
-    setDaily(cached.daily);
-    setLocationInfo(cached.locationInfo);
-    setLastUpdated(cached.lastUpdated);
-    setSelectedHourIndex(cached.selectedHourIndex);
-  }, [cacheKey]);
 
   const fetchWeather = useCallback(async () => {
     if (resolvedLatitude === null || resolvedLongitude === null) {
@@ -361,17 +333,6 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
       const updatedAt = new Date();
       setLastUpdated(updatedAt);
 
-      if (cacheKey) {
-        weatherCache.set(cacheKey, {
-          current: processedCurrent,
-          hourly: processedHourly,
-          daily: processedDaily,
-          locationInfo: baseLocationInfo,
-          lastUpdated: updatedAt,
-          selectedHourIndex: 0,
-        });
-      }
-
       locationPromise
         .then((locationData) => {
           if (!locationData) return;
@@ -381,15 +342,6 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
             timezone: data.timezone,
           };
           setLocationInfo(enrichedLocation);
-          if (cacheKey) {
-            const cached = weatherCache.get(cacheKey);
-            if (cached) {
-              weatherCache.set(cacheKey, {
-                ...cached,
-                locationInfo: enrichedLocation,
-              });
-            }
-          }
         })
         .catch(() => null);
     } catch (err) {
@@ -400,17 +352,7 @@ export const useWeather = (options: UseWeatherOptions): UseWeatherReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [resolvedLatitude, resolvedLongitude, forecastHours, cacheKey, ipMeta]);
-
-  useEffect(() => {
-    if (!cacheKey) return;
-    const cached = weatherCache.get(cacheKey);
-    if (!cached) return;
-    weatherCache.set(cacheKey, {
-      ...cached,
-      selectedHourIndex,
-    });
-  }, [cacheKey, selectedHourIndex]);
+  }, [resolvedLatitude, resolvedLongitude, forecastHours, ipMeta]);
 
   useEffect(() => {
     if (latitude !== null && longitude !== null) return;

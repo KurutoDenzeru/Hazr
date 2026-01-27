@@ -55,7 +55,6 @@ import { EarthquakePopover } from "@/components/map/earthquake-popover";
 const DEFAULT_COUNTRY_ZOOM = 6;
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
-const APPROXIMATE_LOCATION_KEY = "approximate-location";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -80,32 +79,12 @@ type MapViewState = {
 export default function GoogleMapsClone() {
   const [approximateLocation, setApproximateLocationState] = React.useState<
     [number, number] | null
-  >(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem(APPROXIMATE_LOCATION_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (
-          Array.isArray(parsed) &&
-          parsed.length === 2 &&
-          typeof parsed[0] === "number" &&
-          typeof parsed[1] === "number"
-        ) {
-          return parsed as [number, number];
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return null;
-  });
+  >(null);
 
   const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
 
   const setApproximateLocation = React.useCallback((coords: [number, number]) => {
     setApproximateLocationState(coords);
-    localStorage.setItem(APPROXIMATE_LOCATION_KEY, JSON.stringify(coords));
   }, []);
 
   const [isLocateAnimating, setIsLocateAnimating] = React.useState(false);
@@ -176,8 +155,15 @@ export default function GoogleMapsClone() {
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: [-122.4194, 37.7749], zoom: DEFAULT_COUNTRY_ZOOM };
-    const saved = localStorage.getItem(MAP_VIEW_STATE_KEY);
-    const source = localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY);
+    let saved: string | null = null;
+    let source: string | null = null;
+    try {
+      saved = localStorage.getItem(MAP_VIEW_STATE_KEY);
+      source = localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY);
+    } catch {
+      saved = null;
+      source = null;
+    }
     if (saved && source === "user") {
       try {
         return JSON.parse(saved);
@@ -204,7 +190,13 @@ export default function GoogleMapsClone() {
           setApproximateLocation(result.coords);
 
           const hasSavedView =
-            localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
+          (() => {
+            try {
+              return localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY) === "user";
+            } catch {
+              return false;
+            }
+          })();
           if (!hasSavedView) {
             setViewState({ center: result.coords, zoom: DEFAULT_COUNTRY_ZOOM });
           }
@@ -362,8 +354,12 @@ function MapStateSync({
         zoom: map.getZoom(),
       };
       setViewState(newState);
-      localStorage.setItem(MAP_VIEW_STATE_KEY, JSON.stringify(newState));
-      localStorage.setItem(MAP_VIEW_STATE_SOURCE_KEY, "user");
+      try {
+        localStorage.setItem(MAP_VIEW_STATE_KEY, JSON.stringify(newState));
+        localStorage.setItem(MAP_VIEW_STATE_SOURCE_KEY, "user");
+      } catch {
+        // ignore storage errors
+      }
     };
 
     map.on("dragstart", markUserInteraction);

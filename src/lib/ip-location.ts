@@ -14,17 +14,9 @@ type IpLocationMeta = {
 type IpLocationResult = {
   coords: [number, number];
   meta: IpLocationMeta | null;
-  source: "ip" | "timezone" | "ip-cache";
+  source: "ip" | "timezone";
 };
 
-type CachedIpLocation = {
-  coords: [number, number];
-  meta: IpLocationMeta | null;
-  timestamp: number;
-};
-
-const IP_LOCATION_CACHE_KEY = "ip-location-cache";
-const IP_LOCATION_CACHE_TTL = 1000 * 60 * 60 * 12;
 const IP_LOCATION_TIMEOUT_MS = 2500;
 
 const getInitialLocation = (): [number, number] => {
@@ -45,28 +37,6 @@ const getInitialLocation = (): [number, number] => {
 
 const isValidCoords = (coords: [number, number]) =>
   coords.length === 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
-
-const readCachedIpLocation = (): CachedIpLocation | null => {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(IP_LOCATION_CACHE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as CachedIpLocation;
-    if (!parsed || !parsed.coords || !parsed.timestamp) return null;
-    if (!isValidCoords(parsed.coords)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-};
-
-const writeCachedIpLocation = (entry: CachedIpLocation) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(IP_LOCATION_CACHE_KEY, JSON.stringify(entry));
-};
-
-const isCacheFresh = (timestamp: number) =>
-  Date.now() - timestamp < IP_LOCATION_CACHE_TTL;
 
 const fetchWithTimeout = async (url: string, signal?: AbortSignal) => {
   const controller = new AbortController();
@@ -170,13 +140,6 @@ export const resolveIpLocation = async (
   options: { allowTimezoneFallback?: boolean } = {},
 ): Promise<IpLocationResult | null> => {
   const { allowTimezoneFallback = false } = options;
-  const cached = readCachedIpLocation();
-  if (cached && isCacheFresh(cached.timestamp)) {
-    return { coords: cached.coords, meta: cached.meta, source: "ip" };
-  }
-  if (cached && !allowTimezoneFallback) {
-    return { coords: cached.coords, meta: cached.meta, source: "ip-cache" };
-  }
 
   try {
     const providers = [
@@ -200,7 +163,6 @@ export const resolveIpLocation = async (
       const data = await response.json();
       const parsed = provider.parser(data as Record<string, unknown>);
       if (!parsed) continue;
-      writeCachedIpLocation({ coords: parsed.coords, meta: parsed.meta, timestamp: Date.now() });
       return parsed;
     }
 
