@@ -187,6 +187,7 @@ export default function GoogleMapsClone() {
   // Close the earthquake popover
   const handleCloseEarthquakePopover = React.useCallback(() => {
     setSelectedEarthquake(null);
+    setActiveQuakePulseId(null);
   }, []);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
@@ -397,7 +398,7 @@ export default function GoogleMapsClone() {
                           </>
                         )}
                         {/* Pulse ring for recent earthquakes */}
-                        {now - eq.time.getTime() < 3600000 && (
+                        {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
                           <span
                             aria-hidden="true"
                             className="absolute rounded-full animate-ping"
