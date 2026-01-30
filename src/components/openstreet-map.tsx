@@ -25,6 +25,7 @@ import {
   MapMarker,
   MarkerContent,
   MapClusterLayer,
+  MapPopup,
 } from "@/components/ui/map";
 import { useTheme } from "next-themes";
 import {
@@ -246,12 +247,20 @@ export default function GoogleMapsClone() {
     return 1500;
   };
 
-  const getMarkerSize = (magnitude: number) => {
-    if (magnitude >= 7) return 34;
-    if (magnitude >= 6) return 32;
-    if (magnitude >= 5) return 30;
-    if (magnitude >= 4) return 28;
-    return 26;
+  const getMarkerWidth = (magnitude: number) => {
+    if (magnitude >= 7) return 50;
+    if (magnitude >= 6) return 46;
+    if (magnitude >= 5) return 42;
+    if (magnitude >= 4) return 38;
+    return 34;
+  };
+
+  const getMarkerHeight = (magnitude: number) => {
+    if (magnitude >= 7) return 28;
+    if (magnitude >= 6) return 26;
+    if (magnitude >= 5) return 24;
+    if (magnitude >= 4) return 22;
+    return 20;
   };
 
   const getMarkerFontSize = (magnitude: number) => {
@@ -547,15 +556,15 @@ export default function GoogleMapsClone() {
                               activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
                             style={{
-                              width: `${getMarkerSize(eq.magnitude)}px`,
-                              height: `${getMarkerSize(eq.magnitude)}px`,
+                              width: `${getMarkerWidth(eq.magnitude)}px`,
+                              height: `${getMarkerHeight(eq.magnitude)}px`,
                               fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
                               backgroundColor: getMagnitudeColor(eq.magnitude),
                               boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
                             }}
                           >
-                            <span className="flex items-center gap-1">
-                              <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-0.5">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
                                 <Mountain
                                   style={{
                                     width: getMarkerIconSize(eq.magnitude),
@@ -579,6 +588,13 @@ export default function GoogleMapsClone() {
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
                   pointColor="#f59e0b"
                   clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = eonetState.events.find((event) => event.id === id);
+                    if (match) {
+                      setSelectedEonetEvent(match);
+                    }
+                  }}
                 />
                 <MapClusterLayer
                   data={airQualityGeojson}
@@ -604,6 +620,11 @@ export default function GoogleMapsClone() {
                 <EarthquakePopover
                   earthquake={selectedEarthquake}
                   onClose={handleCloseEarthquakePopover}
+                />
+
+                <EonetPopover
+                  event={selectedEonetEvent}
+                  onClose={() => setSelectedEonetEvent(null)}
                 />
 
                 <EonetFlyTo event={selectedEonetEvent} />
@@ -765,6 +786,52 @@ function EonetFlyTo({
   }, [map, event]);
 
   return null;
+}
+
+function EonetPopover({
+  event,
+  onClose,
+}: {
+  event: ProcessedEonetEvent | null;
+  onClose: () => void;
+}) {
+  if (!event) return null;
+
+  return (
+    <MapPopup
+      longitude={event.coordinates[0]}
+      latitude={event.coordinates[1]}
+      onClose={onClose}
+      closeButton
+      className="w-64"
+    >
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Live event
+          </p>
+          <h3 className="text-sm font-semibold text-foreground">{event.title}</h3>
+          <p className="text-xs text-muted-foreground">
+            {event.category} · {event.date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window === "undefined") return;
+            window.open(event.url, "_blank", "noopener,noreferrer");
+          }}
+          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          aria-label="View event source"
+        >
+          View source
+        </button>
+      </div>
+    </MapPopup>
+  );
 }
 
 

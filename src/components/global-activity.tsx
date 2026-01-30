@@ -170,7 +170,6 @@ const GlobalActivity = ({
             title="Live Events"
             icon={Globe2}
             itemIcon={Globe2}
-            count={eonetState.events.length}
             isLoading={eonetState.isLoading}
             error={eonetState.error}
             onRefresh={eonetState.refetch}
@@ -182,6 +181,7 @@ const GlobalActivity = ({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
+                    onClick={() => item.payload && onEonetSelect?.(item.payload)}
                     className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
                     aria-label={item.title}
                   >
@@ -216,15 +216,6 @@ const GlobalActivity = ({
                   <div className="flex flex-col gap-2">
                     <Button
                       type="button"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => item.payload && onEonetSelect?.(item.payload)}
-                      aria-label="Zoom to event"
-                    >
-                      Zoom on map
-                    </Button>
-                    <Button
-                      type="button"
                       variant="ghost"
                       size="sm"
                       className="w-full"
@@ -242,7 +233,6 @@ const GlobalActivity = ({
             title="OpenAQ"
             icon={Wind}
             itemIcon={Wind}
-            count={airQualityState.sites.length}
             isLoading={airQualityState.isLoading}
             error={airQualityState.error}
             onRefresh={airQualityState.refetch}
@@ -254,7 +244,6 @@ const GlobalActivity = ({
             title="NWS Tsunamis"
             icon={Waves}
             itemIcon={Waves}
-            count={tsunamiState.alerts.length}
             isLoading={tsunamiState.isLoading}
             error={tsunamiState.error}
             onRefresh={tsunamiState.refetch}
@@ -272,7 +261,6 @@ type SignalSectionProps = {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
   itemIcon: React.ComponentType<{ className?: string }>;
-  count: number;
   isLoading: boolean;
   error: Error | null;
   onRefresh: () => Promise<void>;
@@ -286,7 +274,6 @@ const SignalSection = ({
   title,
   icon: Icon,
   itemIcon: ItemIcon,
-  count,
   isLoading,
   error,
   onRefresh,
@@ -303,7 +290,7 @@ const SignalSection = ({
         </div>
         <div>
           <p className="text-sm font-medium">{title}</p>
-          <p className="text-xs text-muted-foreground">{count} active</p>
+          <p className="text-xs text-muted-foreground">Live updates</p>
         </div>
       </div>
       <Tooltip>
