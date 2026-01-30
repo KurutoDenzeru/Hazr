@@ -1035,6 +1035,20 @@ type MapClusterLayerProps<
   visible?: boolean;
   /** Optional text prefix for cluster count labels */
   labelPrefix?: string;
+  /** Optional property name for unclustered point labels */
+  pointLabelField?: string;
+  /** Color for unclustered point labels */
+  pointLabelColor?: string;
+  /** Optional label offset for unclustered point labels */
+  pointLabelOffset?: [number, number];
+  /** Optional label size for unclustered point labels */
+  pointLabelSize?: number;
+  /** Optional label halo color for unclustered point labels */
+  pointLabelHaloColor?: string;
+  /** Optional label halo width for unclustered point labels */
+  pointLabelHaloWidth?: number;
+  /** Whether unclustered labels are visible (default: true) */
+  pointLabelVisible?: boolean;
   /** Maximum zoom level to cluster points on (default: 14) */
   clusterMaxZoom?: number;
   /** Radius of each cluster when clustering points in pixels (default: 50) */
@@ -1064,6 +1078,13 @@ function MapClusterLayer<
   data,
   visible = true,
   labelPrefix,
+  pointLabelField,
+  pointLabelColor = "#fbbf24",
+  pointLabelOffset = [0.8, 0],
+  pointLabelSize = 12,
+  pointLabelHaloColor = "#0f172a",
+  pointLabelHaloWidth = 1.5,
+  pointLabelVisible = true,
   clusterMaxZoom = 14,
   clusterRadius = 50,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
@@ -1078,6 +1099,7 @@ function MapClusterLayer<
   const clusterLayerId = `clusters-${id}`;
   const clusterCountLayerId = `cluster-count-${id}`;
   const unclusteredLayerId = `unclustered-point-${id}`;
+  const unclusteredLabelLayerId = `unclustered-label-${id}`;
 
   const stylePropsRef = useRef({
     clusterColors,
@@ -1162,12 +1184,36 @@ function MapClusterLayer<
        },
      });
 
+     if (pointLabelField) {
+       map.addLayer({
+         id: unclusteredLabelLayerId,
+         type: "symbol",
+         source: sourceId,
+         filter: ["!", ["has", "point_count"]],
+         layout: {
+           "text-field": ["get", pointLabelField],
+           "text-size": pointLabelSize,
+           "text-offset": pointLabelOffset,
+           "text-anchor": "left",
+           "text-allow-overlap": true,
+           visibility: visible && pointLabelVisible ? "visible" : "none",
+         },
+         paint: {
+           "text-color": pointLabelColor,
+           "text-halo-color": pointLabelHaloColor,
+           "text-halo-width": pointLabelHaloWidth,
+         },
+       });
+     }
+
     return () => {
       try {
         if (map.getLayer(clusterCountLayerId))
           map.removeLayer(clusterCountLayerId);
         if (map.getLayer(unclusteredLayerId))
           map.removeLayer(unclusteredLayerId);
+        if (map.getLayer(unclusteredLabelLayerId))
+          map.removeLayer(unclusteredLabelLayerId);
         if (map.getLayer(clusterLayerId)) map.removeLayer(clusterLayerId);
         if (map.getSource(sourceId)) map.removeSource(sourceId);
       } catch {
@@ -1175,7 +1221,24 @@ function MapClusterLayer<
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isLoaded, map, sourceId, visible, labelPrefix, clusterLayerId, clusterCountLayerId, unclusteredLayerId]);
+   }, [
+    isLoaded,
+    map,
+    sourceId,
+    visible,
+    labelPrefix,
+    pointLabelField,
+    pointLabelVisible,
+    pointLabelOffset,
+    pointLabelSize,
+    pointLabelColor,
+    pointLabelHaloColor,
+    pointLabelHaloWidth,
+    clusterLayerId,
+    clusterCountLayerId,
+    unclusteredLayerId,
+    unclusteredLabelLayerId,
+  ]);
 
   // Update source data when data prop changes (only for non-URL data)
   useEffect(() => {
@@ -1256,7 +1319,48 @@ function MapClusterLayer<
     if (map.getLayer(unclusteredLayerId)) {
       map.setLayoutProperty(unclusteredLayerId, "visibility", visibility);
     }
-  }, [isLoaded, map, visible, labelPrefix, clusterLayerId, clusterCountLayerId, unclusteredLayerId]);
+    if (map.getLayer(unclusteredLabelLayerId)) {
+      map.setLayoutProperty(
+        unclusteredLabelLayerId,
+        "visibility",
+        visible && pointLabelVisible ? "visible" : "none"
+      );
+      if (pointLabelField) {
+        map.setLayoutProperty(unclusteredLabelLayerId, "text-field", ["get", pointLabelField]);
+      }
+      map.setLayoutProperty(unclusteredLabelLayerId, "text-offset", pointLabelOffset);
+      map.setLayoutProperty(unclusteredLabelLayerId, "text-size", pointLabelSize);
+    }
+  }, [
+    isLoaded,
+    map,
+    visible,
+    labelPrefix,
+    pointLabelVisible,
+    pointLabelField,
+    pointLabelOffset,
+    pointLabelSize,
+    clusterLayerId,
+    clusterCountLayerId,
+    unclusteredLayerId,
+    unclusteredLabelLayerId,
+  ]);
+
+  useEffect(() => {
+    if (!isLoaded || !map) return;
+    if (map.getLayer(unclusteredLabelLayerId)) {
+      map.setPaintProperty(unclusteredLabelLayerId, "text-color", pointLabelColor);
+      map.setPaintProperty(unclusteredLabelLayerId, "text-halo-color", pointLabelHaloColor);
+      map.setPaintProperty(unclusteredLabelLayerId, "text-halo-width", pointLabelHaloWidth);
+    }
+  }, [
+    isLoaded,
+    map,
+    pointLabelColor,
+    pointLabelHaloColor,
+    pointLabelHaloWidth,
+    unclusteredLabelLayerId,
+  ]);
 
   // Handle click events
   useEffect(() => {
