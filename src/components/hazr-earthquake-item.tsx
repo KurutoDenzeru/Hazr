@@ -147,9 +147,6 @@ const EarthquakeItem = ({
             }}
           >
             <span className="flex items-center gap-1">
-              <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-1">
-                <Mountain className="size-3" style={{ color: magColor }} />
-              </span>
               {earthquake.magnitude.toFixed(1)}
             </span>
           </div>
