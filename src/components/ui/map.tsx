@@ -1031,6 +1031,10 @@ type MapClusterLayerProps<
 > = {
   /** GeoJSON FeatureCollection data or URL to fetch GeoJSON from */
   data: string | GeoJSON.FeatureCollection<GeoJSON.Point, P>;
+  /** Whether the cluster layer is visible (default: true) */
+  visible?: boolean;
+  /** Optional text prefix for cluster count labels */
+  labelPrefix?: string;
   /** Maximum zoom level to cluster points on (default: 14) */
   clusterMaxZoom?: number;
   /** Radius of each cluster when clustering points in pixels (default: 50) */
@@ -1058,6 +1062,8 @@ function MapClusterLayer<
   P extends GeoJSON.GeoJsonProperties = GeoJSON.GeoJsonProperties
 >({
   data,
+  visible = true,
+  labelPrefix,
   clusterMaxZoom = 14,
   clusterRadius = 50,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
@@ -1093,12 +1099,15 @@ function MapClusterLayer<
     });
 
     // Add cluster circles layer
-    map.addLayer({
-      id: clusterLayerId,
-      type: "circle",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      paint: {
+     map.addLayer({
+       id: clusterLayerId,
+       type: "circle",
+       source: sourceId,
+       filter: ["has", "point_count"],
+       layout: {
+         visibility: visible ? "visible" : "none",
+       },
+       paint: {
         "circle-color": [
           "step",
           ["get", "point_count"],
@@ -1121,31 +1130,37 @@ function MapClusterLayer<
     });
 
     // Add cluster count text layer
-    map.addLayer({
-      id: clusterCountLayerId,
-      type: "symbol",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-size": 12,
-      },
-      paint: {
-        "text-color": "#fff",
-      },
-    });
+     map.addLayer({
+       id: clusterCountLayerId,
+       type: "symbol",
+       source: sourceId,
+       filter: ["has", "point_count"],
+       layout: {
+         "text-field": labelPrefix
+           ? ["concat", labelPrefix, " ", ["get", "point_count_abbreviated"]]
+           : "{point_count_abbreviated}",
+         "text-size": 12,
+         visibility: visible ? "visible" : "none",
+       },
+       paint: {
+         "text-color": "#fff",
+       },
+     });
 
     // Add unclustered point layer
-    map.addLayer({
-      id: unclusteredLayerId,
-      type: "circle",
-      source: sourceId,
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": pointColor,
-        "circle-radius": 6,
-      },
-    });
+     map.addLayer({
+       id: unclusteredLayerId,
+       type: "circle",
+       source: sourceId,
+       filter: ["!", ["has", "point_count"]],
+       layout: {
+         visibility: visible ? "visible" : "none",
+       },
+       paint: {
+         "circle-color": pointColor,
+         "circle-radius": 6,
+       },
+     });
 
     return () => {
       try {
@@ -1160,7 +1175,7 @@ function MapClusterLayer<
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map, sourceId]);
+   }, [isLoaded, map, sourceId, visible, labelPrefix, clusterLayerId, clusterCountLayerId, unclusteredLayerId]);
 
   // Update source data when data prop changes (only for non-URL data)
   useEffect(() => {
@@ -1218,6 +1233,30 @@ function MapClusterLayer<
     clusterThresholds,
     pointColor,
   ]);
+
+  useEffect(() => {
+    if (!isLoaded || !map) return;
+    const visibility = visible ? "visible" : "none";
+    if (map.getLayer(clusterLayerId)) {
+      map.setLayoutProperty(clusterLayerId, "visibility", visibility);
+    }
+    if (map.getLayer(clusterCountLayerId)) {
+      map.setLayoutProperty(clusterCountLayerId, "visibility", visibility);
+      if (labelPrefix) {
+        map.setLayoutProperty(clusterCountLayerId, "text-field", [
+          "concat",
+          labelPrefix,
+          " ",
+          ["get", "point_count_abbreviated"],
+        ]);
+      } else {
+        map.setLayoutProperty(clusterCountLayerId, "text-field", "{point_count_abbreviated}");
+      }
+    }
+    if (map.getLayer(unclusteredLayerId)) {
+      map.setLayoutProperty(unclusteredLayerId, "visibility", visibility);
+    }
+  }, [isLoaded, map, visible, labelPrefix, clusterLayerId, clusterCountLayerId, unclusteredLayerId]);
 
   // Handle click events
   useEffect(() => {

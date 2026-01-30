@@ -161,42 +161,50 @@ const GlobalActivity = ({
           <SignalSection
             title="NASA EONET"
             icon={Globe2}
+            itemIcon={Globe2}
             count={eonetState.events.length}
             isLoading={eonetState.isLoading}
             error={eonetState.error}
             onRefresh={eonetState.refetch}
             items={eventItems}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+            itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
           />
           <SignalSection
             title="Volcano.si.edu"
             icon={Flame}
+            itemIcon={Flame}
             count={volcanismState.volcanoes.length}
             isLoading={volcanismState.isLoading}
             error={volcanismState.error}
             onRefresh={volcanismState.refetch}
             items={volcanoItems}
             toneClassName="bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200"
+            itemToneClassName="bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200"
           />
           <SignalSection
             title="OpenAQ"
             icon={Wind}
+            itemIcon={Wind}
             count={airQualityState.sites.length}
             isLoading={airQualityState.isLoading}
             error={airQualityState.error}
             onRefresh={airQualityState.refetch}
             items={airItems}
             toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+            itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
           />
           <SignalSection
             title="NWS Tsunamis"
             icon={Waves}
+            itemIcon={Waves}
             count={tsunamiState.alerts.length}
             isLoading={tsunamiState.isLoading}
             error={tsunamiState.error}
             onRefresh={tsunamiState.refetch}
             items={tsunamiItems}
             toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+            itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
           />
         </div>
       </div>
@@ -207,23 +215,27 @@ const GlobalActivity = ({
 type SignalSectionProps = {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
+  itemIcon: React.ComponentType<{ className?: string }>;
   count: number;
   isLoading: boolean;
   error: Error | null;
   onRefresh: () => Promise<void>;
   items: SignalItem[];
   toneClassName: string;
+  itemToneClassName: string;
 };
 
 const SignalSection = ({
   title,
   icon: Icon,
+  itemIcon: ItemIcon,
   count,
   isLoading,
   error,
   onRefresh,
   items,
   toneClassName,
+  itemToneClassName,
 }: SignalSectionProps) => (
   <div className="rounded-md border border-border/60 bg-muted/20 px-2 py-2">
     <div className="flex items-center justify-between">
@@ -272,13 +284,18 @@ const SignalSection = ({
               key={item.id}
               type="button"
               onClick={() => handleOpen(item.url)}
-              className="flex w-full flex-col rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+              className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
               aria-label={item.title}
             >
-              <span className="truncate text-[11px] font-semibold text-foreground">
-                {item.title}
+              <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
+                <ItemIcon className="size-3.5" />
               </span>
-              <span className="truncate text-[10px] text-muted-foreground">{item.subtitle}</span>
+              <span className="min-w-0 flex-1">
+                <span className="truncate block text-[11px] font-semibold text-foreground">
+                  {item.title}
+                </span>
+                <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
+              </span>
             </button>
           ))}
         </div>

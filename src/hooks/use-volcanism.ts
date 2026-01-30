@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProcessedVolcano, VolcanismRecord, VolcanismResponse } from "@/types/api";
 
-const VOLCANO_API_URL = "https://volcano.si.edu/database/webservices/volcanoes?format=json";
+const VOLCANO_API_URL =
+  import.meta.env.VITE_VOLCANO_API_URL ??
+  "https://volcano.si.edu/database/webservices/volcanoes?format=json";
 
 type UseVolcanismOptions = {
   endpoint?: string;

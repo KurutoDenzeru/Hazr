@@ -14,6 +14,8 @@ import {
   Moon,
   Box,
   Loader2,
+  SlidersHorizontal,
+  Mountain,
 } from "lucide-react";
 
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -56,6 +58,14 @@ import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
@@ -136,6 +146,13 @@ export default function GoogleMapsClone() {
   });
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
+  const [layerVisibility, setLayerVisibility] = React.useState(() => ({
+    earthquakes: true,
+    eonet: true,
+    volcanism: true,
+    airQuality: true,
+    tsunami: true,
+  }));
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
@@ -462,92 +479,106 @@ export default function GoogleMapsClone() {
                 )}
 
                 {/* Earthquake Markers */}
-                {earthquakes.map((eq) => (
-                  <MapMarker
-                    key={eq.id}
-                    longitude={eq.coordinates[0]}
-                    latitude={eq.coordinates[1]}
-                  >
-                    <MarkerContent>
-                      <button
-                        type="button"
-                        onClick={() => handleEarthquakeSelect(eq)}
-                        className="group relative flex items-center justify-center cursor-pointer"
-                        aria-label={`Earthquake: ${eq.title}`}
-                      >
-                        {activeQuakePulseId === eq.id && (
-                          <>
+                {layerVisibility.earthquakes &&
+                  earthquakes.map((eq) => (
+                    <MapMarker
+                      key={eq.id}
+                      longitude={eq.coordinates[0]}
+                      latitude={eq.coordinates[1]}
+                    >
+                      <MarkerContent>
+                        <button
+                          type="button"
+                          onClick={() => handleEarthquakeSelect(eq)}
+                          className="group relative flex items-center justify-center cursor-pointer"
+                          aria-label={`Earthquake: ${eq.title}`}
+                        >
+                          {activeQuakePulseId === eq.id && (
+                            <>
+                              <span
+                                aria-hidden="true"
+                                className="absolute rounded-full animate-ping"
+                                style={{
+                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                  width: `${getPulseSize(eq.magnitude)}px`,
+                                  height: `${getPulseSize(eq.magnitude)}px`,
+                                }}
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="absolute rounded-full animate-pulse"
+                                style={{
+                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
+                                  width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                                  height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                                }}
+                              />
+                            </>
+                          )}
+                          {/* Pulse ring for recent earthquakes */}
+                          {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
                             <span
                               aria-hidden="true"
                               className="absolute rounded-full animate-ping"
                               style={{
-                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
                                 width: `${getPulseSize(eq.magnitude)}px`,
                                 height: `${getPulseSize(eq.magnitude)}px`,
+                                animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
                               }}
                             />
-                            <span
-                              aria-hidden="true"
-                              className="absolute rounded-full animate-pulse"
-                              style={{
-                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
-                                width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
-                                height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
-                              }}
-                            />
-                          </>
-                        )}
-                        {/* Pulse ring for recent earthquakes */}
-                        {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute rounded-full animate-ping"
-                            style={{
-                              backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
-                              width: `${getPulseSize(eq.magnitude)}px`,
-                              height: `${getPulseSize(eq.magnitude)}px`,
-                              animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
-                            }}
-                          />
-                        )}
-                        {/* Main marker */}
-                        <div
-                          className={cn(
-                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
-                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                           )}
-                          style={{
-                            backgroundColor: getMagnitudeColor(eq.magnitude),
-                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
-                          }}
-                        >
-                          {eq.magnitude.toFixed(1)}
-                        </div>
-                      </button>
-                    </MarkerContent>
-                  </MapMarker>
-                ))}
+                          {/* Main marker */}
+                          <div className="flex items-center gap-1">
+                            <div
+                              className={cn(
+                                "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                                activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                              )}
+                              style={{
+                                backgroundColor: getMagnitudeColor(eq.magnitude),
+                                boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                              }}
+                            >
+                              {eq.magnitude.toFixed(1)}
+                            </div>
+                            <span className="flex size-4 items-center justify-center rounded-full bg-slate-900/80 text-white shadow-sm">
+                              <Mountain className="size-3" />
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
 
                 <MapClusterLayer
                   data={eonetGeojson}
+                  visible={layerVisibility.eonet}
+                  labelPrefix="E"
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
                   pointColor="#f59e0b"
                   clusterRadius={45}
                 />
                 <MapClusterLayer
                   data={volcanismGeojson}
+                  visible={layerVisibility.volcanism}
+                  labelPrefix="V"
                   clusterColors={["#fb7185", "#f43f5e", "#be123c"]}
                   pointColor="#f43f5e"
                   clusterRadius={45}
                 />
                 <MapClusterLayer
                   data={airQualityGeojson}
+                  visible={layerVisibility.airQuality}
+                  labelPrefix="AQ"
                   clusterColors={["#34d399", "#10b981", "#059669"]}
                   pointColor="#10b981"
                   clusterRadius={45}
                 />
                 <MapClusterLayer
                   data={tsunamiGeojson}
+                  visible={layerVisibility.tsunami}
+                  labelPrefix="T"
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
                   pointColor="#3b82f6"
                   clusterRadius={45}
@@ -569,6 +600,8 @@ export default function GoogleMapsClone() {
                   isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
+                  layerVisibility={layerVisibility}
+                  onLayerVisibilityChange={setLayerVisibility}
                 />
               </MapComponent>
             </div>
@@ -703,6 +736,8 @@ function MapOverlayUI({
   isLocating,
   earthquakes,
   onEarthquakeSelect,
+  layerVisibility,
+  onLayerVisibilityChange,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
@@ -710,6 +745,22 @@ function MapOverlayUI({
   isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
+  layerVisibility: {
+    earthquakes: boolean;
+    eonet: boolean;
+    volcanism: boolean;
+    airQuality: boolean;
+    tsunami: boolean;
+  };
+  onLayerVisibilityChange: React.Dispatch<
+    React.SetStateAction<{
+      earthquakes: boolean;
+      eonet: boolean;
+      volcanism: boolean;
+      airQuality: boolean;
+      tsunami: boolean;
+    }>
+  >;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
@@ -731,6 +782,8 @@ function MapOverlayUI({
           <CustomMapControls
             setUserLocation={setUserLocation}
             onLocateAnimation={onLocateAnimation}
+            layerVisibility={layerVisibility}
+            onLayerVisibilityChange={onLayerVisibilityChange}
           />
         </div>
       </div>
@@ -896,9 +949,27 @@ const ControlButton = React.forwardRef<HTMLButtonElement, ControlButtonProps>(
 function CustomMapControls({
   setUserLocation,
   onLocateAnimation,
+  layerVisibility,
+  onLayerVisibilityChange,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
+  layerVisibility: {
+    earthquakes: boolean;
+    eonet: boolean;
+    volcanism: boolean;
+    airQuality: boolean;
+    tsunami: boolean;
+  };
+  onLayerVisibilityChange: React.Dispatch<
+    React.SetStateAction<{
+      earthquakes: boolean;
+      eonet: boolean;
+      volcanism: boolean;
+      airQuality: boolean;
+      tsunami: boolean;
+    }>
+  >;
 }) {
   const { map } = useMap();
   const { resolvedTheme, setTheme } = useTheme();
@@ -1100,11 +1171,64 @@ function CustomMapControls({
     setTheme(current === "dark" ? "light" : "dark");
   };
 
+  const handleToggleLayer = (key: keyof typeof layerVisibility) => {
+    onLayerVisibilityChange((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-col gap-2 items-end">
         {/* Utility Controls (Theme, 3D, Fullscreen) */}
         <ControlGroup>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <ControlButton label="Filter layers">
+                    <SlidersHorizontal className="size-4" />
+                  </ControlButton>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={8}>Filters</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuLabel>Map Layers</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={layerVisibility.earthquakes}
+                onCheckedChange={() => handleToggleLayer("earthquakes")}
+              >
+                Earthquakes
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={layerVisibility.eonet}
+                onCheckedChange={() => handleToggleLayer("eonet")}
+              >
+                NASA EONET
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={layerVisibility.volcanism}
+                onCheckedChange={() => handleToggleLayer("volcanism")}
+              >
+                Volcanoes
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={layerVisibility.airQuality}
+                onCheckedChange={() => handleToggleLayer("airQuality")}
+              >
+                Air Quality
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={layerVisibility.tsunami}
+                onCheckedChange={() => handleToggleLayer("tsunami")}
+              >
+                Tsunamis
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton onClick={toggleTheme} label="Toggle theme">

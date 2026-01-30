@@ -65,6 +65,7 @@ export const useAirQuality = (options: UseAirQualityOptions = {}): UseAirQuality
         signal: abortControllerRef.current.signal,
         headers: {
           "X-API-Key": OPENAQ_API_KEY,
+          Authorization: `Bearer ${OPENAQ_API_KEY}`,
         },
       });
 

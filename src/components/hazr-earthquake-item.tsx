@@ -7,6 +7,7 @@ import {
   Gauge,
   Waves,
   AlertTriangle,
+  Mountain,
 } from "lucide-react";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
@@ -51,9 +52,12 @@ const EarthquakeItem = ({
           <button
             type="button"
             onClick={onClick}
-            className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
+            className="relative flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
             aria-label={earthquake.title}
           >
+            <span className="absolute left-1 top-1 flex size-4 items-center justify-center rounded-md bg-slate-900/80 text-white">
+              <Mountain className="size-2.5" />
+            </span>
             <div
               className="flex size-7 items-center justify-center rounded-full text-xs font-bold text-white"
               style={{ backgroundColor: magColor }}
@@ -129,24 +133,29 @@ const EarthquakeItem = ({
       className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
       aria-label={earthquake.title}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105"
-          style={{
-            backgroundColor: magColor,
-            boxShadow: `0 4px 14px ${magColor}40`,
-          }}
-        >
-          {earthquake.magnitude.toFixed(1)}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {earthquake.place}
-            </p>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
+        <div className="flex items-center gap-3">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105"
+            style={{
+              backgroundColor: magColor,
+              boxShadow: `0 4px 14px ${magColor}40`,
+            }}
+          >
+            {earthquake.magnitude.toFixed(1)}
           </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-md bg-slate-900/80 text-white">
+                  <Mountain className="size-3.5" />
+                </span>
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {earthquake.place}
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
+            </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {detailBadges.map((badge) => (
               <div
