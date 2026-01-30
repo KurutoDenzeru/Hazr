@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  Flame,
   Globe2,
   Loader2,
   RefreshCw,
@@ -13,7 +12,6 @@ import type {
   ProcessedAirQualitySite,
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
-  ProcessedVolcano,
 } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,12 +21,6 @@ type GlobalActivityProps = {
   collapsed: boolean;
   eonetState: {
     events: ProcessedEonetEvent[];
-    isLoading: boolean;
-    error: Error | null;
-    refetch: () => Promise<void>;
-  };
-  volcanismState: {
-    volcanoes: ProcessedVolcano[];
     isLoading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
@@ -62,7 +54,6 @@ const handleOpen = (url?: string) => {
 const GlobalActivity = ({
   collapsed,
   eonetState,
-  volcanismState,
   airQualityState,
   tsunamiState,
 }: GlobalActivityProps) => {
@@ -74,13 +65,6 @@ const GlobalActivity = ({
       day: "numeric",
     })}`,
     url: event.url,
-  }));
-
-  const volcanoItems: SignalItem[] = volcanismState.volcanoes.slice(0, 4).map((volcano) => ({
-    id: volcano.id,
-    title: volcano.name,
-    subtitle: `${volcano.country} • ${volcano.status}`,
-    url: volcano.url,
   }));
 
   const airItems: SignalItem[] = airQualityState.sites.slice(0, 4).map((site) => ({
@@ -112,14 +96,6 @@ const GlobalActivity = ({
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             onClick={eonetState.refetch}
             isLoading={eonetState.isLoading}
-          />
-          <MiniSignal
-            label="Volcanoes"
-            count={volcanismState.volcanoes.length}
-            icon={Flame}
-            toneClassName="bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200"
-            onClick={volcanismState.refetch}
-            isLoading={volcanismState.isLoading}
           />
           <MiniSignal
             label="Air quality"
@@ -169,18 +145,6 @@ const GlobalActivity = ({
             items={eventItems}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-          />
-          <SignalSection
-            title="Volcano.si.edu"
-            icon={Flame}
-            itemIcon={Flame}
-            count={volcanismState.volcanoes.length}
-            isLoading={volcanismState.isLoading}
-            error={volcanismState.error}
-            onRefresh={volcanismState.refetch}
-            items={volcanoItems}
-            toneClassName="bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200"
-            itemToneClassName="bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200"
           />
           <SignalSection
             title="OpenAQ"

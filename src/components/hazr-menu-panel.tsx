@@ -18,7 +18,6 @@ import type {
   ProcessedEarthquake,
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
-  ProcessedVolcano,
 } from "@/types/api";
 
 type HazrMenuPanelProps = {
@@ -29,12 +28,6 @@ type HazrMenuPanelProps = {
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   eonetState?: {
     events: ProcessedEonetEvent[];
-    isLoading: boolean;
-    error: Error | null;
-    refetch: () => Promise<void>;
-  };
-  volcanismState?: {
-    volcanoes: ProcessedVolcano[];
     isLoading: boolean;
     error: Error | null;
     refetch: () => Promise<void>;
@@ -63,7 +56,6 @@ function HazrMenuPanel({
   isLocating = false,
   onEarthquakeSelect,
   eonetState,
-  volcanismState,
   airQualityState,
   tsunamiState,
 }: HazrMenuPanelProps) {
@@ -106,7 +98,7 @@ function HazrMenuPanel({
 
         <Separator className={cn(collapsed ? "my-2" : "my-2")} />
 
-        {(eonetState || volcanismState || airQualityState || tsunamiState) && (
+        {(eonetState || airQualityState || tsunamiState) && (
           <>
             {!collapsed && (
               <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
@@ -119,14 +111,6 @@ function HazrMenuPanel({
                 eonetState={
                   eonetState ?? {
                     events: [],
-                    isLoading: false,
-                    error: null,
-                    refetch: async () => {},
-                  }
-                }
-                volcanismState={
-                  volcanismState ?? {
-                    volcanoes: [],
                     isLoading: false,
                     error: null,
                     refetch: async () => {},

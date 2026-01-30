@@ -53,7 +53,6 @@ import { useEarthquakes } from "@/hooks/use-earthquakes";
 import { useAirQuality } from "@/hooks/use-air-quality";
 import { useEonetEvents } from "@/hooks/use-eonet-events";
 import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
-import { useVolcanism } from "@/hooks/use-volcanism";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
@@ -149,7 +148,6 @@ export default function GoogleMapsClone() {
   const [layerVisibility, setLayerVisibility] = React.useState(() => ({
     earthquakes: true,
     eonet: true,
-    volcanism: true,
     airQuality: true,
     tsunami: true,
   }));
@@ -161,7 +159,6 @@ export default function GoogleMapsClone() {
   });
 
   const eonetState = useEonetEvents();
-  const volcanismState = useVolcanism();
   const airQualityState = useAirQuality();
   const tsunamiState = useTsunamiAlerts();
 
@@ -184,27 +181,6 @@ export default function GoogleMapsClone() {
       })),
     }),
     [eonetState.events],
-  );
-
-  const volcanismGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
-    () => ({
-      type: "FeatureCollection",
-      features: volcanismState.volcanoes.map((volcano) => ({
-        type: "Feature",
-        properties: {
-          id: volcano.id,
-          name: volcano.name,
-          country: volcano.country,
-          status: volcano.status,
-          url: volcano.url,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: volcano.coordinates,
-        },
-      })),
-    }),
-    [volcanismState.volcanoes],
   );
 
   const airQualityGeojson = React.useMemo<
@@ -424,7 +400,6 @@ export default function GoogleMapsClone() {
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
           eonetState={eonetState}
-          volcanismState={volcanismState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}
         />
@@ -557,14 +532,6 @@ export default function GoogleMapsClone() {
                   labelPrefix="E"
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
                   pointColor="#f59e0b"
-                  clusterRadius={45}
-                />
-                <MapClusterLayer
-                  data={volcanismGeojson}
-                  visible={layerVisibility.volcanism}
-                  labelPrefix="V"
-                  clusterColors={["#fb7185", "#f43f5e", "#be123c"]}
-                  pointColor="#f43f5e"
                   clusterRadius={45}
                 />
                 <MapClusterLayer
@@ -748,7 +715,6 @@ function MapOverlayUI({
   layerVisibility: {
     earthquakes: boolean;
     eonet: boolean;
-    volcanism: boolean;
     airQuality: boolean;
     tsunami: boolean;
   };
@@ -756,7 +722,6 @@ function MapOverlayUI({
     React.SetStateAction<{
       earthquakes: boolean;
       eonet: boolean;
-      volcanism: boolean;
       airQuality: boolean;
       tsunami: boolean;
     }>
@@ -957,7 +922,6 @@ function CustomMapControls({
   layerVisibility: {
     earthquakes: boolean;
     eonet: boolean;
-    volcanism: boolean;
     airQuality: boolean;
     tsunami: boolean;
   };
@@ -965,7 +929,6 @@ function CustomMapControls({
     React.SetStateAction<{
       earthquakes: boolean;
       eonet: boolean;
-      volcanism: boolean;
       airQuality: boolean;
       tsunami: boolean;
     }>
@@ -1208,12 +1171,6 @@ function CustomMapControls({
                 onCheckedChange={() => handleToggleLayer("eonet")}
               >
                 NASA EONET
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={layerVisibility.volcanism}
-                onCheckedChange={() => handleToggleLayer("volcanism")}
-              >
-                Volcanoes
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={layerVisibility.airQuality}

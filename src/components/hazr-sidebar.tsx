@@ -31,7 +31,6 @@ import type {
   ProcessedEarthquake,
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
-  ProcessedVolcano,
 } from "@/types/api"
 
 type HazrSidebarProps = {
@@ -40,12 +39,6 @@ type HazrSidebarProps = {
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
   eonetState?: {
     events: ProcessedEonetEvent[]
-    isLoading: boolean
-    error: Error | null
-    refetch: () => Promise<void>
-  }
-  volcanismState?: {
-    volcanoes: ProcessedVolcano[]
     isLoading: boolean
     error: Error | null
     refetch: () => Promise<void>
@@ -69,7 +62,6 @@ function HazrSidebar({
   isLocating,
   onEarthquakeSelect,
   eonetState,
-  volcanismState,
   airQualityState,
   tsunamiState,
 }: HazrSidebarProps) {
@@ -159,7 +151,6 @@ function HazrSidebar({
           isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}
           eonetState={eonetState}
-          volcanismState={volcanismState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}
         />

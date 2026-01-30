@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OpenAQLatestResponse, ProcessedAirQualitySite } from "@/types/api";
 
-const OPENAQ_BASE_URL = "https://api.openaq.org/v3/latest";
-const OPENAQ_API_KEY =
-  import.meta.env.VITE_OPENAQ_API_KEY ??
-  "d6bca969eb77e9a3e7129bcabec9cf1c5c3e39f4c79cae4a2abefae4966df5f0";
+const OPENAQ_BASE_URL = "/api/openaq/latest";
+const OPENAQ_API_KEY = import.meta.env.VITE_OPENAQ_API_KEY ?? "";
 
 type UseAirQualityOptions = {
   limit?: number;
@@ -63,10 +61,12 @@ export const useAirQuality = (options: UseAirQualityOptions = {}): UseAirQuality
     try {
       const response = await fetch(buildOpenAqUrl(limit), {
         signal: abortControllerRef.current.signal,
-        headers: {
-          "X-API-Key": OPENAQ_API_KEY,
-          Authorization: `Bearer ${OPENAQ_API_KEY}`,
-        },
+        headers: OPENAQ_API_KEY
+          ? {
+              "X-API-Key": OPENAQ_API_KEY,
+              Authorization: `Bearer ${OPENAQ_API_KEY}`,
+            }
+          : undefined,
       });
 
       if (!response.ok) {
