@@ -503,28 +503,26 @@ export default function GoogleMapsClone() {
                               }}
                             />
                           )}
-                          {/* Main marker */}
-                          <div className="flex items-center gap-1">
-                            <div
-                              className={cn(
-                                "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
-                                activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
-                              )}
-                              style={{
-                                backgroundColor: getMagnitudeColor(eq.magnitude),
-                                boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
-                              }}
-                            >
-                              {eq.magnitude.toFixed(1)}
-                            </div>
-                            <span className="flex size-4 items-center justify-center rounded-full bg-slate-900/80 text-white shadow-sm">
-                              <Mountain className="size-3" />
-                            </span>
-                          </div>
-                        </button>
-                      </MarkerContent>
-                    </MapMarker>
-                  ))}
+                        {/* Main marker */}
+                        <div
+                          className={cn(
+                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                          )}
+                          style={{
+                            backgroundColor: getMagnitudeColor(eq.magnitude),
+                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                          }}
+                        >
+                          <span className="absolute left-0.5 top-0.5 inline-flex size-3 items-center justify-center rounded-full bg-black/45">
+                            <Mountain className="size-2 text-white" />
+                          </span>
+                          {eq.magnitude.toFixed(1)}
+                        </div>
+                      </button>
+                    </MarkerContent>
+                  </MapMarker>
+                ))}
 
                 <MapClusterLayer
                   data={eonetGeojson}

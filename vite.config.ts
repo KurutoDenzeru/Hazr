@@ -9,9 +9,9 @@ export default defineConfig({
   server: {
     proxy: {
       "/api/openaq": {
-        target: "https://api.openaq.org/v3",
+        target: "https://api.openaq.org",
         changeOrigin: true,
-        rewrite: (pathName) => pathName.replace(/^\/api\/openaq/, ""),
+        rewrite: (pathName) => pathName.replace(/^\/api\/openaq/, "/v3"),
       },
     },
   },
