@@ -29,6 +29,7 @@ import {
   Users,
   Waves,
   X,
+  Wind,
 } from "lucide-react";
 
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -66,7 +67,12 @@ import { useEarthquakes } from "@/hooks/use-earthquakes";
 import { useAirQuality } from "@/hooks/use-air-quality";
 import { useEonetEvents } from "@/hooks/use-eonet-events";
 import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
-import type { ProcessedEarthquake, ProcessedEonetEvent } from "@/types/api";
+import type {
+  ProcessedAirQualitySite,
+  ProcessedEarthquake,
+  ProcessedEonetEvent,
+  ProcessedTsunamiAlert,
+} from "@/types/api";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -173,8 +179,12 @@ export default function GoogleMapsClone() {
     React.useState<ProcessedEarthquake | null>(null);
   const [selectedEonetEvent, setSelectedEonetEvent] =
     React.useState<ProcessedEonetEvent | null>(null);
+  const [selectedTsunamiAlert, setSelectedTsunamiAlert] =
+    React.useState<ProcessedTsunamiAlert | null>(null);
+  const [selectedAirQualitySite, setSelectedAirQualitySite] =
+    React.useState<ProcessedAirQualitySite | null>(null);
   const [activeSignalType, setActiveSignalType] = React.useState<
-    "earthquake" | "event" | null
+    "earthquake" | "global" | null
   >(null);
   const [layerVisibility, setLayerVisibility] = React.useState(() => ({
     earthquakes: true,
@@ -185,7 +195,7 @@ export default function GoogleMapsClone() {
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
-    magnitude: "2.5",
+    magnitude: "all",
     range: "day",
   });
 
@@ -262,12 +272,30 @@ export default function GoogleMapsClone() {
   );
 
   const [now] = React.useState(() => Date.now());
-  const getPulseSize = (magnitude: number) => {
-    if (magnitude >= 7) return 56;
-    if (magnitude >= 6) return 48;
-    if (magnitude >= 5) return 40;
-    if (magnitude >= 4) return 34;
-    return 28;
+  const getPulseWidth = (magnitude: number) => {
+    if (magnitude >= 7) return 74;
+    if (magnitude >= 6) return 66;
+    if (magnitude >= 5) return 58;
+    if (magnitude >= 4) return 50;
+    return 44;
+  };
+
+  const getPulseHeight = (magnitude: number) => {
+    if (magnitude >= 7) return 40;
+    if (magnitude >= 6) return 36;
+    if (magnitude >= 5) return 32;
+    if (magnitude >= 4) return 28;
+    return 26;
+  };
+
+  const getPulseInnerWidth = (magnitude: number) => {
+    const base = getPulseWidth(magnitude) - 16;
+    return Math.max(base, getMarkerMinWidth(magnitude) + 12);
+  };
+
+  const getPulseInnerHeight = (magnitude: number) => {
+    const base = getPulseHeight(magnitude) - 12;
+    return Math.max(base, getMarkerHeight(magnitude) + 8);
   };
 
   const getPulseDuration = (magnitude: number) => {
@@ -349,14 +377,20 @@ export default function GoogleMapsClone() {
     setSelectedEarthquake(null);
     setActiveQuakePulseId(null);
     setActiveSignalType((prev) =>
-      prev === "earthquake" ? (selectedEonetEvent ? "event" : null) : prev
+      prev === "earthquake"
+        ? selectedEonetEvent || selectedTsunamiAlert || selectedAirQualitySite
+          ? "global"
+          : null
+        : prev
     );
-  }, [selectedEonetEvent]);
+  }, [selectedEonetEvent, selectedTsunamiAlert, selectedAirQualitySite]);
 
   const handleCloseEonetEvent = React.useCallback(() => {
     setSelectedEonetEvent(null);
+    setSelectedTsunamiAlert(null);
+    setSelectedAirQualitySite(null);
     setActiveSignalType((prev) =>
-      prev === "event" ? (selectedEarthquake ? "earthquake" : null) : prev
+      prev === "global" ? (selectedEarthquake ? "earthquake" : null) : prev
     );
   }, [selectedEarthquake]);
 
@@ -423,7 +457,9 @@ export default function GoogleMapsClone() {
     (event: ProcessedEonetEvent) => {
       setLayerVisibility((prev) => ({ ...prev, eonet: true }));
       setSelectedEonetEvent(event);
-      setActiveSignalType("event");
+      setSelectedTsunamiAlert(null);
+      setSelectedAirQualitySite(null);
+      setActiveSignalType("global");
       handleUserInteraction();
       setViewState((prev) => ({
         center: event.coordinates,
@@ -432,6 +468,40 @@ export default function GoogleMapsClone() {
     },
     [handleUserInteraction]
   );
+
+  const handleTsunamiSelect = React.useCallback(
+    (alert: ProcessedTsunamiAlert) => {
+      setLayerVisibility((prev) => ({ ...prev, tsunami: true }));
+      setSelectedTsunamiAlert(alert);
+      setSelectedEonetEvent(null);
+      setSelectedAirQualitySite(null);
+      setActiveSignalType("global");
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: alert.coordinates,
+        zoom: Math.max(prev.zoom, 5.8),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
+  const handleAirQualitySelect = React.useCallback(
+    (site: ProcessedAirQualitySite) => {
+      setLayerVisibility((prev) => ({ ...prev, airQuality: true }));
+      setSelectedAirQualitySite(site);
+      setSelectedEonetEvent(null);
+      setSelectedTsunamiAlert(null);
+      setActiveSignalType("global");
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: site.coordinates,
+        zoom: Math.max(prev.zoom, 6),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
+  const globalClusterMaxZoom = 6;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -571,8 +641,9 @@ export default function GoogleMapsClone() {
                                 className="absolute rounded-full animate-ping"
                                 style={{
                                   backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
-                                  width: `${getPulseSize(eq.magnitude)}px`,
-                                  height: `${getPulseSize(eq.magnitude)}px`,
+                                  width: `${getPulseWidth(eq.magnitude)}px`,
+                                  height: `${getPulseHeight(eq.magnitude)}px`,
+                                  borderRadius: 9999,
                                 }}
                               />
                               <span
@@ -580,8 +651,9 @@ export default function GoogleMapsClone() {
                                 className="absolute rounded-full animate-pulse"
                                 style={{
                                   backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
-                                  width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
-                                  height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
+                                  width: `${getPulseInnerWidth(eq.magnitude)}px`,
+                                  height: `${getPulseInnerHeight(eq.magnitude)}px`,
+                                  borderRadius: 9999,
                                 }}
                               />
                             </>
@@ -593,8 +665,9 @@ export default function GoogleMapsClone() {
                               className="absolute rounded-full animate-ping"
                               style={{
                                 backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
-                                width: `${getPulseSize(eq.magnitude)}px`,
-                                height: `${getPulseSize(eq.magnitude)}px`,
+                                width: `${getPulseWidth(eq.magnitude)}px`,
+                                height: `${getPulseHeight(eq.magnitude)}px`,
+                                borderRadius: 9999,
                                 animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
                               }}
                             />
@@ -637,18 +710,17 @@ export default function GoogleMapsClone() {
                   data={eonetGeojson}
                   visible={layerVisibility.eonet}
                   labelPrefix="E"
-                  pointLabelField="icon"
-                  pointLabelColor="#fbbf24"
-                  pointLabelOffset={[0.9, 0]}
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
-                  pointColor="#f59e0b"
                   clusterRadius={45}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = eonetState.events.find((event) => event.id === id);
                     if (match) {
                       setSelectedEonetEvent(match);
-                      setActiveSignalType("event");
+                      setActiveSignalType("global");
                     }
                   }}
                 />
@@ -656,20 +728,35 @@ export default function GoogleMapsClone() {
                   data={airQualityGeojson}
                   visible={layerVisibility.airQuality}
                   labelPrefix="AQ"
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
-                  pointColor="#10b981"
                   clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = airQualityState.sites.find((site) => site.id === id);
+                    if (match) {
+                      handleAirQualitySelect(match);
+                    }
+                  }}
                 />
                 <MapClusterLayer
                   data={tsunamiGeojson}
                   visible={layerVisibility.tsunami}
                   labelPrefix="T"
-                  pointLabelField="icon"
-                  pointLabelColor="#93c5fd"
-                  pointLabelOffset={[0.9, 0]}
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
-                  pointColor="#3b82f6"
                   clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = tsunamiState.alerts.find((alert) => alert.id === id);
+                    if (match) {
+                      handleTsunamiSelect(match);
+                    }
+                  }}
                 />
 
                 {/* Fly to selected earthquake */}
@@ -681,8 +768,21 @@ export default function GoogleMapsClone() {
                   activeType={activeSignalType}
                   earthquake={selectedEarthquake}
                   event={selectedEonetEvent}
+                  tsunamiAlert={selectedTsunamiAlert}
+                  airQualitySite={selectedAirQualitySite}
                   onCloseEarthquake={handleCloseEarthquakePopover}
                   onCloseEvent={handleCloseEonetEvent}
+                />
+
+                <GlobalSignalMarkers
+                  events={eonetState.events}
+                  tsunamiAlerts={tsunamiState.alerts}
+                  airQualitySites={airQualityState.sites}
+                  layerVisibility={layerVisibility}
+                  clusterMaxZoom={globalClusterMaxZoom}
+                  onEventSelect={handleEonetSelect}
+                  onTsunamiSelect={handleTsunamiSelect}
+                  onAirQualitySelect={handleAirQualitySelect}
                 />
 
                 <MapOverlayUI
@@ -789,6 +889,147 @@ function MapViewController({
   return null;
 }
 
+function useMapZoom() {
+  const { map } = useMap();
+  const [zoom, setZoom] = React.useState(() => map?.getZoom() ?? 0);
+
+  React.useEffect(() => {
+    if (!map) return;
+    const handleMove = () => setZoom(map.getZoom());
+    map.on("move", handleMove);
+    return () => {
+      map.off("move", handleMove);
+    };
+  }, [map]);
+
+  return zoom;
+}
+
+function GlobalSignalMarkers({
+  events,
+  tsunamiAlerts,
+  airQualitySites,
+  layerVisibility,
+  clusterMaxZoom,
+  onEventSelect,
+  onTsunamiSelect,
+  onAirQualitySelect,
+}: {
+  events: ProcessedEonetEvent[];
+  tsunamiAlerts: ProcessedTsunamiAlert[];
+  airQualitySites: ProcessedAirQualitySite[];
+  layerVisibility: {
+    eonet: boolean;
+    airQuality: boolean;
+    tsunami: boolean;
+  };
+  clusterMaxZoom: number;
+  onEventSelect: (event: ProcessedEonetEvent) => void;
+  onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
+  onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
+}) {
+  const zoom = useMapZoom();
+  if (zoom < clusterMaxZoom) return null;
+
+  const getEventTone = (category: string) => {
+    const normalized = category.toLowerCase();
+    if (normalized.includes("storm")) return "#f59e0b";
+    if (normalized.includes("wildfire") || normalized.includes("fire")) return "#f97316";
+    if (normalized.includes("flood")) return "#38bdf8";
+    if (normalized.includes("volcano")) return "#fb7185";
+    if (normalized.includes("ice")) return "#22d3ee";
+    if (normalized.includes("drought")) return "#a16207";
+    if (normalized.includes("dust")) return "#fbbf24";
+    return "#f59e0b";
+  };
+
+  return (
+    <>
+      {layerVisibility.eonet &&
+        events.map((event) => {
+          const tone = getEventTone(event.category);
+          return (
+            <MapMarker
+              key={event.id}
+              longitude={event.coordinates[0]}
+              latitude={event.coordinates[1]}
+            >
+              <MarkerContent>
+                <button
+                  type="button"
+                  onClick={() => onEventSelect(event)}
+                  className="flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
+                  style={{
+                    backgroundColor: tone,
+                    boxShadow: `0 6px 16px ${tone}55`,
+                  }}
+                  aria-label={`Event: ${event.title}`}
+                >
+                  <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
+                    {getEventIcon(event.category)}
+                  </span>
+                  <span className="truncate max-w-[80px]">
+                    {event.category}
+                  </span>
+                </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        })}
+
+      {layerVisibility.tsunami &&
+        tsunamiAlerts.map((alert) => (
+          <MapMarker
+            key={alert.id}
+            longitude={alert.coordinates[0]}
+            latitude={alert.coordinates[1]}
+          >
+            <MarkerContent>
+              <button
+                type="button"
+                onClick={() => onTsunamiSelect(alert)}
+                className="flex items-center gap-2 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
+                style={{ boxShadow: "0 6px 16px #3b82f680" }}
+                aria-label="Tsunami alert"
+              >
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
+                  🌊
+                </span>
+                <span className="truncate max-w-[80px]">Tsunami</span>
+              </button>
+            </MarkerContent>
+          </MapMarker>
+        ))}
+
+      {layerVisibility.airQuality &&
+        airQualitySites.map((site) => (
+          <MapMarker
+            key={site.id}
+            longitude={site.coordinates[0]}
+            latitude={site.coordinates[1]}
+          >
+            <MarkerContent>
+              <button
+                type="button"
+                onClick={() => onAirQualitySelect(site)}
+                className="flex items-center gap-2 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
+                style={{ boxShadow: "0 6px 16px #10b98170" }}
+                aria-label={`Air quality: ${site.location}`}
+              >
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
+                  🌬
+                </span>
+                <span className="truncate max-w-[90px]">
+                  {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
+                </span>
+              </button>
+            </MarkerContent>
+          </MapMarker>
+        ))}
+    </>
+  );
+}
+
 // Component to fly to earthquake location when selected
 function EarthquakeFlyTo({
   earthquake,
@@ -848,12 +1089,16 @@ function SignalOverlay({
   activeType,
   earthquake,
   event,
+  tsunamiAlert,
+  airQualitySite,
   onCloseEarthquake,
   onCloseEvent,
 }: {
-  activeType: "earthquake" | "event" | null;
+  activeType: "earthquake" | "global" | null;
   earthquake: ProcessedEarthquake | null;
   event: ProcessedEonetEvent | null;
+  tsunamiAlert: ProcessedTsunamiAlert | null;
+  airQualitySite: ProcessedAirQualitySite | null;
   onCloseEarthquake: () => void;
   onCloseEvent: () => void;
 }) {
@@ -872,9 +1117,11 @@ function SignalOverlay({
   }, [map, overlayContainer]);
 
   const activeEarthquake = activeType === "earthquake" ? earthquake : null;
-  const activeEvent = activeType === "event" ? event : null;
+  const activeEvent = activeType === "global" ? event : null;
+  const activeTsunami = activeType === "global" ? tsunamiAlert : null;
+  const activeAirQuality = activeType === "global" ? airQualitySite : null;
 
-  if (!map || (!activeEarthquake && !activeEvent)) return null;
+  if (!map || (!activeEarthquake && !activeEvent && !activeTsunami && !activeAirQuality)) return null;
 
   const formatRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -1126,6 +1373,107 @@ function SignalOverlay({
           >
             View source
           </Button>
+        </div>
+      )}
+
+      {activeTsunami && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 shadow-lg dark:bg-sky-500/30 dark:text-sky-200">
+              <Waves className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeTsunami.headline}</p>
+                <button
+                  type="button"
+                  onClick={onCloseEvent}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200">
+                  {activeTsunami.severity}
+                </Badge>
+                {activeTsunami.sent && (
+                  <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+                    {activeTsunami.sent.toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Coordinates</p>
+              <p className="text-sm font-medium text-foreground">
+                {activeTsunami.coordinates[1].toFixed(4)}, {activeTsunami.coordinates[0].toFixed(4)}
+              </p>
+            </div>
+          </div>
+
+          {activeTsunami.url && (
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                if (typeof window === "undefined") return;
+                window.open(activeTsunami.url, "_blank", "noopener,noreferrer");
+              }}
+              aria-label="View alert source"
+            >
+              View source
+            </Button>
+          )}
+        </div>
+      )}
+
+      {activeAirQuality && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 shadow-lg dark:bg-emerald-500/30 dark:text-emerald-200">
+              <Wind className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeAirQuality.location}</p>
+                <button
+                  type="button"
+                  onClick={onCloseEvent}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200">
+                  {activeAirQuality.parameter.toUpperCase()}
+                </Badge>
+                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+                  {activeAirQuality.value} {activeAirQuality.unit}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Coordinates</p>
+              <p className="text-sm font-medium text-foreground">
+                {activeAirQuality.coordinates[1].toFixed(4)}, {activeAirQuality.coordinates[0].toFixed(4)}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>,
