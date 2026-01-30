@@ -53,7 +53,7 @@ import { useEarthquakes } from "@/hooks/use-earthquakes";
 import { useAirQuality } from "@/hooks/use-air-quality";
 import { useEonetEvents } from "@/hooks/use-eonet-events";
 import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
-import type { ProcessedEarthquake } from "@/types/api";
+import type { ProcessedEarthquake, ProcessedEonetEvent } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { EarthquakePopover } from "@/components/map/earthquake-popover";
@@ -145,6 +145,8 @@ export default function GoogleMapsClone() {
   });
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
+  const [selectedEonetEvent, setSelectedEonetEvent] =
+    React.useState<ProcessedEonetEvent | null>(null);
   const [layerVisibility, setLayerVisibility] = React.useState(() => ({
     earthquakes: true,
     eonet: true,
@@ -244,6 +246,26 @@ export default function GoogleMapsClone() {
     return 1500;
   };
 
+  const getMarkerSize = (magnitude: number) => {
+    if (magnitude >= 7) return 34;
+    if (magnitude >= 6) return 32;
+    if (magnitude >= 5) return 30;
+    if (magnitude >= 4) return 28;
+    return 26;
+  };
+
+  const getMarkerFontSize = (magnitude: number) => {
+    if (magnitude >= 6) return 11;
+    if (magnitude >= 4) return 10;
+    return 9;
+  };
+
+  const getMarkerIconSize = (magnitude: number) => {
+    if (magnitude >= 6) return 12;
+    if (magnitude >= 4) return 11;
+    return 10;
+  };
+
   const handleTriggerQuakePulse = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       if (typeof window === "undefined") return;
@@ -261,6 +283,7 @@ export default function GoogleMapsClone() {
     },
     [handleTriggerQuakePulse]
   );
+
 
   const handleSidebarOpenChange = React.useCallback((open: boolean) => {
     setIsDesktopSidebarOpen(open);
@@ -338,6 +361,19 @@ export default function GoogleMapsClone() {
     setShouldAutoCenter(false);
   }, []);
 
+  const handleEonetSelect = React.useCallback(
+    (event: ProcessedEonetEvent) => {
+      setLayerVisibility((prev) => ({ ...prev, eonet: true }));
+      setSelectedEonetEvent(event);
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: event.coordinates,
+        zoom: Math.max(prev.zoom, 5.8),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
       Math.abs(center[0] - DEFAULT_FALLBACK_CENTER[0]) < 0.01 &&
@@ -399,6 +435,7 @@ export default function GoogleMapsClone() {
           userLocation={resolvedLocation}
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
+          onEonetSelect={handleEonetSelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}
@@ -504,25 +541,36 @@ export default function GoogleMapsClone() {
                             />
                           )}
                         {/* Main marker */}
-                        <div
-                          className={cn(
-                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
-                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
-                          )}
-                          style={{
-                            backgroundColor: getMagnitudeColor(eq.magnitude),
-                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
-                          }}
-                        >
-                          <span className="absolute left-0.5 top-0.5 inline-flex size-3 items-center justify-center rounded-full bg-black/45">
-                            <Mountain className="size-2 text-white" />
-                          </span>
-                          {eq.magnitude.toFixed(1)}
-                        </div>
-                      </button>
-                    </MarkerContent>
-                  </MapMarker>
-                ))}
+                          <div
+                            className={cn(
+                              "relative flex items-center justify-center rounded-full font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                              activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                            )}
+                            style={{
+                              width: `${getMarkerSize(eq.magnitude)}px`,
+                              height: `${getMarkerSize(eq.magnitude)}px`,
+                              fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
+                              backgroundColor: getMagnitudeColor(eq.magnitude),
+                              boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
+                            }}
+                          >
+                            <span className="flex items-center gap-1">
+                              <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-0.5">
+                                <Mountain
+                                  style={{
+                                    width: getMarkerIconSize(eq.magnitude),
+                                    height: getMarkerIconSize(eq.magnitude),
+                                    color: getMagnitudeColor(eq.magnitude),
+                                  }}
+                                />
+                              </span>
+                              <span>{eq.magnitude.toFixed(1)}</span>
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
 
                 <MapClusterLayer
                   data={eonetGeojson}
@@ -557,6 +605,8 @@ export default function GoogleMapsClone() {
                   earthquake={selectedEarthquake}
                   onClose={handleCloseEarthquakePopover}
                 />
+
+                <EonetFlyTo event={selectedEonetEvent} />
 
                 <MapOverlayUI
                   setUserLocation={setUserLocation}
@@ -688,6 +738,31 @@ function EarthquakeFlyTo({
       essential: true,
     });
   }, [map, earthquake]);
+
+  return null;
+}
+
+function EonetFlyTo({
+  event,
+}: {
+  event: ProcessedEonetEvent | null;
+}) {
+  const { map } = useMap();
+  const prevEventId = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!map || !event) return;
+    if (prevEventId.current === event.id) return;
+    prevEventId.current = event.id;
+
+    map.stop();
+    map.easeTo({
+      center: event.coordinates,
+      zoom: Math.max(map.getZoom(), 5.8),
+      duration: 900,
+      essential: true,
+    });
+  }, [map, event]);
 
   return null;
 }

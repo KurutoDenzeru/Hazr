@@ -16,6 +16,13 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type GlobalActivityProps = {
   collapsed: boolean;
@@ -37,6 +44,7 @@ type GlobalActivityProps = {
     error: Error | null;
     refetch: () => Promise<void>;
   };
+  onEonetSelect?: (event: ProcessedEonetEvent) => void;
 };
 
 type SignalItem = {
@@ -44,6 +52,7 @@ type SignalItem = {
   title: string;
   subtitle: string;
   url?: string;
+  payload?: ProcessedEonetEvent;
 };
 
 const handleOpen = (url?: string) => {
@@ -51,20 +60,43 @@ const handleOpen = (url?: string) => {
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
+const formatEonetCategory = (category: string) => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("storm")) return "Storms";
+  if (normalized.includes("wildfire")) return "Fires";
+  if (normalized.includes("flood")) return "Floods";
+  if (normalized.includes("drought")) return "Drought";
+  if (normalized.includes("ice")) return "Ice";
+  if (normalized.includes("dust")) return "Dust";
+  if (normalized.includes("volcano")) return "Volcanoes";
+  return category;
+};
+
+const formatEonetTitle = (title: string) => {
+  let cleaned = title;
+  cleaned = cleaned.replace(/\bRX\b/gi, "Controlled");
+  cleaned = cleaned.replace(/Prescribed Fire/gi, "Planned Burn");
+  cleaned = cleaned.replace(/Tropical Cyclone/gi, "Tropical Storm");
+  cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+  return cleaned;
+};
+
 const GlobalActivity = ({
   collapsed,
   eonetState,
   airQualityState,
   tsunamiState,
+  onEonetSelect,
 }: GlobalActivityProps) => {
   const eventItems: SignalItem[] = eonetState.events.slice(0, 4).map((event) => ({
     id: event.id,
-    title: event.title,
-    subtitle: `${event.category} • ${event.date.toLocaleDateString("en-US", {
+    title: formatEonetTitle(event.title),
+    subtitle: `${formatEonetCategory(event.category)} • ${event.date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
     })}`,
     url: event.url,
+    payload: event,
   }));
 
   const airItems: SignalItem[] = airQualityState.sites.slice(0, 4).map((site) => ({
@@ -90,7 +122,7 @@ const GlobalActivity = ({
       <TooltipProvider delayDuration={0}>
         <div className="flex flex-col items-center gap-2">
           <MiniSignal
-            label="EONET events"
+            label="Live events"
             count={eonetState.events.length}
             icon={Globe2}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
@@ -128,14 +160,14 @@ const GlobalActivity = ({
             </div>
             <div>
               <h3 className="text-sm font-medium">Global Signals</h3>
-              <p className="text-sm text-muted-foreground">Natural events, volcanism, air quality, tsunamis</p>
+              <p className="text-sm text-muted-foreground">Storms, fires, air quality, tsunamis</p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-3">
           <SignalSection
-            title="NASA EONET"
+            title="Live Events"
             icon={Globe2}
             itemIcon={Globe2}
             count={eonetState.events.length}
@@ -145,6 +177,66 @@ const GlobalActivity = ({
             items={eventItems}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+            renderItem={(item: SignalItem) => (
+              <Popover key={item.id}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+                    aria-label={item.title}
+                  >
+                    <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
+                      <Globe2 className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[11px] font-semibold text-foreground">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
+                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
+                          {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {item.payload
+                            ? item.payload.date.toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : item.subtitle}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="right" className="w-72">
+                  <PopoverHeader>
+                    <PopoverTitle className="text-sm">{item.title}</PopoverTitle>
+                    <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+                  </PopoverHeader>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => item.payload && onEonetSelect?.(item.payload)}
+                      aria-label="Zoom to event"
+                    >
+                      Zoom on map
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleOpen(item.url)}
+                      aria-label="Open event source"
+                    >
+                      View source
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           />
           <SignalSection
             title="OpenAQ"
@@ -187,6 +279,7 @@ type SignalSectionProps = {
   items: SignalItem[];
   toneClassName: string;
   itemToneClassName: string;
+  renderItem?: (item: SignalItem) => React.ReactNode;
 };
 
 const SignalSection = ({
@@ -200,6 +293,7 @@ const SignalSection = ({
   items,
   toneClassName,
   itemToneClassName,
+  renderItem,
 }: SignalSectionProps) => (
   <div className="rounded-md border border-border/60 bg-muted/20 px-2 py-2">
     <div className="flex items-center justify-between">
@@ -243,25 +337,29 @@ const SignalSection = ({
         <div className="py-2 text-xs text-muted-foreground">No active signals</div>
       ) : (
         <div className="flex flex-col gap-1">
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handleOpen(item.url)}
-              className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-              aria-label={item.title}
-            >
-              <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
-                <ItemIcon className="size-3.5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="truncate block text-[11px] font-semibold text-foreground">
-                  {item.title}
+          {items.map((item) =>
+            renderItem ? (
+              renderItem(item)
+            ) : (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleOpen(item.url)}
+                className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+                aria-label={item.title}
+              >
+                <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
+                  <ItemIcon className="size-3.5" />
                 </span>
-                <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
-              </span>
-            </button>
-          ))}
+                <span className="min-w-0 flex-1">
+                  <span className="truncate block text-[11px] font-semibold text-foreground">
+                    {item.title}
+                  </span>
+                  <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
+                </span>
+              </button>
+            )
+          )}
         </div>
       )}
     </div>

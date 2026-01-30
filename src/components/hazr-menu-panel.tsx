@@ -26,6 +26,7 @@ type HazrMenuPanelProps = {
   userLocation?: [number, number] | null;
   isLocating?: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
+  onEonetSelect?: (event: ProcessedEonetEvent) => void;
   eonetState?: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -55,6 +56,7 @@ function HazrMenuPanel({
   userLocation = null,
   isLocating = false,
   onEarthquakeSelect,
+  onEonetSelect,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -132,6 +134,7 @@ function HazrMenuPanel({
                     refetch: async () => {},
                   }
                 }
+                onEonetSelect={onEonetSelect}
               />
             </div>
 

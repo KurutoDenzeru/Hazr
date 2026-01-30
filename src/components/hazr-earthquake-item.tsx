@@ -59,13 +59,15 @@ const EarthquakeItem = ({
               <Mountain className="size-2.5" />
             </span>
             <div
-              className="relative flex size-7 items-center justify-center rounded-full text-xs font-bold text-white"
+              className="flex size-7 items-center justify-center rounded-full text-[9px] font-bold text-white"
               style={{ backgroundColor: magColor }}
             >
-              <span className="absolute left-0.5 top-0.5 inline-flex size-3 items-center justify-center rounded-full bg-black/45">
-                <Mountain className="size-2 text-white" />
+              <span className="flex items-center gap-0.5">
+                <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-0.5">
+                  <Mountain className="size-2" style={{ color: magColor }} />
+                </span>
+                {earthquake.magnitude.toFixed(1)}
               </span>
-              {earthquake.magnitude.toFixed(1)}
             </div>
           </button>
         </TooltipTrigger>
@@ -138,16 +140,18 @@ const EarthquakeItem = ({
     >
         <div className="flex items-center gap-3">
           <div
-            className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105"
             style={{
               backgroundColor: magColor,
               boxShadow: `0 4px 14px ${magColor}40`,
             }}
           >
-            <span className="absolute left-1 top-1 inline-flex size-4 items-center justify-center rounded-full bg-black/45">
-              <Mountain className="size-2.5 text-white" />
+            <span className="flex items-center gap-1">
+              <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-1">
+                <Mountain className="size-3" style={{ color: magColor }} />
+              </span>
+              {earthquake.magnitude.toFixed(1)}
             </span>
-            {earthquake.magnitude.toFixed(1)}
           </div>
 
           <div className="min-w-0 flex-1">
