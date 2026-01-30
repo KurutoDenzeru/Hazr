@@ -16,13 +16,6 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 type GlobalActivityProps = {
   collapsed: boolean;
@@ -177,56 +170,35 @@ const GlobalActivity = ({
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             renderItem={(item: SignalItem) => (
-              <Popover key={item.id}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => item.payload && onEonetSelect?.(item.payload)}
-                    className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-                    aria-label={item.title}
-                  >
-                    <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
-                      <Globe2 className="size-4" />
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => item.payload && onEonetSelect?.(item.payload)}
+                className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+                aria-label={item.title}
+              >
+                <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
+                  <Globe2 className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[11px] font-semibold text-foreground">
+                    {item.title}
+                  </span>
+                  <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
+                      {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[11px] font-semibold text-foreground">
-                        {item.title}
-                      </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
-                          {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {item.payload
-                            ? item.payload.date.toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : item.subtitle}
-                        </span>
-                      </span>
+                    <span className="text-muted-foreground">
+                      {item.payload
+                        ? item.payload.date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : item.subtitle}
                     </span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" side="right" className="w-72">
-                  <PopoverHeader>
-                    <PopoverTitle className="text-sm">{item.title}</PopoverTitle>
-                    <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-                  </PopoverHeader>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handleOpen(item.url)}
-                      aria-label="Open event source"
-                    >
-                      View source
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </span>
+                </span>
+              </button>
             )}
           />
           <SignalSection

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Menu,
   Plus,
@@ -16,6 +17,7 @@ import {
   Loader2,
   SlidersHorizontal,
   Mountain,
+  Globe2,
 } from "lucide-react";
 
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -57,7 +59,8 @@ import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
 import type { ProcessedEarthquake, ProcessedEonetEvent } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
-import { EarthquakePopover } from "@/components/map/earthquake-popover";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -148,6 +151,10 @@ export default function GoogleMapsClone() {
     React.useState<ProcessedEarthquake | null>(null);
   const [selectedEonetEvent, setSelectedEonetEvent] =
     React.useState<ProcessedEonetEvent | null>(null);
+  const [showEonetPopup, setShowEonetPopup] = React.useState(false);
+  const [activeSignalType, setActiveSignalType] = React.useState<
+    "earthquake" | "event" | null
+  >(null);
   const [layerVisibility, setLayerVisibility] = React.useState(() => ({
     earthquakes: true,
     eonet: true,
@@ -247,20 +254,27 @@ export default function GoogleMapsClone() {
     return 1500;
   };
 
-  const getMarkerWidth = (magnitude: number) => {
-    if (magnitude >= 7) return 50;
-    if (magnitude >= 6) return 46;
-    if (magnitude >= 5) return 42;
-    if (magnitude >= 4) return 38;
-    return 34;
+  const getMarkerMinWidth = (magnitude: number) => {
+    if (magnitude >= 7) return 56;
+    if (magnitude >= 6) return 52;
+    if (magnitude >= 5) return 48;
+    if (magnitude >= 4) return 44;
+    return 40;
   };
 
   const getMarkerHeight = (magnitude: number) => {
-    if (magnitude >= 7) return 28;
-    if (magnitude >= 6) return 26;
-    if (magnitude >= 5) return 24;
-    if (magnitude >= 4) return 22;
-    return 20;
+    if (magnitude >= 7) return 30;
+    if (magnitude >= 6) return 28;
+    if (magnitude >= 5) return 26;
+    if (magnitude >= 4) return 24;
+    return 22;
+  };
+
+  const getMarkerPaddingX = (magnitude: number) => {
+    if (magnitude >= 7) return 10;
+    if (magnitude >= 6) return 9;
+    if (magnitude >= 5) return 8;
+    return 7;
   };
 
   const getMarkerFontSize = (magnitude: number) => {
@@ -288,6 +302,7 @@ export default function GoogleMapsClone() {
   const handleEarthquakeSelect = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       setSelectedEarthquake(earthquake);
+      setActiveSignalType("earthquake");
       handleTriggerQuakePulse(earthquake);
     },
     [handleTriggerQuakePulse]
@@ -309,7 +324,18 @@ export default function GoogleMapsClone() {
   const handleCloseEarthquakePopover = React.useCallback(() => {
     setSelectedEarthquake(null);
     setActiveQuakePulseId(null);
-  }, []);
+    setActiveSignalType((prev) =>
+      prev === "earthquake" ? (selectedEonetEvent ? "event" : null) : prev
+    );
+  }, [selectedEonetEvent]);
+
+  const handleCloseEonetEvent = React.useCallback(() => {
+    setSelectedEonetEvent(null);
+    setShowEonetPopup(false);
+    setActiveSignalType((prev) =>
+      prev === "event" ? (selectedEarthquake ? "earthquake" : null) : prev
+    );
+  }, [selectedEarthquake]);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -374,6 +400,8 @@ export default function GoogleMapsClone() {
     (event: ProcessedEonetEvent) => {
       setLayerVisibility((prev) => ({ ...prev, eonet: true }));
       setSelectedEonetEvent(event);
+      setActiveSignalType("event");
+      setShowEonetPopup(false);
       handleUserInteraction();
       setViewState((prev) => ({
         center: event.coordinates,
@@ -556,8 +584,10 @@ export default function GoogleMapsClone() {
                               activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
                             style={{
-                              width: `${getMarkerWidth(eq.magnitude)}px`,
+                              minWidth: `${getMarkerMinWidth(eq.magnitude)}px`,
                               height: `${getMarkerHeight(eq.magnitude)}px`,
+                              paddingLeft: `${getMarkerPaddingX(eq.magnitude)}px`,
+                              paddingRight: `${getMarkerPaddingX(eq.magnitude)}px`,
                               fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
                               backgroundColor: getMagnitudeColor(eq.magnitude),
                               boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
@@ -593,6 +623,8 @@ export default function GoogleMapsClone() {
                     const match = eonetState.events.find((event) => event.id === id);
                     if (match) {
                       setSelectedEonetEvent(match);
+                      setActiveSignalType("event");
+                      setShowEonetPopup(true);
                     }
                   }}
                 />
@@ -616,18 +648,22 @@ export default function GoogleMapsClone() {
                 {/* Fly to selected earthquake */}
                 <EarthquakeFlyTo earthquake={selectedEarthquake} />
 
-                {/* Earthquake detail popover */}
-                <EarthquakePopover
-                  earthquake={selectedEarthquake}
-                  onClose={handleCloseEarthquakePopover}
-                />
-
-                <EonetPopover
-                  event={selectedEonetEvent}
-                  onClose={() => setSelectedEonetEvent(null)}
-                />
+                {showEonetPopup && (
+                  <EonetPopover
+                    event={selectedEonetEvent}
+                    onClose={handleCloseEonetEvent}
+                  />
+                )}
 
                 <EonetFlyTo event={selectedEonetEvent} />
+
+                <SignalOverlay
+                  activeType={activeSignalType}
+                  earthquake={selectedEarthquake}
+                  event={selectedEonetEvent}
+                  onCloseEarthquake={handleCloseEarthquakePopover}
+                  onCloseEvent={handleCloseEonetEvent}
+                />
 
                 <MapOverlayUI
                   setUserLocation={setUserLocation}
@@ -831,6 +867,173 @@ function EonetPopover({
         </button>
       </div>
     </MapPopup>
+  );
+}
+
+function SignalOverlay({
+  activeType,
+  earthquake,
+  event,
+  onCloseEarthquake,
+  onCloseEvent,
+}: {
+  activeType: "earthquake" | "event" | null;
+  earthquake: ProcessedEarthquake | null;
+  event: ProcessedEonetEvent | null;
+  onCloseEarthquake: () => void;
+  onCloseEvent: () => void;
+}) {
+  const { map } = useMap();
+  const overlayContainer = React.useMemo(() => document.createElement("div"), []);
+
+  React.useEffect(() => {
+    if (!map) return;
+    const container = map.getContainer();
+    overlayContainer.className =
+      "absolute left-3 right-3 top-3 z-30 pointer-events-auto sm:left-auto sm:right-4 sm:top-4";
+    container.appendChild(overlayContainer);
+    return () => {
+      overlayContainer.remove();
+    };
+  }, [map, overlayContainer]);
+
+  const activeEarthquake = activeType === "earthquake" ? earthquake : null;
+  const activeEvent = activeType === "event" ? event : null;
+
+  if (!map || (!activeEarthquake && !activeEvent)) return null;
+
+  const formatRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  return createPortal(
+    <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3 shadow-lg">
+      {activeEarthquake && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div
+              className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
+              style={{
+                backgroundColor: getMagnitudeColor(activeEarthquake.magnitude),
+                boxShadow: `0 4px 14px ${getMagnitudeColor(activeEarthquake.magnitude)}40`,
+              }}
+            >
+              {activeEarthquake.magnitude.toFixed(1)}
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="line-clamp-2 text-sm font-semibold text-foreground">
+                  {activeEarthquake.place}
+                </p>
+                <button
+                  type="button"
+                  onClick={onCloseEarthquake}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
+                  Updated {formatRelativeTime(activeEarthquake.updated)}
+                </Badge>
+                <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+                  Depth {activeEarthquake.depth.toFixed(1)} km
+                </Badge>
+                {activeEarthquake.tsunami && (
+                  <Badge className="gap-1 bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200">
+                    Tsunami risk
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Magnitude</p>
+              <p className="text-sm font-medium text-foreground">
+                {activeEarthquake.magnitude.toFixed(1)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Location</p>
+              <p className="text-sm font-medium text-foreground">
+                {activeEarthquake.coordinates[1].toFixed(2)}, {activeEarthquake.coordinates[0].toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          <Button
+            asChild
+            className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
+          >
+            <a href={activeEarthquake.url} target="_blank" rel="noopener noreferrer">
+              View on USGS
+            </a>
+          </Button>
+        </div>
+      )}
+
+      {activeEvent && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 shadow-lg dark:bg-amber-500/30 dark:text-amber-200">
+              <Globe2 className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeEvent.title}</p>
+                <button
+                  type="button"
+                  onClick={onCloseEvent}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
+                  {activeEvent.category}
+                </Badge>
+                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+                  {activeEvent.date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </Badge>
+                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
+                  {activeEvent.coordinates[1].toFixed(2)}, {activeEvent.coordinates[0].toFixed(2)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              window.open(activeEvent.url, "_blank", "noopener,noreferrer");
+            }}
+            aria-label="View event source"
+          >
+            View source
+          </Button>
+        </div>
+      )}
+    </div>,
+    overlayContainer
   );
 }
 
