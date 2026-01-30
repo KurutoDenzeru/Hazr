@@ -26,15 +26,53 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { ProcessedEarthquake } from "@/types/api"
+import type {
+  ProcessedAirQualitySite,
+  ProcessedEarthquake,
+  ProcessedEonetEvent,
+  ProcessedTsunamiAlert,
+  ProcessedVolcano,
+} from "@/types/api"
 
 type HazrSidebarProps = {
   userLocation?: [number, number] | null
   isLocating?: boolean
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
+  eonetState?: {
+    events: ProcessedEonetEvent[]
+    isLoading: boolean
+    error: Error | null
+    refetch: () => Promise<void>
+  }
+  volcanismState?: {
+    volcanoes: ProcessedVolcano[]
+    isLoading: boolean
+    error: Error | null
+    refetch: () => Promise<void>
+  }
+  airQualityState?: {
+    sites: ProcessedAirQualitySite[]
+    isLoading: boolean
+    error: Error | null
+    refetch: () => Promise<void>
+  }
+  tsunamiState?: {
+    alerts: ProcessedTsunamiAlert[]
+    isLoading: boolean
+    error: Error | null
+    refetch: () => Promise<void>
+  }
 }
 
-function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSidebarProps) {
+function HazrSidebar({
+  userLocation,
+  isLocating,
+  onEarthquakeSelect,
+  eonetState,
+  volcanismState,
+  airQualityState,
+  tsunamiState,
+}: HazrSidebarProps) {
   const { isOpen } = useSidebar()
 
   return (
@@ -120,6 +158,10 @@ function HazrSidebar({ userLocation, isLocating, onEarthquakeSelect }: HazrSideb
           userLocation={userLocation}
           isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}
+          eonetState={eonetState}
+          volcanismState={volcanismState}
+          airQualityState={airQualityState}
+          tsunamiState={tsunamiState}
         />
       </SidebarContent>
     </Sidebar>

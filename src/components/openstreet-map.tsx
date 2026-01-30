@@ -22,6 +22,7 @@ import {
   useMap,
   MapMarker,
   MarkerContent,
+  MapClusterLayer,
 } from "@/components/ui/map";
 import { useTheme } from "next-themes";
 import {
@@ -47,6 +48,10 @@ import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
+import { useAirQuality } from "@/hooks/use-air-quality";
+import { useEonetEvents } from "@/hooks/use-eonet-events";
+import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
+import { useVolcanism } from "@/hooks/use-volcanism";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
@@ -137,6 +142,97 @@ export default function GoogleMapsClone() {
     magnitude: "2.5",
     range: "day",
   });
+
+  const eonetState = useEonetEvents();
+  const volcanismState = useVolcanism();
+  const airQualityState = useAirQuality();
+  const tsunamiState = useTsunamiAlerts();
+
+  const eonetGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: eonetState.events.map((event) => ({
+        type: "Feature",
+        properties: {
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          date: event.date.toISOString(),
+          url: event.url,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: event.coordinates,
+        },
+      })),
+    }),
+    [eonetState.events],
+  );
+
+  const volcanismGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: volcanismState.volcanoes.map((volcano) => ({
+        type: "Feature",
+        properties: {
+          id: volcano.id,
+          name: volcano.name,
+          country: volcano.country,
+          status: volcano.status,
+          url: volcano.url,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: volcano.coordinates,
+        },
+      })),
+    }),
+    [volcanismState.volcanoes],
+  );
+
+  const airQualityGeojson = React.useMemo<
+    GeoJSON.FeatureCollection<GeoJSON.Point>
+  >(
+    () => ({
+      type: "FeatureCollection",
+      features: airQualityState.sites.map((site) => ({
+        type: "Feature",
+        properties: {
+          id: site.id,
+          location: site.location,
+          parameter: site.parameter,
+          value: site.value,
+          unit: site.unit,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: site.coordinates,
+        },
+      })),
+    }),
+    [airQualityState.sites],
+  );
+
+  const tsunamiGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: tsunamiState.alerts.map((alert) => ({
+        type: "Feature",
+        properties: {
+          id: alert.id,
+          headline: alert.headline,
+          severity: alert.severity,
+          sent: alert.sent?.toISOString() ?? null,
+          url: alert.url,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: alert.coordinates,
+        },
+      })),
+    }),
+    [tsunamiState.alerts],
+  );
 
   const [now] = React.useState(() => Date.now());
   const getPulseSize = (magnitude: number) => {
@@ -310,6 +406,10 @@ export default function GoogleMapsClone() {
           userLocation={resolvedLocation}
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
+          eonetState={eonetState}
+          volcanismState={volcanismState}
+          airQualityState={airQualityState}
+          tsunamiState={tsunamiState}
         />
 
         <SidebarInset>
@@ -427,6 +527,31 @@ export default function GoogleMapsClone() {
                     </MarkerContent>
                   </MapMarker>
                 ))}
+
+                <MapClusterLayer
+                  data={eonetGeojson}
+                  clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
+                  pointColor="#f59e0b"
+                  clusterRadius={45}
+                />
+                <MapClusterLayer
+                  data={volcanismGeojson}
+                  clusterColors={["#fb7185", "#f43f5e", "#be123c"]}
+                  pointColor="#f43f5e"
+                  clusterRadius={45}
+                />
+                <MapClusterLayer
+                  data={airQualityGeojson}
+                  clusterColors={["#34d399", "#10b981", "#059669"]}
+                  pointColor="#10b981"
+                  clusterRadius={45}
+                />
+                <MapClusterLayer
+                  data={tsunamiGeojson}
+                  clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
+                  pointColor="#3b82f6"
+                  clusterRadius={45}
+                />
 
                 {/* Fly to selected earthquake */}
                 <EarthquakeFlyTo earthquake={selectedEarthquake} />

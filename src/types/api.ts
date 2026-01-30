@@ -56,6 +56,51 @@ export type EarthquakeFeedResponse = {
   bbox?: [number, number, number, number, number, number];
 };
 
+export type EonetGeometry = {
+  magnitudeValue?: number | null;
+  magnitudeUnit?: string | null;
+  date: string;
+  type: "Point" | "Polygon" | "MultiPolygon";
+  coordinates: GeoJSON.Position | GeoJSON.Position[] | GeoJSON.Position[][] | GeoJSON.Position[][][];
+};
+
+export type EonetCategory = {
+  id: string;
+  title: string;
+};
+
+export type EonetSource = {
+  id: string;
+  url: string;
+};
+
+export type EonetEvent = {
+  id: string;
+  title: string;
+  description?: string | null;
+  link: string;
+  closed?: string | null;
+  categories: EonetCategory[];
+  sources: EonetSource[];
+  geometry: EonetGeometry[];
+};
+
+export type EonetEventsResponse = {
+  title: string;
+  description: string;
+  link: string;
+  events: EonetEvent[];
+};
+
+export type ProcessedEonetEvent = {
+  id: string;
+  title: string;
+  category: string;
+  date: Date;
+  coordinates: [number, number];
+  url: string;
+};
+
 // Open-Meteo Weather API Types
 // https://open-meteo.com/en/docs
 
@@ -187,6 +232,101 @@ export type WeatherResponse = {
   hourly?: WeatherHourly;
   daily_units?: WeatherDailyUnits;
   daily?: WeatherDaily;
+};
+
+export type VolcanismRecord = {
+  id?: string | number;
+  volcano_id?: string | number;
+  volcano_name?: string;
+  name?: string;
+  country?: string;
+  region?: string;
+  status?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  lat?: number | string;
+  lon?: number | string;
+  link?: string;
+  url?: string;
+};
+
+export type VolcanismResponse = {
+  volcanoes?: VolcanismRecord[];
+  results?: VolcanismRecord[];
+  data?: VolcanismRecord[];
+};
+
+export type ProcessedVolcano = {
+  id: string;
+  name: string;
+  country: string;
+  status: string;
+  coordinates: [number, number];
+  url?: string;
+};
+
+export type OpenAQMeasurement = {
+  parameter: string;
+  value: number;
+  unit: string;
+  lastUpdated?: string;
+};
+
+export type OpenAQLatestResult = {
+  location: string;
+  city?: string;
+  country?: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  measurements: OpenAQMeasurement[];
+};
+
+export type OpenAQLatestResponse = {
+  results: OpenAQLatestResult[];
+};
+
+export type ProcessedAirQualitySite = {
+  id: string;
+  location: string;
+  parameter: string;
+  value: number;
+  unit: string;
+  coordinates: [number, number];
+};
+
+export type NwsAlertFeature = {
+  type: "Feature";
+  id: string;
+  properties: {
+    headline?: string;
+    severity?: string;
+    urgency?: string;
+    event?: string;
+    sent?: string;
+    ends?: string | null;
+    description?: string;
+    areaDesc?: string;
+    web?: string;
+  };
+  geometry: GeoJSON.Geometry | null;
+};
+
+export type NwsAlertsResponse = {
+  type: "FeatureCollection";
+  features: NwsAlertFeature[];
+  title?: string;
+  updated?: string;
+};
+
+export type ProcessedTsunamiAlert = {
+  id: string;
+  headline: string;
+  severity: string;
+  sent: Date | null;
+  coordinates: [number, number];
+  url?: string;
 };
 
 // Open-Meteo Geocoding API Types

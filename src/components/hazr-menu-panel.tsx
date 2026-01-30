@@ -13,7 +13,13 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import type { ProcessedEarthquake } from "@/types/api";
+import type {
+  ProcessedAirQualitySite,
+  ProcessedEarthquake,
+  ProcessedEonetEvent,
+  ProcessedTsunamiAlert,
+  ProcessedVolcano,
+} from "@/types/api";
 
 type HazrMenuPanelProps = {
   onSelect?: () => void;
@@ -21,9 +27,34 @@ type HazrMenuPanelProps = {
   userLocation?: [number, number] | null;
   isLocating?: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
+  eonetState?: {
+    events: ProcessedEonetEvent[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+  };
+  volcanismState?: {
+    volcanoes: ProcessedVolcano[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+  };
+  airQualityState?: {
+    sites: ProcessedAirQualitySite[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+  };
+  tsunamiState?: {
+    alerts: ProcessedTsunamiAlert[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => Promise<void>;
+  };
 };
 
 import { SeismicActivity } from "@/components/seismic-activity";
+import { GlobalActivity } from "@/components/global-activity";
 
 function HazrMenuPanel({
   onSelect,
@@ -31,6 +62,10 @@ function HazrMenuPanel({
   userLocation = null,
   isLocating = false,
   onEarthquakeSelect,
+  eonetState,
+  volcanismState,
+  airQualityState,
+  tsunamiState,
 }: HazrMenuPanelProps) {
   const handleSettingsClick = () => onSelect?.();
 
@@ -70,6 +105,55 @@ function HazrMenuPanel({
         </div>
 
         <Separator className={cn(collapsed ? "my-2" : "my-2")} />
+
+        {(eonetState || volcanismState || airQualityState || tsunamiState) && (
+          <>
+            {!collapsed && (
+              <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Global Signals
+              </p>
+            )}
+            <div className={cn(collapsed && "flex flex-col items-center")}>
+              <GlobalActivity
+                collapsed={collapsed}
+                eonetState={
+                  eonetState ?? {
+                    events: [],
+                    isLoading: false,
+                    error: null,
+                    refetch: async () => {},
+                  }
+                }
+                volcanismState={
+                  volcanismState ?? {
+                    volcanoes: [],
+                    isLoading: false,
+                    error: null,
+                    refetch: async () => {},
+                  }
+                }
+                airQualityState={
+                  airQualityState ?? {
+                    sites: [],
+                    isLoading: false,
+                    error: null,
+                    refetch: async () => {},
+                  }
+                }
+                tsunamiState={
+                  tsunamiState ?? {
+                    alerts: [],
+                    isLoading: false,
+                    error: null,
+                    refetch: async () => {},
+                  }
+                }
+              />
+            </div>
+
+            <Separator className={cn(collapsed ? "my-2" : "my-2")} />
+          </>
+        )}
 
 
         {/* Settings */}
