@@ -265,22 +265,18 @@ export type ProcessedVolcano = {
   url?: string;
 };
 
-export type OpenAQMeasurement = {
-  parameter: string;
-  value: number;
-  unit: string;
-  lastUpdated?: string;
-};
-
 export type OpenAQLatestResult = {
-  location: string;
-  city?: string;
-  country?: string;
-  coordinates?: {
-    latitude: number;
-    longitude: number;
+  datetime: {
+    utc: string;
+    local: string;
   };
-  measurements: OpenAQMeasurement[];
+  value: number;
+  coordinates: {
+    latitude: number | null;
+    longitude: number | null;
+  };
+  sensorsId: number;
+  locationsId: number;
 };
 
 export type OpenAQLatestResponse = {

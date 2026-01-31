@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OpenAQLatestResponse, ProcessedAirQualitySite } from "@/types/api";
 
-const OPENAQ_BASE_URL = "/api/openaq/latest";
+const OPENAQ_PARAMETER = {
+  id: 2,
+  label: "PM2.5",
+  unit: "ug/m3",
+};
+const OPENAQ_BASE_URL = `/api/openaq/parameters/${OPENAQ_PARAMETER.id}/latest`;
 const OPENAQ_API_KEY = import.meta.env.VITE_OPENAQ_API_KEY ?? "";
 
 type UseAirQualityOptions = {
@@ -26,16 +31,15 @@ const buildOpenAqUrl = (limit: number) => {
 const toProcessedSites = (data: OpenAQLatestResponse): ProcessedAirQualitySite[] => {
   return data.results
     .map((result, index): ProcessedAirQualitySite | null => {
-      if (!result.coordinates) return null;
-      const measurement = result.measurements?.[0];
-      if (!measurement) return null;
+      const { latitude, longitude } = result.coordinates;
+      if (latitude === null || longitude === null) return null;
       return {
-        id: `${result.location}-${measurement.parameter}-${index}`,
-        location: result.location ?? result.city ?? "Unknown",
-        parameter: measurement.parameter,
-        value: measurement.value,
-        unit: measurement.unit,
-        coordinates: [result.coordinates.longitude, result.coordinates.latitude],
+        id: `${result.locationsId}-${result.sensorsId}-${index}`,
+        location: `Location ${result.locationsId}`,
+        parameter: OPENAQ_PARAMETER.label,
+        value: result.value,
+        unit: OPENAQ_PARAMETER.unit,
+        coordinates: [longitude, latitude],
       };
     })
     .filter((site): site is ProcessedAirQualitySite => Boolean(site));
