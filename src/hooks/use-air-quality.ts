@@ -58,15 +58,18 @@ export const useAirQuality = (options: UseAirQualityOptions = {}): UseAirQuality
     setIsLoading(true);
     setError(null);
 
+    if (!OPENAQ_API_KEY) {
+      setError(new Error("OpenAQ API key is required."));
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(buildOpenAqUrl(limit), {
         signal: abortControllerRef.current.signal,
-        headers: OPENAQ_API_KEY
-          ? {
-              "X-API-Key": OPENAQ_API_KEY,
-              Authorization: `Bearer ${OPENAQ_API_KEY}`,
-            }
-          : undefined,
+        headers: {
+          "X-API-Key": OPENAQ_API_KEY,
+        },
       });
 
       if (!response.ok) {

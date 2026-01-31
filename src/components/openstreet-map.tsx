@@ -29,7 +29,6 @@ import { getMagnitudeColor } from "@/types/api";
 import {
   EarthquakeFlyTo,
   EonetFlyTo,
-  getEventIcon,
   GlobalSignalMarkers,
   MapOverlayUI,
   MapStateSync,
@@ -116,14 +115,13 @@ export default function GoogleMapsClone() {
       type: "FeatureCollection",
       features: eonetState.events.map((event) => ({
         type: "Feature",
-        properties: {
-          id: event.id,
-          title: event.title,
-          category: event.category,
-          date: event.date.toISOString(),
-          url: event.url,
-          icon: getEventIcon(event.category),
-        },
+          properties: {
+            id: event.id,
+            title: event.title,
+            category: event.category,
+            date: event.date.toISOString(),
+            url: event.url,
+          },
         geometry: {
           type: "Point",
           coordinates: event.coordinates,
@@ -161,14 +159,13 @@ export default function GoogleMapsClone() {
       type: "FeatureCollection",
       features: tsunamiState.alerts.map((alert) => ({
         type: "Feature",
-        properties: {
-          id: alert.id,
-          headline: alert.headline,
-          severity: alert.severity,
-          sent: alert.sent?.toISOString() ?? null,
-          url: alert.url,
-          icon: "🌊",
-        },
+          properties: {
+            id: alert.id,
+            headline: alert.headline,
+            severity: alert.severity,
+            sent: alert.sent?.toISOString() ?? null,
+            url: alert.url,
+          },
         geometry: {
           type: "Point",
           coordinates: alert.coordinates,

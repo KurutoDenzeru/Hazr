@@ -10,6 +10,8 @@ import {
   Map as MapIcon,
   Activity,
   Cloud,
+  CloudLightning,
+  Flame,
   Maximize,
   Sun,
   Moon,
@@ -25,10 +27,12 @@ import {
   MapPin,
   Radio,
   Signal,
+  Snowflake,
   Users,
   Waves,
   X,
   Wind,
+  Mountain,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -111,14 +115,14 @@ export const useIsTablet = () => {
 
 export const getEventIcon = (category: string) => {
   const normalized = category.toLowerCase();
-  if (normalized.includes("storm")) return "⛈";
-  if (normalized.includes("wildfire") || normalized.includes("fire")) return "🔥";
-  if (normalized.includes("flood")) return "🌊";
-  if (normalized.includes("volcano")) return "🌋";
-  if (normalized.includes("ice")) return "🧊";
-  if (normalized.includes("drought")) return "🌵";
-  if (normalized.includes("dust")) return "🌀";
-  return "•";
+  if (normalized.includes("storm")) return CloudLightning;
+  if (normalized.includes("wildfire") || normalized.includes("fire")) return Flame;
+  if (normalized.includes("flood")) return Waves;
+  if (normalized.includes("volcano")) return Mountain;
+  if (normalized.includes("ice")) return Snowflake;
+  if (normalized.includes("drought")) return Sun;
+  if (normalized.includes("dust")) return Wind;
+  return Globe2;
 };
 
 export function MapStateSync({
@@ -265,6 +269,7 @@ export function GlobalSignalMarkers({
       {layerVisibility.eonet &&
         events.map((event) => {
           const tone = getEventTone(event.category);
+          const EventIcon = getEventIcon(event.category);
           return (
             <MapMarker
               key={event.id}
@@ -275,15 +280,15 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onEventSelect(event)}
-                  className="flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
+                  className="flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
                   style={{
                     backgroundColor: tone,
                     boxShadow: `0 6px 16px ${tone}55`,
                   }}
                   aria-label={`Event: ${event.title}`}
                 >
-                  <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
-                    {getEventIcon(event.category)}
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                    <EventIcon className="size-3.5" style={{ color: tone }} />
                   </span>
                   <span className="truncate max-w-[80px]">
                     {event.category}
@@ -302,18 +307,18 @@ export function GlobalSignalMarkers({
             latitude={alert.coordinates[1]}
           >
             <MarkerContent>
-              <button
-                type="button"
-                onClick={() => onTsunamiSelect(alert)}
-                className="flex items-center gap-2 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
-                style={{ boxShadow: "0 6px 16px #3b82f680" }}
-                aria-label="Tsunami alert"
-              >
-                <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
-                  🌊
-                </span>
-                <span className="truncate max-w-[80px]">Tsunami</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onTsunamiSelect(alert)}
+                  className="flex items-center gap-2 rounded-full border border-white/15 bg-blue-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
+                  style={{ boxShadow: "0 6px 16px #3b82f680" }}
+                  aria-label="Tsunami alert"
+                >
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                    <Waves className="size-3.5 text-blue-600" />
+                  </span>
+                  <span className="truncate max-w-[80px]">Tsunami</span>
+                </button>
             </MarkerContent>
           </MapMarker>
         ))}
@@ -326,19 +331,19 @@ export function GlobalSignalMarkers({
             latitude={site.coordinates[1]}
           >
             <MarkerContent>
-              <button
-                type="button"
-                onClick={() => onAirQualitySelect(site)}
-                className="flex items-center gap-2 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition-transform hover:scale-105"
-                style={{ boxShadow: "0 6px 16px #10b98170" }}
-                aria-label={`Air quality: ${site.location}`}
-              >
-                <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/85 text-[9px]">
-                  🌬
-                </span>
-                <span className="truncate max-w-[90px]">
-                  {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => onAirQualitySelect(site)}
+                  className="flex items-center gap-2 rounded-full border border-white/15 bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
+                  style={{ boxShadow: "0 6px 16px #10b98170" }}
+                  aria-label={`Air quality: ${site.location}`}
+                >
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                    <Wind className="size-3.5 text-emerald-600" />
+                  </span>
+                  <span className="truncate max-w-[90px]">
+                    {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
+                  </span>
               </button>
             </MarkerContent>
           </MapMarker>
