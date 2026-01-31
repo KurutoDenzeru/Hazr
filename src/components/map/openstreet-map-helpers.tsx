@@ -496,7 +496,9 @@ export function SignalOverlay({
     ? activeEarthquake.types
         .split(",")
         .map((type) => type.trim())
-        .filter(Boolean)
+        .filter((type) =>
+          Boolean(type) && !["origin", "phase-data"].includes(type.toLowerCase()),
+        )
     : [];
 
   return createPortal(
@@ -559,12 +561,6 @@ export function SignalOverlay({
                     Tsunami risk
                   </Badge>
                 ) : null}
-                <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                  Status {activeEarthquake.status}
-                </Badge>
-                <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                  Network {activeEarthquake.net}
-                </Badge>
               </div>
             </div>
           </div>
@@ -650,9 +646,6 @@ export function SignalOverlay({
                     day: "numeric",
                   })}
                 </Badge>
-                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                  ID {activeEvent.id}
-                </Badge>
               </div>
             </div>
           </div>
@@ -678,15 +671,18 @@ export function SignalOverlay({
           </div>
 
           <Button
-            type="button"
-            className="w-full"
-            onClick={() => {
-              if (typeof window === "undefined") return;
-              window.open(activeEvent.url, "_blank", "noopener,noreferrer");
-            }}
-            aria-label="View event source"
+            asChild
+            className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
           >
-            View source
+            <a
+              href={activeEvent.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View event source"
+            >
+              View source
+              <ExternalLink className="size-4" />
+            </a>
           </Button>
         </div>
       )}
