@@ -220,10 +220,10 @@ function useMapZoom() {
 
   React.useEffect(() => {
     if (!map) return;
-    const handleMove = () => setZoom(map.getZoom());
-    map.on("move", handleMove);
+    const handleZoomEnd = () => setZoom(map.getZoom());
+    map.on("zoomend", handleZoomEnd);
     return () => {
-      map.off("move", handleMove);
+      map.off("zoomend", handleZoomEnd);
     };
   }, [map]);
 
@@ -280,17 +280,17 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onEventSelect(event)}
-                  className="flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
+                  className="relative flex items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
                     backgroundColor: tone,
-                    boxShadow: `0 6px 16px ${tone}55`,
+                    boxShadow: `0 2px 8px ${tone}60`,
                   }}
                   aria-label={`Event: ${event.title}`}
                 >
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
                     <EventIcon className="size-3.5" style={{ color: tone }} />
                   </span>
-                  <span className="truncate max-w-[80px]">
+                  <span className="truncate max-w-[70px]">
                     {event.category}
                   </span>
                 </button>
@@ -310,14 +310,14 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onTsunamiSelect(alert)}
-                  className="flex items-center gap-2 rounded-full border border-white/15 bg-blue-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
-                  style={{ boxShadow: "0 6px 16px #3b82f680" }}
+                  className="relative flex items-center gap-1.5 rounded-full border border-white/15 bg-blue-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  style={{ boxShadow: "0 2px 8px #3b82f660" }}
                   aria-label="Tsunami alert"
                 >
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
                     <Waves className="size-3.5 text-blue-600" />
                   </span>
-                  <span className="truncate max-w-[80px]">Tsunami</span>
+                  <span className="truncate max-w-[70px]">Tsunami</span>
                 </button>
             </MarkerContent>
           </MapMarker>
@@ -334,14 +334,14 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onAirQualitySelect(site)}
-                  className="flex items-center gap-2 rounded-full border border-white/15 bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur transition-transform hover:scale-105"
-                  style={{ boxShadow: "0 6px 16px #10b98170" }}
+                  className="relative flex items-center gap-1.5 rounded-full border border-white/15 bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  style={{ boxShadow: "0 2px 8px #10b98160" }}
                   aria-label={`Air quality: ${site.location}`}
                 >
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
                     <Wind className="size-3.5 text-emerald-600" />
                   </span>
-                  <span className="truncate max-w-[90px]">
+                  <span className="truncate max-w-[80px]">
                     {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
                   </span>
               </button>

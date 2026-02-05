@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Mountain } from "lucide-react";
+import { Activity, Mountain, Waves, Wind } from "lucide-react";
 import {
   Map as MapComponent,
   MapMarker,
@@ -616,6 +616,8 @@ export default function GoogleMapsClone() {
                   data={eonetGeojson}
                   visible={layerVisibility.eonet}
                   labelPrefix="E"
+                  clusterLabel="Signals"
+                  clusterIcon={Activity}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
@@ -634,6 +636,8 @@ export default function GoogleMapsClone() {
                   data={airQualityGeojson}
                   visible={layerVisibility.airQuality}
                   labelPrefix="AQ"
+                  clusterLabel="Air"
+                  clusterIcon={Wind}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
@@ -651,6 +655,8 @@ export default function GoogleMapsClone() {
                   data={tsunamiGeojson}
                   visible={layerVisibility.tsunami}
                   labelPrefix="T"
+                  clusterLabel="Tsunami"
+                  clusterIcon={Waves}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
