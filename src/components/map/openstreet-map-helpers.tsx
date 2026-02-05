@@ -249,8 +249,6 @@ export function GlobalSignalMarkers({
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
 }) {
-  const zoom = useMapZoom();
-  if (zoom < clusterMaxZoom) return null;
 
   const getEventTone = (category: string) => {
     const normalized = category.toLowerCase();
@@ -280,10 +278,9 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onEventSelect(event)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
                     backgroundColor: tone,
-                    boxShadow: `0 2px 8px ${tone}60`,
                   }}
                   aria-label={`Event: ${event.title}`}
                 >
@@ -310,8 +307,8 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onTsunamiSelect(alert)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{ boxShadow: "0 2px 8px #3b82f660" }}
+                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  style={{}}
                   aria-label="Tsunami alert"
                 >
                   <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
@@ -334,8 +331,8 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => onAirQualitySelect(site)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{ boxShadow: "0 2px 8px #10b98160" }}
+                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  style={{}}
                   aria-label={`Air quality: ${site.location}`}
                 >
                   <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">

@@ -581,7 +581,7 @@ export default function GoogleMapsClone() {
                           {/* Main marker */}
                           <div
                             className={cn(
-                              "relative flex items-center justify-center rounded-full font-bold text-white shadow-xs transition-transform group-hover:scale-110",
+                              "relative flex items-center justify-center rounded-full font-bold text-white transition-transform group-hover:scale-110",
                               activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
                             style={{
@@ -591,7 +591,6 @@ export default function GoogleMapsClone() {
                               paddingRight: `${getMarkerPaddingX(eq.magnitude)}px`,
                               fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
                               backgroundColor: getMagnitudeColor(eq.magnitude),
-                              boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
                             }}
                           >
                             <span className="flex items-center gap-1.5">

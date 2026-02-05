@@ -1153,10 +1153,6 @@ function MapClusterLayer<
       setClusters([]);
       return;
     }
-    if (map.getZoom() >= clusterMaxZoom) {
-      setClusters([]);
-      return;
-    }
     if (!map.getSource(sourceId)) return;
 
     const features = map.querySourceFeatures(sourceId, {
@@ -1235,12 +1231,11 @@ function MapClusterLayer<
                 onClick={handleClusterClick}
                 aria-label={`${labelText} cluster: ${pointCount}`}
                 className={cn(
-                  "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white shadow-lg backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                  "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
                   "hover:scale-105"
                 )}
                 style={{
                   backgroundColor: tone,
-                  boxShadow: `0 6px 16px ${tone}70`,
                 }}
               >
                 <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
