@@ -115,13 +115,13 @@ export default function GoogleMapsClone() {
       type: "FeatureCollection",
       features: eonetState.events.map((event) => ({
         type: "Feature",
-          properties: {
-            id: event.id,
-            title: event.title,
-            category: event.category,
-            date: event.date.toISOString(),
-            url: event.url,
-          },
+        properties: {
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          date: event.date.toISOString(),
+          url: event.url,
+        },
         geometry: {
           type: "Point",
           coordinates: event.coordinates,
@@ -159,13 +159,13 @@ export default function GoogleMapsClone() {
       type: "FeatureCollection",
       features: tsunamiState.alerts.map((alert) => ({
         type: "Feature",
-          properties: {
-            id: alert.id,
-            headline: alert.headline,
-            severity: alert.severity,
-            sent: alert.sent?.toISOString() ?? null,
-            url: alert.url,
-          },
+        properties: {
+          id: alert.id,
+          headline: alert.headline,
+          severity: alert.severity,
+          sent: alert.sent?.toISOString() ?? null,
+          url: alert.url,
+        },
         geometry: {
           type: "Point",
           coordinates: alert.coordinates,
@@ -578,10 +578,10 @@ export default function GoogleMapsClone() {
                               }}
                             />
                           )}
-                        {/* Main marker */}
+                          {/* Main marker */}
                           <div
                             className={cn(
-                              "relative flex items-center justify-center rounded-full font-bold text-white shadow-lg transition-transform group-hover:scale-110",
+                              "relative flex items-center justify-center rounded-full font-bold text-white shadow-xs transition-transform group-hover:scale-110",
                               activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
                             style={{
@@ -604,6 +604,7 @@ export default function GoogleMapsClone() {
                                   }}
                                 />
                               </span>
+                              Quake
                               <span>{eq.magnitude.toFixed(1)}</span>
                             </span>
                           </div>
