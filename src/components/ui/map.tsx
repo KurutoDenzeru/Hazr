@@ -1031,6 +1031,28 @@ type MapClusterLayerProps<
 > = {
   /** GeoJSON FeatureCollection data or URL to fetch GeoJSON from */
   data: string | GeoJSON.FeatureCollection<GeoJSON.Point, P>;
+  /** Whether the cluster layer is visible (default: true) */
+  visible?: boolean;
+  /** Optional text prefix for cluster count labels */
+  labelPrefix?: string;
+  /** Optional label for cluster pills */
+  clusterLabel?: string;
+  /** Optional icon for cluster pills */
+  clusterIcon?: React.ComponentType<{ className?: string }>;
+  /** Optional property name for unclustered point labels */
+  pointLabelField?: string;
+  /** Color for unclustered point labels */
+  pointLabelColor?: string;
+  /** Optional label offset for unclustered point labels */
+  pointLabelOffset?: [number, number];
+  /** Optional label size for unclustered point labels */
+  pointLabelSize?: number;
+  /** Optional label halo color for unclustered point labels */
+  pointLabelHaloColor?: string;
+  /** Optional label halo width for unclustered point labels */
+  pointLabelHaloWidth?: number;
+  /** Whether unclustered labels are visible (default: true) */
+  pointLabelVisible?: boolean;
   /** Maximum zoom level to cluster points on (default: 14) */
   clusterMaxZoom?: number;
   /** Radius of each cluster when clustering points in pixels (default: 50) */
@@ -1058,32 +1080,48 @@ function MapClusterLayer<
   P extends GeoJSON.GeoJsonProperties = GeoJSON.GeoJsonProperties
 >({
   data,
+  visible = true,
+  labelPrefix,
+  clusterLabel,
+  clusterIcon: ClusterIcon,
   clusterMaxZoom = 14,
   clusterRadius = 50,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
   clusterThresholds = [100, 750],
-  pointColor = "#3b82f6",
-  onPointClick,
   onClusterClick,
 }: MapClusterLayerProps<P>) {
   const { map, isLoaded } = useMap();
   const id = useId();
   const sourceId = `cluster-source-${id}`;
-  const clusterLayerId = `clusters-${id}`;
-  const clusterCountLayerId = `cluster-count-${id}`;
-  const unclusteredLayerId = `unclustered-point-${id}`;
+  const rafRef = useRef<number | null>(null);
+  const [clusters, setClusters] = useState<
+    GeoJSON.Feature<GeoJSON.Point, P>[]
+  >([]);
 
-  const stylePropsRef = useRef({
-    clusterColors,
-    clusterThresholds,
-    pointColor,
-  });
+  const getClusterTone = useCallback(
+    (pointCount: number) => {
+      if (pointCount < clusterThresholds[0]) return clusterColors[0];
+      if (pointCount < clusterThresholds[1]) return clusterColors[1];
+      return clusterColors[2];
+    },
+    [clusterColors, clusterThresholds]
+  );
 
-  // Add source and layers on mount
+  const formatCount = useCallback((count: number) => {
+    try {
+      return new Intl.NumberFormat("en", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(count);
+    } catch {
+      return `${count}`;
+    }
+  }, []);
+
+  // Add source on mount
   useEffect(() => {
     if (!isLoaded || !map) return;
 
-    // Add clustered GeoJSON source
     map.addSource(sourceId, {
       type: "geojson",
       data,
@@ -1092,75 +1130,13 @@ function MapClusterLayer<
       clusterRadius,
     });
 
-    // Add cluster circles layer
-    map.addLayer({
-      id: clusterLayerId,
-      type: "circle",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          clusterColors[0],
-          clusterThresholds[0],
-          clusterColors[1],
-          clusterThresholds[1],
-          clusterColors[2],
-        ],
-        "circle-radius": [
-          "step",
-          ["get", "point_count"],
-          20,
-          clusterThresholds[0],
-          30,
-          clusterThresholds[1],
-          40,
-        ],
-      },
-    });
-
-    // Add cluster count text layer
-    map.addLayer({
-      id: clusterCountLayerId,
-      type: "symbol",
-      source: sourceId,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-size": 12,
-      },
-      paint: {
-        "text-color": "#fff",
-      },
-    });
-
-    // Add unclustered point layer
-    map.addLayer({
-      id: unclusteredLayerId,
-      type: "circle",
-      source: sourceId,
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": pointColor,
-        "circle-radius": 6,
-      },
-    });
-
     return () => {
-      try {
-        if (map.getLayer(clusterCountLayerId))
-          map.removeLayer(clusterCountLayerId);
-        if (map.getLayer(unclusteredLayerId))
-          map.removeLayer(unclusteredLayerId);
-        if (map.getLayer(clusterLayerId)) map.removeLayer(clusterLayerId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-      } catch {
-        // ignore
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
       }
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, map, sourceId]);
+  }, [isLoaded, map, data, clusterMaxZoom, clusterRadius, sourceId]);
 
   // Update source data when data prop changes (only for non-URL data)
   useEffect(() => {
@@ -1172,155 +1148,115 @@ function MapClusterLayer<
     }
   }, [isLoaded, map, data, sourceId]);
 
-  // Update layer styles when props change
-  useEffect(() => {
-    if (!isLoaded || !map) return;
-
-    const prev = stylePropsRef.current;
-    const colorsChanged =
-      prev.clusterColors !== clusterColors ||
-      prev.clusterThresholds !== clusterThresholds;
-
-    // Update cluster layer colors and sizes
-    if (map.getLayer(clusterLayerId) && colorsChanged) {
-      map.setPaintProperty(clusterLayerId, "circle-color", [
-        "step",
-        ["get", "point_count"],
-        clusterColors[0],
-        clusterThresholds[0],
-        clusterColors[1],
-        clusterThresholds[1],
-        clusterColors[2],
-      ]);
-      map.setPaintProperty(clusterLayerId, "circle-radius", [
-        "step",
-        ["get", "point_count"],
-        20,
-        clusterThresholds[0],
-        30,
-        clusterThresholds[1],
-        40,
-      ]);
+  const refreshClusters = useCallback(() => {
+    if (!map || !isLoaded || !visible) {
+      setClusters([]);
+      return;
     }
+    if (!map.getSource(sourceId)) return;
 
-    // Update unclustered point layer color
-    if (map.getLayer(unclusteredLayerId) && prev.pointColor !== pointColor) {
-      map.setPaintProperty(unclusteredLayerId, "circle-color", pointColor);
+    const features = map.querySourceFeatures(sourceId, {
+      filter: ["has", "point_count"],
+    }) as unknown as GeoJSON.Feature<GeoJSON.Point, P>[];
+
+    const unique = new globalThis.Map<number, GeoJSON.Feature<GeoJSON.Point, P>>();
+    for (const feature of features) {
+      const clusterId = feature.properties?.cluster_id as number | undefined;
+      if (typeof clusterId === "number" && !unique.has(clusterId)) {
+        unique.set(clusterId, feature);
+      }
     }
+    setClusters(Array.from(unique.values()));
+  }, [clusterMaxZoom, isLoaded, map, sourceId, visible]);
 
-    stylePropsRef.current = { clusterColors, clusterThresholds, pointColor };
-  }, [
-    isLoaded,
-    map,
-    clusterLayerId,
-    unclusteredLayerId,
-    clusterColors,
-    clusterThresholds,
-    pointColor,
-  ]);
+  const scheduleRefresh = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      refreshClusters();
+    });
+  }, [refreshClusters]);
 
-  // Handle click events
   useEffect(() => {
-    if (!isLoaded || !map) return;
-
-    // Cluster click handler - zoom into cluster
-    const handleClusterClick = async (
-      e: MapLibreGL.MapMouseEvent & {
-        features?: MapLibreGL.MapGeoJSONFeature[];
-      }
-    ) => {
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: [clusterLayerId],
-      });
-      if (!features.length) return;
-
-      const feature = features[0];
-      const clusterId = feature.properties?.cluster_id as number;
-      const pointCount = feature.properties?.point_count as number;
-      const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
-        number,
-        number
-      ];
-
-      if (onClusterClick) {
-        onClusterClick(clusterId, coordinates, pointCount);
-      } else {
-        // Default behavior: zoom to cluster expansion zoom
-        const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource;
-        const zoom = await source.getClusterExpansionZoom(clusterId);
-        map.easeTo({
-          center: coordinates,
-          zoom,
-        });
-      }
-    };
-
-    // Unclustered point click handler
-    const handlePointClick = (
-      e: MapLibreGL.MapMouseEvent & {
-        features?: MapLibreGL.MapGeoJSONFeature[];
-      }
-    ) => {
-      if (!onPointClick || !e.features?.length) return;
-
-      const feature = e.features[0];
-      const coordinates = (
-        feature.geometry as GeoJSON.Point
-      ).coordinates.slice() as [number, number];
-
-      // Handle world copies
-      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-      }
-
-      onPointClick(
-        feature as unknown as GeoJSON.Feature<GeoJSON.Point, P>,
-        coordinates
-      );
-    };
-
-    // Cursor style handlers
-    const handleMouseEnterCluster = () => {
-      map.getCanvas().style.cursor = "pointer";
-    };
-    const handleMouseLeaveCluster = () => {
-      map.getCanvas().style.cursor = "";
-    };
-    const handleMouseEnterPoint = () => {
-      if (onPointClick) {
-        map.getCanvas().style.cursor = "pointer";
-      }
-    };
-    const handleMouseLeavePoint = () => {
-      map.getCanvas().style.cursor = "";
-    };
-
-    map.on("click", clusterLayerId, handleClusterClick);
-    map.on("click", unclusteredLayerId, handlePointClick);
-    map.on("mouseenter", clusterLayerId, handleMouseEnterCluster);
-    map.on("mouseleave", clusterLayerId, handleMouseLeaveCluster);
-    map.on("mouseenter", unclusteredLayerId, handleMouseEnterPoint);
-    map.on("mouseleave", unclusteredLayerId, handleMouseLeavePoint);
-
+    if (!map || !isLoaded) return;
+    scheduleRefresh();
+    map.on("zoomend", scheduleRefresh);
+    map.on("moveend", scheduleRefresh);
+    map.on("sourcedata", scheduleRefresh);
     return () => {
-      map.off("click", clusterLayerId, handleClusterClick);
-      map.off("click", unclusteredLayerId, handlePointClick);
-      map.off("mouseenter", clusterLayerId, handleMouseEnterCluster);
-      map.off("mouseleave", clusterLayerId, handleMouseLeaveCluster);
-      map.off("mouseenter", unclusteredLayerId, handleMouseEnterPoint);
-      map.off("mouseleave", unclusteredLayerId, handleMouseLeavePoint);
+      map.off("zoomend", scheduleRefresh);
+      map.off("moveend", scheduleRefresh);
+      map.off("sourcedata", scheduleRefresh);
     };
-  }, [
-    isLoaded,
-    map,
-    clusterLayerId,
-    unclusteredLayerId,
-    sourceId,
-    onClusterClick,
-    onPointClick,
-  ]);
+  }, [isLoaded, map, scheduleRefresh]);
 
-  return null;
+  if (!visible) return null;
+
+  const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
+
+  return (
+    <>
+      {clusters.map((feature) => {
+        const clusterId = feature.properties?.cluster_id as number | undefined;
+        if (typeof clusterId !== "number") return null;
+        const pointCount = feature.properties?.point_count as number | undefined;
+        if (typeof pointCount !== "number") return null;
+        const coordinates =
+          feature.geometry?.type === "Point"
+            ? (feature.geometry.coordinates as [number, number])
+            : null;
+        if (!coordinates) return null;
+        const tone = getClusterTone(pointCount);
+        const countLabel = formatCount(pointCount);
+
+        const handleClusterClick = async () => {
+          if (!map) return;
+          if (onClusterClick) {
+            onClusterClick(clusterId, coordinates, pointCount);
+            return;
+          }
+          const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource;
+          const zoom = await source.getClusterExpansionZoom(clusterId);
+          map.easeTo({ center: coordinates, zoom });
+        };
+
+        return (
+          <MapMarker
+            key={`cluster-${clusterId}`}
+            longitude={coordinates[0]}
+            latitude={coordinates[1]}
+          >
+            <MarkerContent>
+              <button
+                type="button"
+                onClick={handleClusterClick}
+                aria-label={`${labelText} cluster: ${pointCount}`}
+                className={cn(
+                  "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                  "hover:scale-105"
+                )}
+                style={{
+                  backgroundColor: tone,
+                }}
+              >
+                <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                  {ClusterIcon ? (
+                    <ClusterIcon className="size-3.5" />
+                  ) : (
+                    <span className="text-[10px] font-bold" style={{ color: tone }}>
+                      {labelPrefix ?? "C"}
+                    </span>
+                  )}
+                </span>
+                <span className="truncate max-w-27.5">
+                  {labelText} {countLabel}
+                </span>
+              </button>
+            </MarkerContent>
+          </MapMarker>
+        );
+      })}
+    </>
+  );
 }
 
 export {

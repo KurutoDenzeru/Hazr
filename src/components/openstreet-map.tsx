@@ -1,96 +1,48 @@
 "use client";
 
 import * as React from "react";
-import {
-  Menu,
-  Plus,
-  Minus,
-  Locate,
-  Map as MapIcon,
-  Activity,
-  Cloud,
-  Maximize,
-  Sun,
-  Moon,
-  Box,
-  Loader2,
-} from "lucide-react";
-
-import type { Map as MapLibreMap } from "maplibre-gl";
+import { Activity, Mountain, Waves, Wind } from "lucide-react";
 import {
   Map as MapComponent,
-  useMap,
   MapMarker,
   MarkerContent,
+  MapClusterLayer,
 } from "@/components/ui/map";
-import { useTheme } from "next-themes";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Drawer,
-  DrawerContent,
-} from "@/components/ui/drawer";
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { resolveIpLocation } from "@/lib/ip-location";
-import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { HazrSidebar } from "@/components/hazr-sidebar";
-import { EarthquakeItem } from "@/components/hazr-earthquake-item";
-import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
-import { WeatherDock } from "@/components/map/weather-dock";
-import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
-import type { ProcessedEarthquake } from "@/types/api";
+import { useAirQuality } from "@/hooks/use-air-quality";
+import { useEonetEvents } from "@/hooks/use-eonet-events";
+import { useTsunamiAlerts } from "@/hooks/use-tsunami-alerts";
+import type {
+  ProcessedAirQualitySite,
+  ProcessedEarthquake,
+  ProcessedEonetEvent,
+  ProcessedTsunamiAlert,
+} from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
-import { Separator } from "@/components/ui/separator";
-import { EarthquakePopover } from "@/components/map/earthquake-popover";
+import {
+  EarthquakeFlyTo,
+  EonetFlyTo,
+  GlobalSignalMarkers,
+  MapOverlayUI,
+  MapStateSync,
+  MapViewController,
+  SignalOverlay,
+  useIsTablet,
+  type MapViewState,
+} from "@/components/map/openstreet-map-helpers";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
 const MAP_VIEW_STATE_KEY = "map-view-state";
 const MAP_VIEW_STATE_SOURCE_KEY = "map-view-state-source";
 const SIDEBAR_STATE_KEY = "sidebar-state";
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  React.useEffect(() => {
-    const media = window.matchMedia("(max-width: 768px)");
-    const handleChange = () => setIsMobile(media.matches);
-    handleChange();
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, []);
-
-  return isMobile;
-};
-
-const useIsTablet = () => {
-  const [isTablet, setIsTablet] = React.useState(false);
-
-  React.useEffect(() => {
-    const media = window.matchMedia("(max-width: 1024px)");
-    const handleChange = () => setIsTablet(media.matches);
-    handleChange();
-    media.addEventListener("change", handleChange);
-    return () => media.removeEventListener("change", handleChange);
-  }, []);
-
-  return isTablet;
-};
-
-type MapViewState = {
-  center: [number, number];
-  zoom: number;
-};
-
 
 export default function GoogleMapsClone() {
   const hasSidebarPreferenceRef = React.useRef(false);
@@ -131,20 +83,123 @@ export default function GoogleMapsClone() {
   });
   const [selectedEarthquake, setSelectedEarthquake] =
     React.useState<ProcessedEarthquake | null>(null);
+  const [selectedEonetEvent, setSelectedEonetEvent] =
+    React.useState<ProcessedEonetEvent | null>(null);
+  const [selectedTsunamiAlert, setSelectedTsunamiAlert] =
+    React.useState<ProcessedTsunamiAlert | null>(null);
+  const [selectedAirQualitySite, setSelectedAirQualitySite] =
+    React.useState<ProcessedAirQualitySite | null>(null);
+  const [activeSignalType, setActiveSignalType] = React.useState<
+    "earthquake" | "global" | null
+  >(null);
+  const [layerVisibility, setLayerVisibility] = React.useState(() => ({
+    earthquakes: true,
+    eonet: true,
+    airQuality: true,
+    tsunami: true,
+  }));
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
-    magnitude: "2.5",
+    magnitude: "all",
     range: "day",
   });
 
+  const eonetState = useEonetEvents();
+  const airQualityState = useAirQuality();
+  const tsunamiState = useTsunamiAlerts();
+
+
+  const eonetGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: eonetState.events.map((event) => ({
+        type: "Feature",
+        properties: {
+          id: event.id,
+          title: event.title,
+          category: event.category,
+          date: event.date.toISOString(),
+          url: event.url,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: event.coordinates,
+        },
+      })),
+    }),
+    [eonetState.events],
+  );
+
+  const airQualityGeojson = React.useMemo<
+    GeoJSON.FeatureCollection<GeoJSON.Point>
+  >(
+    () => ({
+      type: "FeatureCollection",
+      features: airQualityState.sites.map((site) => ({
+        type: "Feature",
+        properties: {
+          id: site.id,
+          location: site.location,
+          parameter: site.parameter,
+          value: site.value,
+          unit: site.unit,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: site.coordinates,
+        },
+      })),
+    }),
+    [airQualityState.sites],
+  );
+
+  const tsunamiGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: tsunamiState.alerts.map((alert) => ({
+        type: "Feature",
+        properties: {
+          id: alert.id,
+          headline: alert.headline,
+          severity: alert.severity,
+          sent: alert.sent?.toISOString() ?? null,
+          url: alert.url,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: alert.coordinates,
+        },
+      })),
+    }),
+    [tsunamiState.alerts],
+  );
+
   const [now] = React.useState(() => Date.now());
-  const getPulseSize = (magnitude: number) => {
-    if (magnitude >= 7) return 56;
-    if (magnitude >= 6) return 48;
-    if (magnitude >= 5) return 40;
-    if (magnitude >= 4) return 34;
-    return 28;
+  const getPulseWidth = (magnitude: number) => {
+    if (magnitude >= 7) return 74;
+    if (magnitude >= 6) return 66;
+    if (magnitude >= 5) return 58;
+    if (magnitude >= 4) return 50;
+    return 44;
+  };
+
+  const getPulseHeight = (magnitude: number) => {
+    if (magnitude >= 7) return 40;
+    if (magnitude >= 6) return 36;
+    if (magnitude >= 5) return 32;
+    if (magnitude >= 4) return 28;
+    return 26;
+  };
+
+  const getPulseInnerWidth = (magnitude: number) => {
+    const base = getPulseWidth(magnitude) - 16;
+    return Math.max(base, getMarkerMinWidth(magnitude) + 12);
+  };
+
+  const getPulseInnerHeight = (magnitude: number) => {
+    const base = getPulseHeight(magnitude) - 12;
+    return Math.max(base, getMarkerHeight(magnitude) + 8);
   };
 
   const getPulseDuration = (magnitude: number) => {
@@ -153,6 +208,41 @@ export default function GoogleMapsClone() {
     if (magnitude >= 5) return 1850;
     if (magnitude >= 4) return 1700;
     return 1500;
+  };
+
+  const getMarkerMinWidth = (magnitude: number) => {
+    if (magnitude >= 7) return 56;
+    if (magnitude >= 6) return 52;
+    if (magnitude >= 5) return 48;
+    if (magnitude >= 4) return 44;
+    return 40;
+  };
+
+  const getMarkerHeight = (magnitude: number) => {
+    if (magnitude >= 7) return 30;
+    if (magnitude >= 6) return 28;
+    if (magnitude >= 5) return 26;
+    if (magnitude >= 4) return 24;
+    return 22;
+  };
+
+  const getMarkerPaddingX = (magnitude: number) => {
+    if (magnitude >= 7) return 10;
+    if (magnitude >= 6) return 9;
+    if (magnitude >= 5) return 8;
+    return 7;
+  };
+
+  const getMarkerFontSize = (magnitude: number) => {
+    if (magnitude >= 6) return 11;
+    if (magnitude >= 4) return 10;
+    return 9;
+  };
+
+  const getMarkerIconSize = (magnitude: number) => {
+    if (magnitude >= 6) return 12;
+    if (magnitude >= 4) return 11;
+    return 10;
   };
 
   const handleTriggerQuakePulse = React.useCallback(
@@ -168,10 +258,12 @@ export default function GoogleMapsClone() {
   const handleEarthquakeSelect = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       setSelectedEarthquake(earthquake);
+      setActiveSignalType("earthquake");
       handleTriggerQuakePulse(earthquake);
     },
     [handleTriggerQuakePulse]
   );
+
 
   const handleSidebarOpenChange = React.useCallback((open: boolean) => {
     setIsDesktopSidebarOpen(open);
@@ -188,7 +280,23 @@ export default function GoogleMapsClone() {
   const handleCloseEarthquakePopover = React.useCallback(() => {
     setSelectedEarthquake(null);
     setActiveQuakePulseId(null);
-  }, []);
+    setActiveSignalType((prev) =>
+      prev === "earthquake"
+        ? selectedEonetEvent || selectedTsunamiAlert || selectedAirQualitySite
+          ? "global"
+          : null
+        : prev
+    );
+  }, [selectedEonetEvent, selectedTsunamiAlert, selectedAirQualitySite]);
+
+  const handleCloseEonetEvent = React.useCallback(() => {
+    setSelectedEonetEvent(null);
+    setSelectedTsunamiAlert(null);
+    setSelectedAirQualitySite(null);
+    setActiveSignalType((prev) =>
+      prev === "global" ? (selectedEarthquake ? "earthquake" : null) : prev
+    );
+  }, [selectedEarthquake]);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -248,6 +356,56 @@ export default function GoogleMapsClone() {
     hasUserInteractedRef.current = true;
     setShouldAutoCenter(false);
   }, []);
+
+  const handleEonetSelect = React.useCallback(
+    (event: ProcessedEonetEvent) => {
+      setLayerVisibility((prev) => ({ ...prev, eonet: true }));
+      setSelectedEonetEvent(event);
+      setSelectedTsunamiAlert(null);
+      setSelectedAirQualitySite(null);
+      setActiveSignalType("global");
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: event.coordinates,
+        zoom: Math.max(prev.zoom, 5.8),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
+  const handleTsunamiSelect = React.useCallback(
+    (alert: ProcessedTsunamiAlert) => {
+      setLayerVisibility((prev) => ({ ...prev, tsunami: true }));
+      setSelectedTsunamiAlert(alert);
+      setSelectedEonetEvent(null);
+      setSelectedAirQualitySite(null);
+      setActiveSignalType("global");
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: alert.coordinates,
+        zoom: Math.max(prev.zoom, 5.8),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
+  const handleAirQualitySelect = React.useCallback(
+    (site: ProcessedAirQualitySite) => {
+      setLayerVisibility((prev) => ({ ...prev, airQuality: true }));
+      setSelectedAirQualitySite(site);
+      setSelectedEonetEvent(null);
+      setSelectedTsunamiAlert(null);
+      setActiveSignalType("global");
+      handleUserInteraction();
+      setViewState((prev) => ({
+        center: site.coordinates,
+        zoom: Math.max(prev.zoom, 6),
+      }));
+    },
+    [handleUserInteraction]
+  );
+
+  const globalClusterMaxZoom = 6;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -310,6 +468,10 @@ export default function GoogleMapsClone() {
           userLocation={resolvedLocation}
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
+          onEonetSelect={handleEonetSelect}
+          eonetState={eonetState}
+          airQualityState={airQualityState}
+          tsunamiState={tsunamiState}
         />
 
         <SidebarInset>
@@ -327,6 +489,8 @@ export default function GoogleMapsClone() {
                 <MapStateSync
                   setViewState={setViewState}
                   onUserInteract={handleUserInteraction}
+                  viewStateKey={MAP_VIEW_STATE_KEY}
+                  viewStateSourceKey={MAP_VIEW_STATE_SOURCE_KEY}
                 />
 
                 {userLocation && (
@@ -362,79 +526,174 @@ export default function GoogleMapsClone() {
                 )}
 
                 {/* Earthquake Markers */}
-                {earthquakes.map((eq) => (
-                  <MapMarker
-                    key={eq.id}
-                    longitude={eq.coordinates[0]}
-                    latitude={eq.coordinates[1]}
-                  >
-                    <MarkerContent>
-                      <button
-                        type="button"
-                        onClick={() => handleEarthquakeSelect(eq)}
-                        className="group relative flex items-center justify-center cursor-pointer"
-                        aria-label={`Earthquake: ${eq.title}`}
-                      >
-                        {activeQuakePulseId === eq.id && (
-                          <>
+                {layerVisibility.earthquakes &&
+                  earthquakes.map((eq) => (
+                    <MapMarker
+                      key={eq.id}
+                      longitude={eq.coordinates[0]}
+                      latitude={eq.coordinates[1]}
+                    >
+                      <MarkerContent>
+                        <button
+                          type="button"
+                          onClick={() => handleEarthquakeSelect(eq)}
+                          className="group relative flex items-center justify-center cursor-pointer"
+                          aria-label={`Earthquake: ${eq.title}`}
+                        >
+                          {activeQuakePulseId === eq.id && (
+                            <>
+                              <span
+                                aria-hidden="true"
+                                className="absolute rounded-full animate-ping"
+                                style={{
+                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                  width: `${getPulseWidth(eq.magnitude)}px`,
+                                  height: `${getPulseHeight(eq.magnitude)}px`,
+                                  borderRadius: 9999,
+                                }}
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="absolute rounded-full animate-pulse"
+                                style={{
+                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
+                                  width: `${getPulseInnerWidth(eq.magnitude)}px`,
+                                  height: `${getPulseInnerHeight(eq.magnitude)}px`,
+                                  borderRadius: 9999,
+                                }}
+                              />
+                            </>
+                          )}
+                          {/* Pulse ring for recent earthquakes */}
+                          {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
                             <span
                               aria-hidden="true"
                               className="absolute rounded-full animate-ping"
                               style={{
-                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
-                                width: `${getPulseSize(eq.magnitude)}px`,
-                                height: `${getPulseSize(eq.magnitude)}px`,
+                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
+                                width: `${getPulseWidth(eq.magnitude)}px`,
+                                height: `${getPulseHeight(eq.magnitude)}px`,
+                                borderRadius: 9999,
+                                animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
                               }}
                             />
-                            <span
-                              aria-hidden="true"
-                              className="absolute rounded-full animate-pulse"
-                              style={{
-                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
-                                width: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
-                                height: `${Math.max(getPulseSize(eq.magnitude) - 35, 55)}px`,
-                              }}
-                            />
-                          </>
-                        )}
-                        {/* Pulse ring for recent earthquakes */}
-                        {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute rounded-full animate-ping"
-                            style={{
-                              backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
-                              width: `${getPulseSize(eq.magnitude)}px`,
-                              height: `${getPulseSize(eq.magnitude)}px`,
-                              animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
-                            }}
-                          />
-                        )}
-                        {/* Main marker */}
-                        <div
-                          className={cn(
-                            "relative flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-lg transition-transform group-hover:scale-110",
-                            activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                           )}
-                          style={{
-                            backgroundColor: getMagnitudeColor(eq.magnitude),
-                            boxShadow: `0 2px 8px ${getMagnitudeColor(eq.magnitude)}60`,
-                          }}
-                        >
-                          {eq.magnitude.toFixed(1)}
-                        </div>
-                      </button>
-                    </MarkerContent>
-                  </MapMarker>
-                ))}
+                          {/* Main marker */}
+                          <div
+                            className={cn(
+                              "relative flex items-center justify-center rounded-full font-bold text-white transition-transform group-hover:scale-110",
+                              activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
+                            )}
+                            style={{
+                              minWidth: `${getMarkerMinWidth(eq.magnitude)}px`,
+                              height: `${getMarkerHeight(eq.magnitude)}px`,
+                              paddingLeft: `${getMarkerPaddingX(eq.magnitude)}px`,
+                              paddingRight: `${getMarkerPaddingX(eq.magnitude)}px`,
+                              fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
+                              backgroundColor: getMagnitudeColor(eq.magnitude),
+                            }}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
+                                <Mountain
+                                  style={{
+                                    width: getMarkerIconSize(eq.magnitude),
+                                    height: getMarkerIconSize(eq.magnitude),
+                                    color: getMagnitudeColor(eq.magnitude),
+                                  }}
+                                />
+                              </span>
+                              Quake
+                              <span>{eq.magnitude.toFixed(1)}</span>
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
+
+                <MapClusterLayer
+                  data={eonetGeojson}
+                  visible={layerVisibility.eonet}
+                  labelPrefix="E"
+                  clusterLabel="Signals"
+                  clusterIcon={Activity}
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
+                  clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
+                  clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = eonetState.events.find((event) => event.id === id);
+                    if (match) {
+                      setSelectedEonetEvent(match);
+                      setActiveSignalType("global");
+                    }
+                  }}
+                />
+                <MapClusterLayer
+                  data={airQualityGeojson}
+                  visible={layerVisibility.airQuality}
+                  labelPrefix="AQ"
+                  clusterLabel="Air"
+                  clusterIcon={Wind}
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
+                  clusterColors={["#34d399", "#10b981", "#059669"]}
+                  clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = airQualityState.sites.find((site) => site.id === id);
+                    if (match) {
+                      handleAirQualitySelect(match);
+                    }
+                  }}
+                />
+                <MapClusterLayer
+                  data={tsunamiGeojson}
+                  visible={layerVisibility.tsunami}
+                  labelPrefix="T"
+                  clusterLabel="Tsunami"
+                  clusterIcon={Waves}
+                  pointColor="transparent"
+                  pointLabelVisible={false}
+                  clusterMaxZoom={globalClusterMaxZoom}
+                  clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
+                  clusterRadius={45}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = tsunamiState.alerts.find((alert) => alert.id === id);
+                    if (match) {
+                      handleTsunamiSelect(match);
+                    }
+                  }}
+                />
 
                 {/* Fly to selected earthquake */}
                 <EarthquakeFlyTo earthquake={selectedEarthquake} />
 
-                {/* Earthquake detail popover */}
-                <EarthquakePopover
+                <EonetFlyTo event={selectedEonetEvent} />
+
+                <SignalOverlay
+                  activeType={activeSignalType}
                   earthquake={selectedEarthquake}
-                  onClose={handleCloseEarthquakePopover}
+                  event={selectedEonetEvent}
+                  tsunamiAlert={selectedTsunamiAlert}
+                  airQualitySite={selectedAirQualitySite}
+                  onCloseEarthquake={handleCloseEarthquakePopover}
+                  onCloseEvent={handleCloseEonetEvent}
+                />
+
+                <GlobalSignalMarkers
+                  events={eonetState.events}
+                  tsunamiAlerts={tsunamiState.alerts}
+                  airQualitySites={airQualityState.sites}
+                  layerVisibility={layerVisibility}
+                  onEventSelect={handleEonetSelect}
+                  onTsunamiSelect={handleTsunamiSelect}
+                  onAirQualitySelect={handleAirQualitySelect}
                 />
 
                 <MapOverlayUI
@@ -444,6 +703,8 @@ export default function GoogleMapsClone() {
                   isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
+                  layerVisibility={layerVisibility}
+                  onLayerVisibilityChange={setLayerVisibility}
                 />
               </MapComponent>
             </div>
@@ -451,636 +712,5 @@ export default function GoogleMapsClone() {
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
-}
-
-function MapStateSync({
-  setViewState,
-  onUserInteract,
-}: {
-  setViewState: (s: MapViewState) => void;
-  onUserInteract?: () => void;
-}) {
-  const { map } = useMap();
-  const hasUserInteractedRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!map) return;
-
-    const markUserInteraction = () => {
-      hasUserInteractedRef.current = true;
-      onUserInteract?.();
-    };
-
-    const handleMoveEnd = () => {
-      if (!hasUserInteractedRef.current) return;
-      const newState = {
-        center: [map.getCenter().lng, map.getCenter().lat] as [number, number],
-        zoom: map.getZoom(),
-      };
-      setViewState(newState);
-      try {
-        localStorage.setItem(MAP_VIEW_STATE_KEY, JSON.stringify(newState));
-        localStorage.setItem(MAP_VIEW_STATE_SOURCE_KEY, "user");
-      } catch {
-        // ignore storage errors
-      }
-    };
-
-    map.on("dragstart", markUserInteraction);
-    map.on("zoomstart", markUserInteraction);
-    map.on("rotatestart", markUserInteraction);
-    map.on("pitchstart", markUserInteraction);
-    map.on("moveend", handleMoveEnd);
-    return () => {
-      map.off("dragstart", markUserInteraction);
-      map.off("zoomstart", markUserInteraction);
-      map.off("rotatestart", markUserInteraction);
-      map.off("pitchstart", markUserInteraction);
-      map.off("moveend", handleMoveEnd);
-    };
-  }, [map, setViewState, onUserInteract]);
-
-  return null;
-}
-
-function MapViewController({
-  viewState,
-  shouldAutoCenter,
-}: {
-  viewState: MapViewState;
-  shouldAutoCenter: boolean;
-}) {
-  const { map, isLoaded } = useMap();
-  const lastAppliedRef = React.useRef<MapViewState | null>(null);
-
-  React.useEffect(() => {
-    if (!map || !isLoaded || !shouldAutoCenter) return;
-
-    const lastApplied = lastAppliedRef.current;
-    if (
-      lastApplied &&
-      lastApplied.center[0] === viewState.center[0] &&
-      lastApplied.center[1] === viewState.center[1] &&
-      lastApplied.zoom === viewState.zoom
-    ) {
-      return;
-    }
-
-    map.easeTo({
-      center: viewState.center,
-      zoom: viewState.zoom,
-      duration: 900,
-      essential: true,
-    });
-    lastAppliedRef.current = viewState;
-  }, [map, isLoaded, shouldAutoCenter, viewState]);
-
-  return null;
-}
-
-// Component to fly to earthquake location when selected
-function EarthquakeFlyTo({
-  earthquake,
-}: {
-  earthquake: ProcessedEarthquake | null;
-}) {
-  const { map } = useMap();
-  const prevEarthquakeId = React.useRef<string | null>(null);
-
-  React.useEffect(() => {
-    if (!map || !earthquake) return;
-
-    // Only fly if it's a new earthquake selection
-    if (prevEarthquakeId.current === earthquake.id) return;
-    prevEarthquakeId.current = earthquake.id;
-
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-    map.stop();
-    map.easeTo({
-      center: [earthquake.coordinates[0], earthquake.coordinates[1]],
-      zoom: Math.max(map.getZoom(), 8),
-      duration: 900,
-      easing: easeOut,
-      essential: true,
-    });
-  }, [map, earthquake]);
-
-  return null;
-}
-
-
-
-function MapOverlayUI({
-  setUserLocation,
-  onLocateAnimation,
-  resolvedLocation,
-  isLocating,
-  earthquakes,
-  onEarthquakeSelect,
-}: {
-  setUserLocation: (l: [number, number]) => void;
-  onLocateAnimation: () => void;
-  resolvedLocation: [number, number] | null;
-  isLocating: boolean;
-  earthquakes: ProcessedEarthquake[];
-  onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
-}) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
-  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
-  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
-
-  const handleQuakeClick = (eq: ProcessedEarthquake) => {
-    setIsQuakesDrawerOpen(false);
-    onEarthquakeSelect(eq);
-  };
-
-  return (
-    <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
-      {/* Top Section: Desktop Sidebar Toggle */}
-
-      {/* Bottom Section: Controls */}
-      <div className="pointer-events-none p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
-        <div className="pointer-events-auto flex flex-col gap-4 items-end w-auto">
-          <CustomMapControls
-            setUserLocation={setUserLocation}
-            onLocateAnimation={onLocateAnimation}
-          />
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
-        <div className="pointer-events-auto">
-          <HourlyForecastDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-            />
-        </div>
-      </div>
-
-      {/* Mobile Menu Drawer */}
-      <Drawer
-        open={isMobileMenuOpen}
-        onOpenChange={setIsMobileMenuOpen}
-      >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <div className="flex-1 overflow-auto">
-              <HazrMenuPanel
-                onSelect={handleCloseMobileMenu}
-                userLocation={resolvedLocation}
-                isLocating={isLocating}
-              />
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Mobile Quakes Drawer (bottom) */}
-      <Drawer
-        open={isQuakesDrawerOpen}
-        onOpenChange={setIsQuakesDrawerOpen}
-      >
-        <DrawerContent className="max-h-[80vh]">
-          <div className="overflow-y-auto max-h-[80vh] p-4">
-            {earthquakes.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No recent earthquakes
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
-                    <Activity className="size-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Live Earthquakes</h3>
-                    <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
-                  </div>
-                </div>
-                <Separator className="my-2" />
-                {earthquakes.map((eq) => (
-                  <EarthquakeItem
-                    key={eq.id}
-                    earthquake={eq}
-                    onClick={() => handleQuakeClick(eq)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Mobile Weather Drawer (bottom) */}
-      <Drawer
-        open={isWeatherDrawerOpen}
-        onOpenChange={setIsWeatherDrawerOpen}
-      >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="p-4 overflow-y-auto max-h-[85vh]">
-            <WeatherDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-              unstyled
-            />
-            <HourlyForecastDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-              className="mt-4 md:hidden"
-            />
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Mobile Bottom Bar */}
-      <MobileBottomNav
-        items={[
-          {
-            icon: MapIcon,
-            label: "Explore",
-            active: true,
-          },
-          {
-            icon: Activity,
-            label: "Quakes",
-            onClick: () => setIsQuakesDrawerOpen(true),
-          },
-          {
-            icon: Cloud,
-            label: "Weather",
-            onClick: () => setIsWeatherDrawerOpen(true),
-          },
-          {
-            icon: Menu,
-            label: "Menu",
-            onClick: () => setIsMobileMenuOpen(true),
-          },
-        ]}
-      />
-    </div>
-  );
-}
-
-
-function ControlGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col rounded-md border border-border bg-background shadow-sm overflow-hidden [&>button:not(:last-child)]:border-b [&>button:not(:last-child)]:border-border">
-      {children}
-    </div>
-  );
-}
-
-type ControlButtonProps = Omit<
-  React.ComponentPropsWithoutRef<"button">,
-  "children" | "aria-label"
-> & {
-  label: string;
-  children: React.ReactNode;
-  active?: boolean;
-};
-
-const ControlButton = React.forwardRef<HTMLButtonElement, ControlButtonProps>(
-  function ControlButton(
-    { label, children, active = false, className, type, disabled, ...props },
-    ref,
-  ) {
-    return (
-      <button
-        ref={ref}
-        type={type ?? "button"}
-        aria-label={label}
-        className={cn(
-          "flex items-center justify-center size-8 transition-colors",
-          active
-            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-            : "hover:bg-accent hover:text-accent-foreground text-foreground",
-          disabled && "opacity-50 pointer-events-none cursor-not-allowed",
-          className,
-        )}
-        disabled={disabled}
-        {...props}
-      >
-        {children}
-      </button>
-    );
-  },
-);
-
-function CustomMapControls({
-  setUserLocation,
-  onLocateAnimation,
-}: {
-  setUserLocation: (l: [number, number]) => void;
-  onLocateAnimation: () => void;
-}) {
-  const { map } = useMap();
-  const { resolvedTheme, setTheme } = useTheme();
-  const isMobile = useIsMobile();
-  const [is3D, setIs3D] = React.useState(false);
-  const [waitingForLocation, setWaitingForLocation] = React.useState(false);
-  const compassRef = React.useRef<SVGSVGElement>(null);
-
-  // Sync compass rotation
-  React.useEffect(() => {
-    if (!map) return;
-
-    const updateRotation = () => {
-      if (!compassRef.current) return;
-      const bearing = map.getBearing();
-      const pitch = map.getPitch();
-      compassRef.current.style.transform = `rotateX(${pitch}deg) rotateZ(${-bearing}deg)`;
-    };
-
-    map.on("rotate", updateRotation);
-    map.on("pitch", updateRotation);
-    updateRotation();
-    return () => {
-      map.off("rotate", updateRotation);
-      map.off("pitch", updateRotation);
-    };
-  }, [map]);
-
-  // Handle 3D buildings extrusion
-  React.useEffect(() => {
-    if (!map) return;
-
-    const globeMap = map as GlobeCapableMap;
-    const layerId = "3d-buildings";
-
-    const handle3DBuildings = () => {
-      globeMap.setProjection({ name: is3D ? "globe" : "mercator" });
-
-      if (is3D) {
-        if (!globeMap.getLayer(layerId)) {
-          const sources = map.getStyle().sources;
-          const buildingSource = Object.keys(sources).find(
-            (s) => s.includes("maptiles") || s.includes("carto"),
-          );
-
-          if (buildingSource) {
-            globeMap.addLayer(
-              {
-                id: layerId,
-                source: buildingSource,
-                "source-layer": "building",
-                type: "fill-extrusion",
-                minzoom: 15,
-                paint: {
-                  "fill-extrusion-color": [
-                    "interpolate",
-                    ["linear"],
-                    ["get", "render_height"],
-                    0,
-                    "#aaa",
-                    200,
-                    "#888",
-                  ],
-                  "fill-extrusion-height": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    15,
-                    0,
-                    15.05,
-                    ["get", "render_height"],
-                  ],
-                  "fill-extrusion-base": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    15,
-                    0,
-                    15.05,
-                    ["get", "render_min_height"],
-                  ],
-                  "fill-extrusion-opacity": 0.8,
-                },
-              },
-              map
-                .getStyle()
-                .layers.find((l) => l.type === "symbol")?.id,
-            );
-          }
-        } else {
-          globeMap.setLayoutProperty(layerId, "visibility", "visible");
-        }
-      } else if (globeMap.getLayer(layerId)) {
-        globeMap.setLayoutProperty(layerId, "visibility", "none");
-      }
-    };
-
-    globeMap.on("styledata", handle3DBuildings);
-    if (globeMap.isStyleLoaded()) {
-      handle3DBuildings();
-    }
-
-    return () => {
-      globeMap.off("styledata", handle3DBuildings);
-    };
-  }, [map, is3D]);
-
-  type GlobeCapableMap = MapLibreMap & {
-    setProjection: (projection: { name: "globe" | "mercator" }) => void;
-    setFog?: (fog?: {
-      color?: string;
-      "high-color"?: string;
-      "horizon-blend"?: number;
-      range?: [number, number];
-    }) => void;
-  };
-
-  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-
-  const animateZoom = (delta: number) => {
-    if (!map) return;
-    map.flyTo({
-      zoom: map.getZoom() + delta,
-      duration: 500,
-      easing: ease,
-      curve: 1.3,
-      essential: true,
-    });
-  };
-
-  const handleZoomIn = () => animateZoom(1);
-  const handleZoomOut = () => animateZoom(-1);
-
-  const handleLocate = () => {
-    if (navigator.geolocation && map) {
-      setWaitingForLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords: [number, number] = [
-            position.coords.longitude,
-            position.coords.latitude,
-          ];
-          setUserLocation(coords);
-          onLocateAnimation();
-          map.flyTo({
-            center: coords,
-            zoom: 17,
-            duration: 2500,
-            curve: 1.42,
-            speed: 0.6,
-            essential: true,
-            easing: (t) => 1 - Math.pow(1 - t, 3),
-          });
-          setWaitingForLocation(false);
-        },
-        () => setWaitingForLocation(false),
-      );
-    }
-  };
-
-  const handleResetBearing = () =>
-    map?.easeTo({ bearing: 0, pitch: 0, duration: 900, easing: ease, essential: true });
-  const handleFullscreen = () => {
-    const container = map?.getContainer();
-    if (!container) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else container.requestFullscreen();
-  };
-
-  const toggle3D = () => {
-    const new3D = !is3D;
-    setIs3D(new3D);
-    if (!map) return;
-
-    const globeMap = map as GlobeCapableMap;
-    globeMap.setProjection({ name: new3D ? "globe" : "mercator" });
-
-    if (new3D) {
-      globeMap.setFog?.({
-        color: "#dbeafe",
-        "high-color": "#0b172a",
-        "horizon-blend": 0.15,
-        range: [0.6, 10],
-      });
-      map.easeTo({
-        pitch: 55,
-        duration: 800,
-        easing: ease,
-        essential: true,
-      });
-    } else {
-      globeMap.setFog?.(undefined);
-      map.easeTo({ pitch: 0, duration: 600, easing: ease, essential: true });
-    }
-  };
-
-  const toggleTheme = () => {
-    const current = resolvedTheme ?? "light";
-    setTheme(current === "dark" ? "light" : "dark");
-  };
-
-  return (
-    <TooltipProvider delayDuration={0}>
-      <div className="flex flex-col gap-2 items-end">
-        {/* Utility Controls (Theme, 3D, Fullscreen) */}
-        <ControlGroup>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={toggleTheme} label="Toggle theme">
-                {resolvedTheme === "dark" ? (
-                  <Sun className="size-4" />
-                ) : (
-                  <Moon className="size-4" />
-                )}
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Theme</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={toggle3D} label="Toggle 3D" active={is3D}>
-                <Box className="size-4" />
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Toggle 3D</TooltipContent>
-          </Tooltip>
-
-          {!isMobile && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ControlButton onClick={handleFullscreen} label="Fullscreen">
-                  <Maximize className="size-4" />
-                </ControlButton>
-              </TooltipTrigger>
-              <TooltipContent side="left" sideOffset={8}>Fullscreen</TooltipContent>
-            </Tooltip>
-          )}
-        </ControlGroup>
-
-        {/* Compass/Locate */}
-        <ControlGroup>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={handleResetBearing} label="Reset bearing">
-                <svg
-                  ref={compassRef}
-                  viewBox="0 0 24 24"
-                  className="size-5 transition-transform duration-200"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <title>Compass</title>
-                  <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
-                  <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
-                  <path
-                    d="M12 22L16 12H12V22Z"
-                    className="fill-muted-foreground/60"
-                  />
-                  <path
-                    d="M12 22L8 12H12V22Z"
-                    className="fill-muted-foreground/30"
-                  />
-                </svg>
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Reset North</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton
-                onClick={handleLocate}
-                label="Find my location"
-                disabled={waitingForLocation}
-              >
-                {waitingForLocation ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Locate className="size-4" />
-                )}
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
-          </Tooltip>
-        </ControlGroup>
-
-        {/* Zoom Controls Group */}
-        <ControlGroup>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={handleZoomIn} label="Zoom In">
-                <Plus className="size-4" />
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Zoom In</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ControlButton onClick={handleZoomOut} label="Zoom Out">
-                <Minus className="size-4" />
-              </ControlButton>
-            </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Zoom Out</TooltipContent>
-          </Tooltip>
-        </ControlGroup>
-      </div>
-    </TooltipProvider>
   );
 }
