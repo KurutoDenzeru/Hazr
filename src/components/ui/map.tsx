@@ -1161,9 +1161,9 @@ function MapClusterLayer<
 
     const features = map.querySourceFeatures(sourceId, {
       filter: ["has", "point_count"],
-    }) as GeoJSON.Feature<GeoJSON.Point, P>[];
+    }) as unknown as GeoJSON.Feature<GeoJSON.Point, P>[];
 
-    const unique = new Map<number, GeoJSON.Feature<GeoJSON.Point, P>>();
+    const unique = new globalThis.Map<number, GeoJSON.Feature<GeoJSON.Point, P>>();
     for (const feature of features) {
       const clusterId = feature.properties?.cluster_id as number | undefined;
       if (typeof clusterId === "number" && !unique.has(clusterId)) {
@@ -1204,7 +1204,11 @@ function MapClusterLayer<
         if (typeof clusterId !== "number") return null;
         const pointCount = feature.properties?.point_count as number | undefined;
         if (typeof pointCount !== "number") return null;
-        const coordinates = feature.geometry?.coordinates as [number, number];
+        const coordinates =
+          feature.geometry?.type === "Point"
+            ? (feature.geometry.coordinates as [number, number])
+            : null;
+        if (!coordinates) return null;
         const tone = getClusterTone(pointCount);
         const countLabel = formatCount(pointCount);
 
@@ -1241,14 +1245,14 @@ function MapClusterLayer<
               >
                 <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
                   {ClusterIcon ? (
-                    <ClusterIcon className="size-3.5" style={{ color: tone }} />
+                    <ClusterIcon className="size-3.5" />
                   ) : (
                     <span className="text-[10px] font-bold" style={{ color: tone }}>
                       {labelPrefix ?? "C"}
                     </span>
                   )}
                 </span>
-                <span className="truncate max-w-[110px]">
+                <span className="truncate max-w-27.5">
                   {labelText} {countLabel}
                 </span>
               </button>
