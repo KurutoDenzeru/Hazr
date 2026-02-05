@@ -214,28 +214,11 @@ export function MapViewController({
   return null;
 }
 
-function useMapZoom() {
-  const { map } = useMap();
-  const [zoom, setZoom] = React.useState(() => map?.getZoom() ?? 0);
-
-  React.useEffect(() => {
-    if (!map) return;
-    const handleZoomEnd = () => setZoom(map.getZoom());
-    map.on("zoomend", handleZoomEnd);
-    return () => {
-      map.off("zoomend", handleZoomEnd);
-    };
-  }, [map]);
-
-  return zoom;
-}
-
 export function GlobalSignalMarkers({
   events,
   tsunamiAlerts,
   airQualitySites,
   layerVisibility,
-  clusterMaxZoom,
   onEventSelect,
   onTsunamiSelect,
   onAirQualitySelect,
@@ -244,7 +227,6 @@ export function GlobalSignalMarkers({
   tsunamiAlerts: ProcessedTsunamiAlert[];
   airQualitySites: ProcessedAirQualitySite[];
   layerVisibility: Pick<LayerVisibility, "eonet" | "airQuality" | "tsunami">;
-  clusterMaxZoom: number;
   onEventSelect: (event: ProcessedEonetEvent) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;

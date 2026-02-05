@@ -691,7 +691,6 @@ export default function GoogleMapsClone() {
                   tsunamiAlerts={tsunamiState.alerts}
                   airQualitySites={airQualityState.sites}
                   layerVisibility={layerVisibility}
-                  clusterMaxZoom={globalClusterMaxZoom}
                   onEventSelect={handleEonetSelect}
                   onTsunamiSelect={handleTsunamiSelect}
                   onAirQualitySelect={handleAirQualitySelect}
