@@ -32,7 +32,6 @@ import {
   Waves,
   X,
   Wind,
-  Mountain,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -118,11 +117,18 @@ export const getEventIcon = (category: string) => {
   if (normalized.includes("storm")) return CloudLightning;
   if (normalized.includes("wildfire") || normalized.includes("fire")) return Flame;
   if (normalized.includes("flood")) return Waves;
-  if (normalized.includes("volcano")) return Mountain;
+  if (normalized.includes("volcano")) return AlertTriangle;
   if (normalized.includes("ice")) return Snowflake;
   if (normalized.includes("drought")) return Sun;
   if (normalized.includes("dust")) return Wind;
   return Globe2;
+};
+
+const getEventCategoryLabel = (category: string) => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("storm")) return "Storm";
+  if (normalized.includes("volcano")) return "Volcano";
+  return category;
 };
 
 export function MapStateSync({
@@ -231,6 +237,44 @@ export function GlobalSignalMarkers({
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
 }) {
+  const { map, isLoaded } = useMap();
+  const [viewportState, setViewportState] = React.useState(() => ({
+    zoom: 0,
+    bounds: null as maplibregl.LngLatBounds | null,
+  }));
+  const GLOBAL_MARKER_MIN_ZOOM = 6.2;
+  const MAX_VISIBLE_GLOBAL_MARKERS = 90;
+
+  React.useEffect(() => {
+    if (!map || !isLoaded) return;
+
+    const syncViewportState = () => {
+      setViewportState({
+        zoom: map.getZoom(),
+        bounds: map.getBounds(),
+      });
+    };
+
+    syncViewportState();
+    map.on("moveend", syncViewportState);
+    map.on("zoomend", syncViewportState);
+
+    return () => {
+      map.off("moveend", syncViewportState);
+      map.off("zoomend", syncViewportState);
+    };
+  }, [map, isLoaded]);
+
+  const isPointVisible = React.useCallback(
+    (coordinates: [number, number]) => {
+      const bounds = viewportState.bounds;
+      if (!bounds) return false;
+      return bounds.contains([coordinates[0], coordinates[1]]);
+    },
+    [viewportState.bounds]
+  );
+
+  const shouldRenderGlobalMarkers = viewportState.zoom >= GLOBAL_MARKER_MIN_ZOOM;
 
   const getEventTone = (category: string) => {
     const normalized = category.toLowerCase();
@@ -244,12 +288,36 @@ export function GlobalSignalMarkers({
     return "#f59e0b";
   };
 
+  const visibleEvents = React.useMemo(() => {
+    if (!shouldRenderGlobalMarkers) return [];
+    return events
+      .filter((event) => isPointVisible(event.coordinates))
+      .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
+  }, [events, isPointVisible, shouldRenderGlobalMarkers]);
+
+  const visibleTsunamiAlerts = React.useMemo(() => {
+    if (!shouldRenderGlobalMarkers) return [];
+    return tsunamiAlerts
+      .filter((alert) => isPointVisible(alert.coordinates))
+      .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
+  }, [tsunamiAlerts, isPointVisible, shouldRenderGlobalMarkers]);
+
+  const visibleAirQualitySites = React.useMemo(() => {
+    if (!shouldRenderGlobalMarkers) return [];
+    return airQualitySites
+      .filter((site) => isPointVisible(site.coordinates))
+      .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
+  }, [airQualitySites, isPointVisible, shouldRenderGlobalMarkers]);
+
+  if (!shouldRenderGlobalMarkers) return null;
+
   return (
     <>
       {layerVisibility.eonet &&
-        events.map((event) => {
+        visibleEvents.map((event) => {
           const tone = getEventTone(event.category);
           const EventIcon = getEventIcon(event.category);
+          const eventLabel = getEventCategoryLabel(event.category);
           return (
             <MapMarker
               key={event.id}
@@ -270,7 +338,7 @@ export function GlobalSignalMarkers({
                     <EventIcon className="size-3.5" style={{ color: tone }} />
                   </span>
                   <span className="truncate max-w-[64px]">
-                    {event.category}
+                    {eventLabel}
                   </span>
                 </button>
               </MarkerContent>
@@ -279,7 +347,7 @@ export function GlobalSignalMarkers({
         })}
 
       {layerVisibility.tsunami &&
-        tsunamiAlerts.map((alert) => (
+        visibleTsunamiAlerts.map((alert) => (
           <MapMarker
             key={alert.id}
             longitude={alert.coordinates[0]}
@@ -303,7 +371,7 @@ export function GlobalSignalMarkers({
         ))}
 
       {layerVisibility.airQuality &&
-        airQualitySites.map((site) => (
+        visibleAirQualitySites.map((site) => (
           <MapMarker
             key={site.id}
             longitude={site.coordinates[0]}
@@ -622,7 +690,7 @@ export function SignalOverlay({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
-                  {activeEvent.category}
+                  {getEventCategoryLabel(activeEvent.category)}
                 </Badge>
                 <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
                   {activeEvent.date.toLocaleDateString("en-US", {
