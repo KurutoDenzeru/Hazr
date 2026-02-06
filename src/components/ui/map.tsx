@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Locate, Maximize, Loader2, AlertTriangle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -57,6 +57,12 @@ type MapProps = {
     light?: MapStyleOption;
     dark?: MapStyleOption;
   };
+  /** Prefer high-performance GPU rendering context when available. */
+  preferHighPerformanceGpu?: boolean;
+  /** Optional fallback UI when WebGL is unavailable. */
+  unsupportedFallback?: ReactNode;
+  /** Callback fired when WebGL is unavailable on the device/browser. */
+  onWebGLUnsupported?: () => void;
 } & Omit<MapLibreGL.MapOptions, "container" | "style">;
 
 type MapRef = MapLibreGL.Map;
@@ -71,14 +77,62 @@ const DefaultLoader = () => (
   </div>
 );
 
+const DEFAULT_UNSUPPORTED_FALLBACK = (
+  <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-4">
+    <div className="max-w-md rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 size-5 text-amber-500" aria-hidden="true" />
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold">WebGL is unavailable</p>
+          <p className="text-sm text-muted-foreground">
+            Hardware-accelerated map rendering is disabled in this browser or device.
+            Enable graphics acceleration or switch to a WebGL-capable browser.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const isWebGLAvailable = () => {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const canvas = document.createElement("canvas");
+    if (!canvas) return false;
+
+    const contextOptions: WebGLContextAttributes = {
+      powerPreference: "high-performance",
+      failIfMajorPerformanceCaveat: false,
+    };
+
+    const webgl2Context = canvas.getContext("webgl2", contextOptions);
+    if (webgl2Context) return true;
+
+    const webglContext = canvas.getContext("webgl", contextOptions);
+    return Boolean(webglContext);
+  } catch {
+    return false;
+  }
+};
+
 const Map = forwardRef<MapRef, MapProps>(function Map(
-  { children, styles, ...props },
+  {
+    children,
+    styles,
+    preferHighPerformanceGpu = true,
+    unsupportedFallback,
+    onWebGLUnsupported,
+    ...props
+  },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<MapLibreGL.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
+  const [isWebGLUnsupported, setIsWebGLUnsupported] = useState(false);
+  const [hasCheckedWebGL, setHasCheckedWebGL] = useState(false);
   const { resolvedTheme } = useTheme();
   const currentStyleRef = useRef<MapStyleOption | null>(null);
 
@@ -95,9 +149,29 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   useEffect(() => {
     if (!containerRef.current) return;
 
+    if (!isWebGLAvailable()) {
+      setHasCheckedWebGL(true);
+      setIsWebGLUnsupported(true);
+      onWebGLUnsupported?.();
+      return;
+    }
+
     const initialStyle =
       resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
     currentStyleRef.current = initialStyle;
+
+    const canvasContextAttributes: MapLibreGL.WebGLContextAttributesWithType = {
+      ...((preferHighPerformanceGpu
+        ? {
+            antialias: false,
+            preserveDrawingBuffer: false,
+            powerPreference: "high-performance",
+            failIfMajorPerformanceCaveat: false,
+            desynchronized: true,
+          }
+        : {}) as MapLibreGL.WebGLContextAttributesWithType),
+      ...(props.canvasContextAttributes ?? {}),
+    };
 
     const map = new MapLibreGL.Map({
       container: containerRef.current,
@@ -105,6 +179,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       renderWorldCopies: true,
       attributionControl: false,
       ...props,
+      canvasContextAttributes,
     });
 
     const styleDataHandler = () => setIsStyleLoaded(true);
@@ -113,6 +188,8 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     map.on("load", loadHandler);
     map.on("styledata", styleDataHandler);
     setMapInstance(map);
+    setHasCheckedWebGL(true);
+    setIsWebGLUnsupported(false);
 
     return () => {
       map.off("load", loadHandler);
@@ -156,9 +233,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   return (
     <MapContext.Provider value={contextValue}>
       <div ref={containerRef} className="relative w-full h-full">
-        {isLoading && <DefaultLoader />}
+        {!hasCheckedWebGL && <DefaultLoader />}
+        {hasCheckedWebGL && isWebGLUnsupported && (unsupportedFallback ?? DEFAULT_UNSUPPORTED_FALLBACK)}
+        {!isWebGLUnsupported && isLoading && <DefaultLoader />}
         {/* SSR-safe: children render only when map is loaded on client */}
-        {mapInstance && children}
+        {!isWebGLUnsupported && mapInstance && children}
       </div>
     </MapContext.Provider>
   );
