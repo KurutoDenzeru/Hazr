@@ -32,6 +32,12 @@ import {
   Waves,
   X,
   Wind,
+  CalendarClock,
+  MapPinned,
+  ScanLine,
+  FlaskConical,
+  Building2,
+  Ruler,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -149,18 +155,6 @@ const formatAirQualityConcentration = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`;
 };
 
-const toEventWebsiteUrl = (url: string) => {
-  try {
-    const parsedUrl = new URL(url);
-    if (parsedUrl.hostname.includes("eonet.gsfc.nasa.gov") && parsedUrl.pathname.includes("/api/")) {
-      return "https://eonet.gsfc.nasa.gov/";
-    }
-    return parsedUrl.toString();
-  } catch {
-    return url;
-  }
-};
-
 type OverlayBadge = {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -171,6 +165,8 @@ type OverlayDetailItem = {
   label: string;
   value: string;
   icon?: React.ComponentType<{ className?: string }>;
+  cardClassName?: string;
+  labelClassName?: string;
 };
 
 type OverlayAction = {
@@ -187,8 +183,16 @@ const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {details.map((detail) => (
-        <div key={detail.label} className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div
+          key={detail.label}
+          className={cn("rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20", detail.cardClassName)}
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground",
+              detail.labelClassName,
+            )}
+          >
             {detail.icon ? <detail.icon className="size-3" /> : null}
             <span>{detail.label}</span>
           </div>
@@ -197,6 +201,48 @@ const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
       ))}
     </div>
   );
+};
+
+const getEventTone = (category: string) => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("wildfire") || normalized.includes("fire")) {
+    return {
+      lead: "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+      badge: "bg-orange-500/15 text-orange-700 dark:bg-orange-500/25 dark:text-orange-200",
+      detailCard: "bg-orange-500/8 border border-orange-500/20 dark:bg-orange-500/12 dark:border-orange-400/20",
+      detailLabel: "text-orange-700/80 dark:text-orange-200/80",
+    };
+  }
+  if (normalized.includes("storm")) {
+    return {
+      lead: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+      badge: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-200",
+      detailCard: "bg-indigo-500/8 border border-indigo-500/20 dark:bg-indigo-500/12 dark:border-indigo-400/20",
+      detailLabel: "text-indigo-700/80 dark:text-indigo-200/80",
+    };
+  }
+  if (normalized.includes("flood") || normalized.includes("tsunami")) {
+    return {
+      lead: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+      badge: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
+      detailCard: "bg-sky-500/8 border border-sky-500/20 dark:bg-sky-500/12 dark:border-sky-400/20",
+      detailLabel: "text-sky-700/80 dark:text-sky-200/80",
+    };
+  }
+  if (normalized.includes("volcano")) {
+    return {
+      lead: "bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200",
+      badge: "bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200",
+      detailCard: "bg-rose-500/8 border border-rose-500/20 dark:bg-rose-500/12 dark:border-rose-400/20",
+      detailLabel: "text-rose-700/80 dark:text-rose-200/80",
+    };
+  }
+  return {
+    lead: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+    badge: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200",
+    detailCard: "bg-amber-500/8 border border-amber-500/20 dark:bg-amber-500/12 dark:border-amber-400/20",
+    detailLabel: "text-amber-700/80 dark:text-amber-200/80",
+  };
 };
 
 const UnifiedSignalPopover = ({
@@ -734,6 +780,7 @@ export function SignalOverlay({
         {
           label: "Coordinates",
           value: `${activeEvent.coordinates[1].toFixed(4)}, ${activeEvent.coordinates[0].toFixed(4)}`,
+          icon: MapPinned,
         },
         {
           label: "Reported",
@@ -743,6 +790,7 @@ export function SignalOverlay({
             hour: "numeric",
             minute: "2-digit",
           }),
+          icon: CalendarClock,
         },
       ]
     : [];
@@ -751,13 +799,15 @@ export function SignalOverlay({
     ? [
         {
           label: getEventCategoryLabel(activeEvent.category),
-          className: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200",
+          icon: activeEvent ? getEventIcon(activeEvent.category) : Globe2,
+          className: cn("gap-1", getEventTone(activeEvent.category).badge),
         },
         {
           label: activeEvent.date.toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
           }),
+          icon: Clock,
           className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
         },
       ]
@@ -768,6 +818,7 @@ export function SignalOverlay({
         {
           label: "Coordinates",
           value: `${activeTsunami.coordinates[1].toFixed(4)}, ${activeTsunami.coordinates[0].toFixed(4)}`,
+          icon: MapPinned,
         },
       ]
     : [];
@@ -778,17 +829,18 @@ export function SignalOverlay({
           label: activeTsunami.severity,
           className: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
         },
-        activeTsunami.sent
-          ? {
-              label: activeTsunami.sent.toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              }),
-              className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
-            }
-          : null,
+          activeTsunami.sent
+            ? {
+                label: activeTsunami.sent.toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                icon: CalendarClock,
+                className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+              }
+            : null,
       ].filter(isDefined)
     : [];
 
@@ -811,6 +863,7 @@ export function SignalOverlay({
           {
             label: "Coordinates",
             value: `${activeAirQuality.coordinates[1].toFixed(4)}, ${activeAirQuality.coordinates[0].toFixed(4)}`,
+            icon: MapPinned,
           },
           activeAirQuality.measuredAt
             ? {
@@ -821,50 +874,59 @@ export function SignalOverlay({
                   hour: "numeric",
                   minute: "2-digit",
                 }),
+                icon: CalendarClock,
               }
             : null,
           activeAirQuality.averagingPeriod
             ? {
                 label: "Averaging period",
                 value: activeAirQuality.averagingPeriod,
+                icon: ScanLine,
               }
             : null,
           activeAirQuality.coveragePercent !== null && activeAirQuality.coveragePercent !== undefined
             ? {
                 label: "Data coverage",
                 value: `${activeAirQuality.coveragePercent.toFixed(0)}%`,
+                icon: Signal,
               }
             : null,
           {
             label: "Location ID",
             value: `${activeAirQuality.locationId}`,
+            icon: Building2,
           },
           {
             label: "Sensor ID",
             value: `${activeAirQuality.sensorId}`,
+            icon: Radio,
           },
           activeAirQuality.city || activeAirQuality.country
             ? {
                 label: "Region",
                 value: [activeAirQuality.city, activeAirQuality.country].filter(Boolean).join(", "),
+                icon: MapPin,
               }
             : null,
           activeAirQuality.averageValue !== null && activeAirQuality.averageValue !== undefined
             ? {
                 label: "Average",
                 value: formatAirQualityConcentration(activeAirQuality.averageValue, activeAirQuality.unit),
+                icon: Ruler,
               }
             : null,
           activeAirQuality.minValue !== null && activeAirQuality.minValue !== undefined
             ? {
                 label: "Minimum",
                 value: formatAirQualityConcentration(activeAirQuality.minValue, activeAirQuality.unit),
+                icon: FlaskConical,
               }
             : null,
           activeAirQuality.maxValue !== null && activeAirQuality.maxValue !== undefined
             ? {
                 label: "Maximum",
                 value: formatAirQualityConcentration(activeAirQuality.maxValue, activeAirQuality.unit),
+                icon: FlaskConical,
               }
             : null,
         ].filter(isDefined)
@@ -872,6 +934,7 @@ export function SignalOverlay({
     : [];
 
   const ActiveEventIcon = activeEvent ? getEventIcon(activeEvent.category) : Globe2;
+  const activeEventTone = activeEvent ? getEventTone(activeEvent.category) : getEventTone("default");
 
   return createPortal(
     <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3 shadow-lg">
@@ -932,19 +995,18 @@ export function SignalOverlay({
       {activeEvent ? (
         <UnifiedSignalPopover
           leading={(
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 shadow-lg dark:bg-amber-500/30 dark:text-amber-200">
+            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg shadow-lg", activeEventTone.lead)}>
               <ActiveEventIcon className="size-6" />
             </div>
           )}
           title={activeEvent.title}
           onClose={onCloseEvent}
           badges={eventBadges}
-          details={eventDetails}
-          footerAction={{
-            label: "View on source website",
-            url: toEventWebsiteUrl(activeEvent.url),
-            ariaLabel: "View global signal source website",
-          }}
+          details={eventDetails.map((detail) => ({
+            ...detail,
+            cardClassName: activeEventTone.detailCard,
+            labelClassName: activeEventTone.detailLabel,
+          }))}
         />
       ) : null}
 
@@ -959,13 +1021,6 @@ export function SignalOverlay({
           onClose={onCloseEvent}
           badges={tsunamiBadges}
           details={tsunamiDetails}
-          footerAction={activeTsunami.url
-            ? {
-                label: "View on NWS",
-                url: activeTsunami.url,
-                ariaLabel: "View tsunami source website",
-              }
-            : null}
         />
       ) : null}
 
@@ -980,13 +1035,6 @@ export function SignalOverlay({
           onClose={onCloseEvent}
           badges={airQualityBadges}
           details={airQualityDetails}
-          footerAction={activeAirQuality.sourceUrl
-            ? {
-                label: "View source",
-                url: activeAirQuality.sourceUrl,
-                ariaLabel: "View OpenAQ location source website",
-              }
-            : null}
         />
       ) : null}
     </div>,
