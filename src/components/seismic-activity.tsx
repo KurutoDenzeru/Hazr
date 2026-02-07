@@ -34,6 +34,9 @@ export const SeismicActivity = ({
       magnitude: "2.5",
       range: "day",
     });
+  const handleRefresh = () => {
+    void refetch();
+  };
 
   const strongestMagnitude = earthquakes.reduce<number>(
     (currentStrongest, earthquake) =>
@@ -100,13 +103,20 @@ export const SeismicActivity = ({
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
-                onClick={() => refetch()}
+                type="button"
+                onClick={handleRefresh}
                 aria-label="Refresh earthquakes"
               >
                 <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Refresh</TooltipContent>
+            <TooltipContent>
+              {isLoading
+                ? "Refreshing..."
+                : lastUpdated
+                  ? `Updated ${formatTime(lastUpdated)}`
+                  : "Refresh feed"}
+            </TooltipContent>
           </Tooltip>
         </div>
 
@@ -145,12 +155,6 @@ export const SeismicActivity = ({
           )}
         </div>
 
-        {/* Footer */}
-        {lastUpdated && (
-          <div className="pt-2">
-            <p className="text-xs text-muted-foreground/60">Updated {formatTime(lastUpdated)}</p>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );

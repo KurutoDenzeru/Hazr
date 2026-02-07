@@ -42,18 +42,21 @@ type HazrMenuPanelProps = {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   airQualityState?: {
     sites: ProcessedAirQualitySite[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   tsunamiState?: {
     alerts: ProcessedTsunamiAlert[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
 };
@@ -196,6 +199,7 @@ function HazrMenuPanel({
                     events: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }
@@ -204,6 +208,7 @@ function HazrMenuPanel({
                     sites: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }
@@ -212,6 +217,7 @@ function HazrMenuPanel({
                     alerts: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }

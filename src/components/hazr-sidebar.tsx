@@ -45,18 +45,21 @@ type HazrSidebarProps = {
     events: ProcessedEonetEvent[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
   airQualityState?: {
     sites: ProcessedAirQualitySite[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
   tsunamiState?: {
     alerts: ProcessedTsunamiAlert[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
 }

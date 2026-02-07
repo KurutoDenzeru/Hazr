@@ -29,18 +29,21 @@ type GlobalActivityProps = {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   airQualityState: {
     sites: ProcessedAirQualitySite[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   tsunamiState: {
     alerts: ProcessedTsunamiAlert[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
@@ -88,6 +91,14 @@ const getTsunamiSeverityRank = (severity: string): number => {
   if (normalized.includes("moderate")) return 2;
   if (normalized.includes("minor")) return 1;
   return 0;
+};
+
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const GlobalActivity = ({
@@ -255,6 +266,7 @@ const GlobalActivity = ({
               itemIcon={Globe2}
               isLoading={eonetState.isLoading}
               error={eonetState.error}
+              lastUpdated={eonetState.lastUpdated}
               onRefresh={eonetState.refetch}
               items={eventItems}
               toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
@@ -299,6 +311,7 @@ const GlobalActivity = ({
               itemIcon={Wind}
               isLoading={airQualityState.isLoading}
               error={airQualityState.error}
+              lastUpdated={airQualityState.lastUpdated}
               onRefresh={airQualityState.refetch}
               items={airItems}
               toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
@@ -312,6 +325,7 @@ const GlobalActivity = ({
               itemIcon={Waves}
               isLoading={tsunamiState.isLoading}
               error={tsunamiState.error}
+              lastUpdated={tsunamiState.lastUpdated}
               onRefresh={tsunamiState.refetch}
               items={tsunamiItems}
               toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
@@ -330,6 +344,7 @@ type SignalSectionProps = {
   itemIcon: React.ComponentType<{ className?: string }>;
   isLoading: boolean;
   error: Error | null;
+  lastUpdated: Date | null;
   onRefresh: () => Promise<void>;
   items: SignalItem[];
   toneClassName: string;
@@ -343,82 +358,96 @@ const SignalSection = ({
   itemIcon: ItemIcon,
   isLoading,
   error,
+  lastUpdated,
   onRefresh,
   items,
   toneClassName,
   itemToneClassName,
   renderItem,
-}: SignalSectionProps) => (
-  <div className="rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className={cn("rounded-md p-2", toneClassName)}>
-          <Icon className="size-4" />
-        </div>
-        <div>
-          <p className="text-sm font-medium">{title}</p>
-          <p className="text-xs text-muted-foreground">Live updates</p>
-        </div>
-      </div>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
-            onClick={onRefresh}
-            aria-label={`Refresh ${title}`}
-          >
-            <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Refresh</TooltipContent>
-      </Tooltip>
-    </div>
+}: SignalSectionProps) => {
+  const handleRefresh = () => {
+    void onRefresh();
+  };
 
-    <div className="mt-2">
-      {isLoading && items.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={cn("rounded-md p-2", toneClassName)}>
+            <Icon className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">{title}</p>
+            <p className="text-xs text-muted-foreground">Live updates</p>
+          </div>
         </div>
-      ) : error ? (
-        <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-          <AlertTriangle className="size-4 text-amber-500" />
-          Failed to load
-        </div>
-      ) : items.length === 0 ? (
-        <div className="py-2 text-xs text-muted-foreground">No active signals</div>
-      ) : (
-        <div className="flex flex-col gap-1">
-          {items.map((item) =>
-            renderItem ? (
-              renderItem(item)
-            ) : (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleOpen(item.url)}
-                className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-                aria-label={item.title}
-              >
-                <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
-                  <ItemIcon className="size-3.5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="truncate block text-[11px] font-semibold text-foreground">
-                    {item.title}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
+              type="button"
+              onClick={handleRefresh}
+              aria-label={`Refresh ${title}`}
+            >
+              <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isLoading
+              ? "Refreshing..."
+              : lastUpdated
+                ? `Updated ${formatTime(lastUpdated)}`
+                : `Refresh ${title}`}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      <div className="mt-2">
+        {isLoading && items.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading
+          </div>
+        ) : error ? (
+          <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+            <AlertTriangle className="size-4 text-amber-500" />
+            Failed to load
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-2 text-xs text-muted-foreground">No active signals</div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {items.map((item) =>
+              renderItem ? (
+                renderItem(item)
+              ) : (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleOpen(item.url)}
+                  className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+                  aria-label={item.title}
+                >
+                  <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
+                    <ItemIcon className="size-3.5" />
                   </span>
-                  <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
-                </span>
-              </button>
-            )
-          )}
-        </div>
-      )}
+                  <span className="min-w-0 flex-1">
+                    <span className="truncate block text-[11px] font-semibold text-foreground">
+                      {item.title}
+                    </span>
+                    <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
+                  </span>
+                </button>
+              )
+            )}
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 type MiniSignalProps = {
   label: string;
