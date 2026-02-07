@@ -178,6 +178,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       style: initialStyle,
       renderWorldCopies: true,
       attributionControl: false,
+      refreshExpiredTiles: props.refreshExpiredTiles ?? false,
+      maxTileCacheSize: props.maxTileCacheSize ?? 512,
+      cancelPendingTileRequestsWhileZooming:
+        props.cancelPendingTileRequestsWhileZooming ?? true,
       ...props,
       canvasContextAttributes,
     });
@@ -1140,6 +1144,8 @@ type MapClusterLayerProps<
   clusterColors?: [string, string, string];
   /** Point count thresholds for color/size steps: [medium, large] (default: [100, 750]) */
   clusterThresholds?: [number, number];
+  /** Render compact node markers when map zoom is at or below this threshold */
+  compactAtOrBelowZoom?: number;
   /** Color for unclustered individual points (default: "#3b82f6") */
   pointColor?: string;
   /** Callback when an unclustered point is clicked */
@@ -1163,19 +1169,44 @@ function MapClusterLayer<
   labelPrefix,
   clusterLabel,
   clusterIcon: ClusterIcon,
+  pointLabelField,
+  pointLabelVisible = true,
   clusterMaxZoom = 14,
   clusterRadius = 50,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
   clusterThresholds = [100, 750],
+  compactAtOrBelowZoom,
+  pointColor = "#3b82f6",
+  onPointClick,
   onClusterClick,
 }: MapClusterLayerProps<P>) {
   const { map, isLoaded } = useMap();
   const id = useId();
   const sourceId = `cluster-source-${id}`;
   const rafRef = useRef<number | null>(null);
+  const collapseTimeoutRef = useRef<number | null>(null);
+  const isMovingRef = useRef(false);
+  const lastSignatureRef = useRef("");
+  const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
   const [clusters, setClusters] = useState<
     GeoJSON.Feature<GeoJSON.Point, P>[]
   >([]);
+  const [unclusteredPoints, setUnclusteredPoints] = useState<
+    GeoJSON.Feature<GeoJSON.Point, P>[]
+  >([]);
+
+  const clearCollapseTimeout = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (collapseTimeoutRef.current === null) return;
+    window.clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearCollapseTimeout();
+    };
+  }, [clearCollapseTimeout]);
 
   const getClusterTone = useCallback(
     (pointCount: number) => {
@@ -1196,6 +1227,31 @@ function MapClusterLayer<
       return `${count}`;
     }
   }, []);
+
+  const getPointFeatureKey = useCallback(
+    (feature: GeoJSON.Feature<GeoJSON.Point, P>) => {
+      if (typeof feature.id === "number" || typeof feature.id === "string") {
+        return `feature-${feature.id}`;
+      }
+
+      const properties = feature.properties as GeoJSON.GeoJsonProperties;
+      if (
+        properties &&
+        (typeof properties.id === "number" || typeof properties.id === "string")
+      ) {
+        return `property-${properties.id}`;
+      }
+
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? (feature.geometry.coordinates as [number, number])
+          : null;
+      if (!coordinates) return "point-unknown";
+
+      return `coordinate-${coordinates[0].toFixed(6)}-${coordinates[1].toFixed(6)}`;
+    },
+    []
+  );
 
   // Add source on mount
   useEffect(() => {
@@ -1228,25 +1284,95 @@ function MapClusterLayer<
   }, [isLoaded, map, data, sourceId]);
 
   const refreshClusters = useCallback(() => {
-    if (!map || !isLoaded || !visible) {
-      setClusters([]);
+    if (!map || !isLoaded || !visible || isMovingRef.current) {
+      if (lastSignatureRef.current !== "") {
+        lastSignatureRef.current = "";
+        setClusters([]);
+        setUnclusteredPoints([]);
+      }
       return;
     }
     if (!map.getSource(sourceId)) return;
 
-    const features = map.querySourceFeatures(sourceId, {
-      filter: ["has", "point_count"],
-    }) as unknown as GeoJSON.Feature<GeoJSON.Point, P>[];
+    const features = map.querySourceFeatures(sourceId) as unknown as GeoJSON.Feature<
+      GeoJSON.Point,
+      P
+    >[];
 
-    const unique = new globalThis.Map<number, GeoJSON.Feature<GeoJSON.Point, P>>();
+    const uniqueClusters = new globalThis.Map<
+      number,
+      GeoJSON.Feature<GeoJSON.Point, P>
+    >();
+    const uniquePoints = new globalThis.Map<
+      string,
+      GeoJSON.Feature<GeoJSON.Point, P>
+    >();
+
     for (const feature of features) {
+      if (feature.geometry?.type !== "Point") continue;
+
+      const pointCount = feature.properties?.point_count as number | undefined;
       const clusterId = feature.properties?.cluster_id as number | undefined;
-      if (typeof clusterId === "number" && !unique.has(clusterId)) {
-        unique.set(clusterId, feature);
+      if (
+        typeof pointCount === "number" &&
+        typeof clusterId === "number" &&
+        !uniqueClusters.has(clusterId)
+      ) {
+        uniqueClusters.set(clusterId, feature);
+        continue;
       }
+
+      const pointKey = getPointFeatureKey(feature);
+      if (uniquePoints.has(pointKey)) continue;
+      uniquePoints.set(pointKey, feature);
     }
-    setClusters(Array.from(unique.values()));
-  }, [clusterMaxZoom, isLoaded, map, sourceId, visible]);
+
+    const nextClusters = Array.from(uniqueClusters.values());
+    const nextPoints = Array.from(uniquePoints.entries());
+    const isCompactMode =
+      typeof compactAtOrBelowZoom === "number" &&
+      map.getZoom() <= compactAtOrBelowZoom;
+    const clusterSignature = nextClusters
+      .map((feature) => {
+        const clusterId = feature.properties?.cluster_id as number | undefined;
+        const pointCount = feature.properties?.point_count as number | undefined;
+        const coordinates =
+          feature.geometry?.type === "Point"
+            ? (feature.geometry.coordinates as [number, number])
+            : null;
+        if (typeof clusterId !== "number" || typeof pointCount !== "number") {
+          return "";
+        }
+        if (!coordinates) return "";
+        return `${clusterId}:${pointCount}:${coordinates[0].toFixed(4)}:${coordinates[1].toFixed(4)}`;
+      })
+      .sort()
+      .join("|");
+    const pointSignature = nextPoints
+      .map(([key, feature]) => {
+        const coordinates =
+          feature.geometry?.type === "Point"
+            ? (feature.geometry.coordinates as [number, number])
+            : null;
+        if (!coordinates) return key;
+        return `${key}:${coordinates[0].toFixed(4)}:${coordinates[1].toFixed(4)}`;
+      })
+      .sort()
+      .join("|");
+    const modeAwareSignature = `${isCompactMode ? "compact" : "badge"}|clusters:${clusterSignature}|points:${pointSignature}`;
+
+    if (lastSignatureRef.current === modeAwareSignature) return;
+    lastSignatureRef.current = modeAwareSignature;
+    setClusters(nextClusters);
+    setUnclusteredPoints(nextPoints.map(([, feature]) => feature));
+  }, [
+    compactAtOrBelowZoom,
+    getPointFeatureKey,
+    isLoaded,
+    map,
+    sourceId,
+    visible,
+  ]);
 
   const scheduleRefresh = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -1257,20 +1383,41 @@ function MapClusterLayer<
 
   useEffect(() => {
     if (!map || !isLoaded) return;
+
+    const handleMoveStart = () => {
+      isMovingRef.current = true;
+    };
+    const handleMoveSettled = () => {
+      isMovingRef.current = false;
+      scheduleRefresh();
+    };
+
     scheduleRefresh();
-    map.on("zoomend", scheduleRefresh);
-    map.on("moveend", scheduleRefresh);
-    map.on("sourcedata", scheduleRefresh);
+    map.on("movestart", handleMoveStart);
+    map.on("zoomstart", handleMoveStart);
+    map.on("moveend", handleMoveSettled);
+    map.on("zoomend", handleMoveSettled);
+    map.on("idle", scheduleRefresh);
+
     return () => {
-      map.off("zoomend", scheduleRefresh);
-      map.off("moveend", scheduleRefresh);
-      map.off("sourcedata", scheduleRefresh);
+      map.off("movestart", handleMoveStart);
+      map.off("zoomstart", handleMoveStart);
+      map.off("moveend", handleMoveSettled);
+      map.off("zoomend", handleMoveSettled);
+      map.off("idle", scheduleRefresh);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
   }, [isLoaded, map, scheduleRefresh]);
 
   if (!visible) return null;
 
   const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
+  const isCompactMode =
+    typeof compactAtOrBelowZoom === "number" &&
+    (map?.getZoom() ?? Number.POSITIVE_INFINITY) <= compactAtOrBelowZoom;
+  const resolvedPointTone = pointColor;
 
   return (
     <>
@@ -1286,9 +1433,32 @@ function MapClusterLayer<
         if (!coordinates) return null;
         const tone = getClusterTone(pointCount);
         const countLabel = formatCount(pointCount);
+        const compactNodeSize =
+          pointCount < clusterThresholds[0]
+            ? 12
+            : pointCount < clusterThresholds[1]
+              ? 15
+              : 18;
+        const isExpanded = expandedClusterId === clusterId;
 
         const handleClusterClick = async () => {
           if (!map) return;
+          if (!isExpanded) {
+            setExpandedClusterId(clusterId);
+            clearCollapseTimeout();
+            if (typeof window !== "undefined") {
+              collapseTimeoutRef.current = window.setTimeout(() => {
+                setExpandedClusterId((current) =>
+                  current === clusterId ? null : current
+                );
+              }, 1600);
+            }
+            return;
+          }
+
+          setExpandedClusterId(null);
+          clearCollapseTimeout();
+
           if (onClusterClick) {
             onClusterClick(clusterId, coordinates, pointCount);
             return;
@@ -1305,30 +1475,177 @@ function MapClusterLayer<
             latitude={coordinates[1]}
           >
             <MarkerContent>
+              {isCompactMode ? (
+                <button
+                  type="button"
+                  onClick={handleClusterClick}
+                  aria-label={`${labelText} cluster: ${pointCount}`}
+                  title={`${labelText}: ${pointCount}`}
+                  className={cn(
+                    "group relative rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_0_18px_rgba(0,0,0,0.28)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+                    "hover:scale-110"
+                  )}
+                  style={{
+                    width: `${compactNodeSize}px`,
+                    height: `${compactNodeSize}px`,
+                    minWidth: `${compactNodeSize}px`,
+                    minHeight: `${compactNodeSize}px`,
+                    backgroundColor: tone,
+                  }}
+                >
+                  {ClusterIcon && compactNodeSize >= 14 ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2 inline-flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90"
+                      style={{ color: tone }}
+                    >
+                      <ClusterIcon className="size-2.5" />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                      isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                    )}
+                  >
+                    {labelText} {countLabel}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleClusterClick}
+                  aria-label={`${labelText} cluster: ${pointCount}`}
+                  className={cn(
+                    "group relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                    "hover:scale-105"
+                  )}
+                  style={{
+                    backgroundColor: tone,
+                  }}
+                >
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                    {ClusterIcon ? (
+                      <ClusterIcon className="size-3.5" />
+                    ) : (
+                      <span className="text-[10px] font-bold" style={{ color: tone }}>
+                        {labelPrefix ?? "C"}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                      isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
+                    )}
+                  >
+                    {labelText} {countLabel}
+                  </span>
+                </button>
+              )}
+            </MarkerContent>
+          </MapMarker>
+        );
+      })}
+      {unclusteredPoints.map((feature) => {
+        const coordinates =
+          feature.geometry?.type === "Point"
+            ? (feature.geometry.coordinates as [number, number])
+            : null;
+        if (!coordinates) return null;
+
+        const pointKey = getPointFeatureKey(feature);
+        const rawPointLabel =
+          typeof pointLabelField === "string"
+            ? feature.properties?.[pointLabelField]
+            : null;
+        const pointLabel =
+          rawPointLabel === null || rawPointLabel === undefined
+            ? labelText
+            : `${rawPointLabel}`;
+
+        const handlePointPress = () => {
+          if (!onPointClick) return;
+          onPointClick(feature, coordinates);
+        };
+
+        if (isCompactMode) {
+          return (
+            <MapMarker
+              key={`point-${pointKey}`}
+              longitude={coordinates[0]}
+              latitude={coordinates[1]}
+            >
+              <MarkerContent>
+                <button
+                  type="button"
+                  onClick={handlePointPress}
+                  aria-label={`${labelText} node: ${pointLabel}`}
+                  title={pointLabel}
+                  className={cn(
+                    "group relative rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_0_14px_rgba(0,0,0,0.28)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+                    "hover:scale-110"
+                  )}
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    minWidth: "12px",
+                    minHeight: "12px",
+                    backgroundColor: resolvedPointTone,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                  />
+                </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        }
+
+        return (
+          <MapMarker
+            key={`point-${pointKey}`}
+            longitude={coordinates[0]}
+            latitude={coordinates[1]}
+          >
+            <MarkerContent>
               <button
                 type="button"
-                onClick={handleClusterClick}
-                aria-label={`${labelText} cluster: ${pointCount}`}
+                onClick={handlePointPress}
+                aria-label={`${labelText} node: ${pointLabel}`}
+                title={pointLabel}
                 className={cn(
-                  "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                  "group relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
                   "hover:scale-105"
                 )}
                 style={{
-                  backgroundColor: tone,
+                  backgroundColor: resolvedPointTone,
                 }}
               >
                 <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
                   {ClusterIcon ? (
                     <ClusterIcon className="size-3.5" />
                   ) : (
-                    <span className="text-[10px] font-bold" style={{ color: tone }}>
-                      {labelPrefix ?? "C"}
+                    <span
+                      className="text-[10px] font-bold"
+                      style={{ color: resolvedPointTone }}
+                    >
+                      {labelPrefix ?? "N"}
                     </span>
                   )}
                 </span>
-                <span className="truncate max-w-27.5">
-                  {labelText} {countLabel}
-                </span>
+                {pointLabelVisible ? (
+                  <span className="ml-1 max-w-28 truncate whitespace-nowrap">
+                    {pointLabel}
+                  </span>
+                ) : null}
               </button>
             </MarkerContent>
           </MapMarker>

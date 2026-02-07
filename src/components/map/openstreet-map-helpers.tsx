@@ -155,6 +155,42 @@ const formatAirQualityConcentration = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`;
 };
 
+type EventToneKey =
+  | "wildfire"
+  | "storm"
+  | "flood"
+  | "volcano"
+  | "ice"
+  | "drought"
+  | "dust"
+  | "default";
+
+const getEventToneKey = (category: string): EventToneKey => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("wildfire") || normalized.includes("fire")) return "wildfire";
+  if (normalized.includes("storm")) return "storm";
+  if (normalized.includes("flood") || normalized.includes("tsunami")) return "flood";
+  if (normalized.includes("volcano")) return "volcano";
+  if (normalized.includes("ice")) return "ice";
+  if (normalized.includes("drought")) return "drought";
+  if (normalized.includes("dust")) return "dust";
+  return "default";
+};
+
+const getEventToneHex = (category: string) => {
+  const toneByKey: Record<EventToneKey, string> = {
+    wildfire: "#f97316",
+    storm: "#f59e0b",
+    flood: "#38bdf8",
+    volcano: "#fb7185",
+    ice: "#22d3ee",
+    drought: "#a16207",
+    dust: "#fbbf24",
+    default: "#f59e0b",
+  };
+  return toneByKey[getEventToneKey(category)];
+};
+
 type OverlayBadge = {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -204,8 +240,8 @@ const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
 };
 
 const getEventTone = (category: string) => {
-  const normalized = category.toLowerCase();
-  if (normalized.includes("wildfire") || normalized.includes("fire")) {
+  const toneKey = getEventToneKey(category);
+  if (toneKey === "wildfire") {
     return {
       lead: "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
       badge: "bg-orange-500/15 text-orange-700 dark:bg-orange-500/25 dark:text-orange-200",
@@ -213,15 +249,15 @@ const getEventTone = (category: string) => {
       detailLabel: "text-orange-700/80 dark:text-orange-200/80",
     };
   }
-  if (normalized.includes("storm")) {
+  if (toneKey === "storm") {
     return {
-      lead: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
-      badge: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-200",
-      detailCard: "bg-indigo-500/8 border border-indigo-500/20 dark:bg-indigo-500/12 dark:border-indigo-400/20",
-      detailLabel: "text-indigo-700/80 dark:text-indigo-200/80",
+      lead: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      badge: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200",
+      detailCard: "bg-amber-500/8 border border-amber-500/20 dark:bg-amber-500/12 dark:border-amber-400/20",
+      detailLabel: "text-amber-700/80 dark:text-amber-200/80",
     };
   }
-  if (normalized.includes("flood") || normalized.includes("tsunami")) {
+  if (toneKey === "flood") {
     return {
       lead: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
       badge: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
@@ -229,12 +265,36 @@ const getEventTone = (category: string) => {
       detailLabel: "text-sky-700/80 dark:text-sky-200/80",
     };
   }
-  if (normalized.includes("volcano")) {
+  if (toneKey === "volcano") {
     return {
-      lead: "bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200",
-      badge: "bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200",
-      detailCard: "bg-rose-500/8 border border-rose-500/20 dark:bg-rose-500/12 dark:border-rose-400/20",
-      detailLabel: "text-rose-700/80 dark:text-rose-200/80",
+      lead: "bg-pink-500/20 text-pink-700 dark:bg-pink-500/30 dark:text-pink-200",
+      badge: "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-200",
+      detailCard: "bg-pink-500/8 border border-pink-500/20 dark:bg-pink-500/12 dark:border-pink-400/20",
+      detailLabel: "text-pink-700/80 dark:text-pink-200/80",
+    };
+  }
+  if (toneKey === "ice") {
+    return {
+      lead: "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+      badge: "bg-cyan-500/15 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-200",
+      detailCard: "bg-cyan-500/8 border border-cyan-500/20 dark:bg-cyan-500/12 dark:border-cyan-400/20",
+      detailLabel: "text-cyan-700/80 dark:text-cyan-200/80",
+    };
+  }
+  if (toneKey === "drought") {
+    return {
+      lead: "bg-yellow-700/20 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-200",
+      badge: "bg-yellow-700/15 text-yellow-700 dark:bg-yellow-700/25 dark:text-yellow-200",
+      detailCard: "bg-yellow-700/8 border border-yellow-700/20 dark:bg-yellow-700/12 dark:border-yellow-500/20",
+      detailLabel: "text-yellow-700/80 dark:text-yellow-200/80",
+    };
+  }
+  if (toneKey === "dust") {
+    return {
+      lead: "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+      badge: "bg-yellow-500/15 text-yellow-700 dark:bg-yellow-500/25 dark:text-yellow-200",
+      detailCard: "bg-yellow-500/8 border border-yellow-500/20 dark:bg-yellow-500/12 dark:border-yellow-400/20",
+      detailLabel: "text-yellow-700/80 dark:text-yellow-200/80",
     };
   }
   return {
@@ -412,6 +472,9 @@ export function GlobalSignalMarkers({
   events,
   tsunamiAlerts,
   airQualitySites,
+  selectedEvent,
+  selectedTsunamiAlert,
+  selectedAirQualitySite,
   layerVisibility,
   onEventSelect,
   onTsunamiSelect,
@@ -420,6 +483,9 @@ export function GlobalSignalMarkers({
   events: ProcessedEonetEvent[];
   tsunamiAlerts: ProcessedTsunamiAlert[];
   airQualitySites: ProcessedAirQualitySite[];
+  selectedEvent: ProcessedEonetEvent | null;
+  selectedTsunamiAlert: ProcessedTsunamiAlert | null;
+  selectedAirQualitySite: ProcessedAirQualitySite | null;
   layerVisibility: Pick<LayerVisibility, "eonet" | "airQuality" | "tsunami">;
   onEventSelect: (event: ProcessedEonetEvent) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
@@ -430,8 +496,54 @@ export function GlobalSignalMarkers({
     zoom: 0,
     bounds: null as maplibregl.LngLatBounds | null,
   }));
-  const GLOBAL_MARKER_MIN_ZOOM = 6.2;
+  const [expandedMarkerKey, setExpandedMarkerKey] = React.useState<string | null>(null);
+  const collapseTimeoutRef = React.useRef<number | null>(null);
+  const GLOBAL_COMPACT_MAX_ZOOM = 4.2;
+  const GLOBAL_DETAIL_MIN_ZOOM = 6;
+  const GLOBAL_COMPACT_NODE_SIZE = 13;
   const MAX_VISIBLE_GLOBAL_MARKERS = 90;
+
+  const activePopoverMarkerKey = React.useMemo(() => {
+    if (layerVisibility.eonet && selectedEvent) {
+      return `event-${selectedEvent.id}`;
+    }
+    if (layerVisibility.tsunami && selectedTsunamiAlert) {
+      return `tsunami-${selectedTsunamiAlert.id}`;
+    }
+    if (layerVisibility.airQuality && selectedAirQualitySite) {
+      return `air-${selectedAirQualitySite.id}`;
+    }
+    return null;
+  }, [
+    layerVisibility.airQuality,
+    layerVisibility.eonet,
+    layerVisibility.tsunami,
+    selectedAirQualitySite,
+    selectedEvent,
+    selectedTsunamiAlert,
+  ]);
+
+  const clearExpandedTimeout = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (collapseTimeoutRef.current === null) return;
+    window.clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = null;
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      clearExpandedTimeout();
+    };
+  }, [clearExpandedTimeout]);
+
+  React.useEffect(() => {
+    clearExpandedTimeout();
+    if (!activePopoverMarkerKey) {
+      setExpandedMarkerKey(null);
+      return;
+    }
+    setExpandedMarkerKey(activePopoverMarkerKey);
+  }, [activePopoverMarkerKey, clearExpandedTimeout]);
 
   React.useEffect(() => {
     if (!map || !isLoaded) return;
@@ -462,50 +574,127 @@ export function GlobalSignalMarkers({
     [viewportState.bounds]
   );
 
-  const shouldRenderGlobalMarkers = viewportState.zoom >= GLOBAL_MARKER_MIN_ZOOM;
+  const isCompactNodeMode = viewportState.zoom <= GLOBAL_COMPACT_MAX_ZOOM;
+  const isDetailMode = viewportState.zoom >= GLOBAL_DETAIL_MIN_ZOOM;
+  const shouldRenderGlobalMarkers = isCompactNodeMode || isDetailMode;
+  const isBridgeZoomMode = !isCompactNodeMode && !isDetailMode;
 
-  const getEventTone = (category: string) => {
-    const normalized = category.toLowerCase();
-    if (normalized.includes("storm")) return "#f59e0b";
-    if (normalized.includes("wildfire") || normalized.includes("fire")) return "#f97316";
-    if (normalized.includes("flood")) return "#38bdf8";
-    if (normalized.includes("volcano")) return "#fb7185";
-    if (normalized.includes("ice")) return "#22d3ee";
-    if (normalized.includes("drought")) return "#a16207";
-    if (normalized.includes("dust")) return "#fbbf24";
-    return "#f59e0b";
-  };
+  const withSelectedPriority = React.useCallback(
+    <T extends { id: string; coordinates: [number, number] }>(
+      items: T[],
+      selected: T | null
+    ) => {
+      if (!selected) return items;
+
+      const selectedIsVisible = isPointVisible(selected.coordinates);
+      if (!selectedIsVisible) return items;
+
+      const alreadyIncluded = items.some((item) => item.id === selected.id);
+      if (alreadyIncluded) return items;
+
+      if (items.length === 0) return [selected];
+      return [selected, ...items.slice(0, items.length - 1)];
+    },
+    [isPointVisible]
+  );
 
   const visibleEvents = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.eonet || !selectedEvent) return [];
+      if (!isPointVisible(selectedEvent.coordinates)) return [];
+      return [selectedEvent];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return events
+    const base = events
       .filter((event) => isPointVisible(event.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [events, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(base, layerVisibility.eonet ? selectedEvent : null);
+  }, [
+    events,
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.eonet,
+    selectedEvent,
+    shouldRenderGlobalMarkers,
+    withSelectedPriority,
+  ]);
 
   const visibleTsunamiAlerts = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.tsunami || !selectedTsunamiAlert) return [];
+      if (!isPointVisible(selectedTsunamiAlert.coordinates)) return [];
+      return [selectedTsunamiAlert];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return tsunamiAlerts
+    const base = tsunamiAlerts
       .filter((alert) => isPointVisible(alert.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [tsunamiAlerts, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(
+      base,
+      layerVisibility.tsunami ? selectedTsunamiAlert : null
+    );
+  }, [
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.tsunami,
+    selectedTsunamiAlert,
+    shouldRenderGlobalMarkers,
+    tsunamiAlerts,
+    withSelectedPriority,
+  ]);
 
   const visibleAirQualitySites = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.airQuality || !selectedAirQualitySite) return [];
+      if (!isPointVisible(selectedAirQualitySite.coordinates)) return [];
+      return [selectedAirQualitySite];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return airQualitySites
+    const base = airQualitySites
       .filter((site) => isPointVisible(site.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [airQualitySites, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(
+      base,
+      layerVisibility.airQuality ? selectedAirQualitySite : null
+    );
+  }, [
+    airQualitySites,
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.airQuality,
+    selectedAirQualitySite,
+    shouldRenderGlobalMarkers,
+    withSelectedPriority,
+  ]);
 
-  if (!shouldRenderGlobalMarkers) return null;
+  const handleMarkerPress = React.useCallback(
+    (markerKey: string, onSelect: () => void) => {
+      setExpandedMarkerKey(markerKey);
+      clearExpandedTimeout();
+      if (markerKey !== activePopoverMarkerKey && typeof window !== "undefined") {
+        collapseTimeoutRef.current = window.setTimeout(() => {
+          setExpandedMarkerKey((current) =>
+            current === markerKey ? null : current
+          );
+        }, 1600);
+      }
+      onSelect();
+    },
+    [activePopoverMarkerKey, clearExpandedTimeout]
+  );
+
+  if (!viewportState.bounds) return null;
 
   return (
     <>
       {layerVisibility.eonet &&
         visibleEvents.map((event) => {
-          const tone = getEventTone(event.category);
+          const tone = getEventToneHex(event.category);
           const EventIcon = getEventIcon(event.category);
           const eventLabel = getEventCategoryLabel(event.category);
+          const markerKey = `event-${event.id}`;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
           return (
             <MapMarker
               key={event.id}
@@ -515,19 +704,59 @@ export function GlobalSignalMarkers({
               <MarkerContent>
                 <button
                   type="button"
-                  onClick={() => onEventSelect(event)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{
-                    backgroundColor: tone,
-                  }}
+                  onClick={() => handleMarkerPress(markerKey, () => onEventSelect(event))}
+                  className={cn(
+                    "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                    isCompactNodeMode
+                      ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                      : "flex items-center rounded-full border-white/15 px-1.5 py-1"
+                  )}
+                  style={
+                    isCompactNodeMode
+                      ? {
+                          width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          backgroundColor: tone,
+                        }
+                      : {
+                          backgroundColor: tone,
+                        }
+                  }
                   aria-label={`Event: ${event.title}`}
+                  title={`${eventLabel}: ${event.title}`}
                 >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                    <EventIcon className="size-3.5" style={{ color: tone }} />
-                  </span>
-                  <span className="truncate max-w-[64px]">
-                    {eventLabel}
-                  </span>
+                  {isCompactNodeMode ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                      />
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                          isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                        )}
+                      >
+                        {eventLabel}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                        <EventIcon className="size-3.5" style={{ color: tone }} />
+                      </span>
+                      <span
+                        className={cn(
+                          "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                          isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                        )}
+                      >
+                        {eventLabel}
+                      </span>
+                    </>
+                  )}
                 </button>
               </MarkerContent>
             </MapMarker>
@@ -535,54 +764,149 @@ export function GlobalSignalMarkers({
         })}
 
       {layerVisibility.tsunami &&
-        visibleTsunamiAlerts.map((alert) => (
-          <MapMarker
-            key={alert.id}
-            longitude={alert.coordinates[0]}
-            latitude={alert.coordinates[1]}
-          >
-            <MarkerContent>
-                <button
-                  type="button"
-                  onClick={() => onTsunamiSelect(alert)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{}}
-                  aria-label="Tsunami alert"
-                >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                    <Waves className="size-3.5 text-blue-600" />
-                  </span>
-                  <span className="truncate max-w-[64px]">Tsunami</span>
-                </button>
-            </MarkerContent>
-          </MapMarker>
-        ))}
+        visibleTsunamiAlerts.map((alert) => {
+          const markerKey = `tsunami-${alert.id}`;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
+          return (
+            <MapMarker
+              key={alert.id}
+              longitude={alert.coordinates[0]}
+              latitude={alert.coordinates[1]}
+            >
+              <MarkerContent>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkerPress(markerKey, () => onTsunamiSelect(alert))}
+                    className={cn(
+                      "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                      isCompactNodeMode
+                        ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                        : "flex items-center rounded-full border-white/15 bg-blue-500 px-1.5 py-1"
+                    )}
+                    style={
+                      isCompactNodeMode
+                        ? {
+                            width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            backgroundColor: "#3b82f6",
+                          }
+                        : undefined
+                    }
+                    aria-label="Tsunami alert"
+                    title="Tsunami"
+                  >
+                    {isCompactNodeMode ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                        />
+                        <span
+                          className={cn(
+                            "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                            isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                          )}
+                        >
+                          Tsunami
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                          <Waves className="size-3.5 text-blue-600" />
+                        </span>
+                        <span
+                          className={cn(
+                            "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                            isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                          )}
+                        >
+                          Tsunami
+                        </span>
+                      </>
+                    )}
+                  </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        })}
 
       {layerVisibility.airQuality &&
-        visibleAirQualitySites.map((site) => (
-          <MapMarker
-            key={site.id}
-            longitude={site.coordinates[0]}
-            latitude={site.coordinates[1]}
-          >
-            <MarkerContent>
-                <button
-                  type="button"
-                  onClick={() => onAirQualitySelect(site)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{}}
-                  aria-label={`Air quality: ${site.location}`}
-                >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                    <Wind className="size-3.5 text-emerald-600" />
-                  </span>
-                  <span className="truncate max-w-[72px]">
-                    {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
-                  </span>
-              </button>
-            </MarkerContent>
-          </MapMarker>
-        ))}
+        visibleAirQualitySites.map((site) => {
+          const markerKey = `air-${site.id}`;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
+          const valueLabel = Number.isFinite(site.value)
+            ? site.value.toFixed(1)
+            : `${site.value}`;
+          return (
+            <MapMarker
+              key={site.id}
+              longitude={site.coordinates[0]}
+              latitude={site.coordinates[1]}
+            >
+              <MarkerContent>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkerPress(markerKey, () => onAirQualitySelect(site))}
+                    className={cn(
+                      "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                      isCompactNodeMode
+                        ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                        : "flex items-center rounded-full border-white/15 bg-emerald-500 px-1.5 py-1"
+                    )}
+                    style={
+                      isCompactNodeMode
+                        ? {
+                            width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            backgroundColor: "#10b981",
+                          }
+                        : undefined
+                    }
+                    aria-label={`Air quality: ${site.location}`}
+                    title={`${site.parameter.toUpperCase()} ${valueLabel}`}
+                  >
+                    {isCompactNodeMode ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                        />
+                        <span
+                          className={cn(
+                            "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                            isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                          )}
+                        >
+                          {site.parameter.toUpperCase()} {valueLabel}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                          <Wind className="size-3.5 text-emerald-600" />
+                        </span>
+                        <span
+                          className={cn(
+                            "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                            isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
+                          )}
+                        >
+                          {site.parameter.toUpperCase()} {valueLabel}
+                        </span>
+                      </>
+                    )}
+                  </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        })}
     </>
   );
 }
@@ -621,12 +945,9 @@ export function EonetFlyTo({
   event: ProcessedEonetEvent | null;
 }) {
   const { map } = useMap();
-  const prevEventId = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!map || !event) return;
-    if (prevEventId.current === event.id) return;
-    prevEventId.current = event.id;
 
     map.stop();
     map.easeTo({
@@ -636,6 +957,50 @@ export function EonetFlyTo({
       essential: true,
     });
   }, [map, event]);
+
+  return null;
+}
+
+export function TsunamiFlyTo({
+  alert,
+}: {
+  alert: ProcessedTsunamiAlert | null;
+}) {
+  const { map } = useMap();
+
+  React.useEffect(() => {
+    if (!map || !alert) return;
+
+    map.stop();
+    map.easeTo({
+      center: alert.coordinates,
+      zoom: Math.max(map.getZoom(), 5.8),
+      duration: 900,
+      essential: true,
+    });
+  }, [map, alert]);
+
+  return null;
+}
+
+export function AirQualityFlyTo({
+  site,
+}: {
+  site: ProcessedAirQualitySite | null;
+}) {
+  const { map } = useMap();
+
+  React.useEffect(() => {
+    if (!map || !site) return;
+
+    map.stop();
+    map.easeTo({
+      center: site.coordinates,
+      zoom: Math.max(map.getZoom(), 6),
+      duration: 900,
+      essential: true,
+    });
+  }, [map, site]);
 
   return null;
 }
