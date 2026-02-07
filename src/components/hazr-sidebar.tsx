@@ -10,7 +10,10 @@ const Image: React.FC<
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
-import { HazrMenuPanel } from "@/components/hazr-menu-panel"
+import {
+  HazrMenuPanel,
+  type HazrMenuFocusTarget,
+} from "@/components/hazr-menu-panel"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -67,7 +70,24 @@ function HazrSidebar({
   airQualityState,
   tsunamiState,
 }: HazrSidebarProps) {
-  const { isOpen } = useSidebar()
+  const { isOpen, setIsOpen } = useSidebar()
+  const [focusTarget, setFocusTarget] = React.useState<HazrMenuFocusTarget | null>(
+    null
+  )
+
+  const handleRequestExpandAndFocus = React.useCallback(
+    (target: HazrMenuFocusTarget) => {
+      setFocusTarget(target)
+      if (!isOpen) {
+        setIsOpen(true)
+      }
+    },
+    [isOpen, setIsOpen]
+  )
+
+  const handleFocusTargetHandled = React.useCallback(() => {
+    setFocusTarget(null)
+  }, [])
 
   return (
     <Sidebar widthClassName="w-auto" collapsedWidthClassName="w-16" resizable>
@@ -149,6 +169,9 @@ function HazrSidebar({
       <SidebarContent className="overflow-y-auto scrollbar-hide">
         <HazrMenuPanel
           collapsed={!isOpen}
+          focusTarget={focusTarget}
+          onFocusTargetHandled={handleFocusTargetHandled}
+          onRequestExpandAndFocus={handleRequestExpandAndFocus}
           userLocation={userLocation}
           isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   AlertTriangle,
   Globe2,
@@ -19,6 +20,11 @@ import { cn } from "@/lib/utils";
 
 type GlobalActivityProps = {
   collapsed: boolean;
+  focusTarget?: "global-live-events" | "global-openaq" | "global-tsunami" | null;
+  onFocusTargetHandled?: () => void;
+  onOpenSection?: (
+    target: "global-live-events" | "global-openaq" | "global-tsunami"
+  ) => void;
   eonetState: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -76,11 +82,38 @@ const formatEonetTitle = (title: string) => {
 
 const GlobalActivity = ({
   collapsed,
+  focusTarget = null,
+  onFocusTargetHandled,
+  onOpenSection,
   eonetState,
   airQualityState,
   tsunamiState,
   onEonetSelect,
 }: GlobalActivityProps) => {
+  const liveEventsSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const openAqSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const tsunamiSectionRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (collapsed || !focusTarget) return;
+
+    const targetElement =
+      focusTarget === "global-live-events"
+        ? liveEventsSectionRef.current
+        : focusTarget === "global-openaq"
+          ? openAqSectionRef.current
+          : tsunamiSectionRef.current;
+
+    if (!targetElement) return;
+
+    targetElement.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    targetElement.focus({ preventScroll: true });
+    onFocusTargetHandled?.();
+  }, [collapsed, focusTarget, onFocusTargetHandled]);
+
   const eventItems: SignalItem[] = eonetState.events.slice(0, 4).map((event) => ({
     id: event.id,
     title: formatEonetTitle(event.title),
@@ -115,27 +148,24 @@ const GlobalActivity = ({
       <TooltipProvider delayDuration={0}>
         <div className="flex flex-col items-center gap-2">
           <MiniSignal
-            label="Live events"
-            count={eonetState.events.length}
+            label="Global Signals"
             icon={Globe2}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-            onClick={eonetState.refetch}
+            onClick={() => onOpenSection?.("global-live-events")}
             isLoading={eonetState.isLoading}
           />
           <MiniSignal
             label="Air quality"
-            count={airQualityState.sites.length}
             icon={Wind}
             toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-            onClick={airQualityState.refetch}
+            onClick={() => onOpenSection?.("global-openaq")}
             isLoading={airQualityState.isLoading}
           />
           <MiniSignal
             label="Tsunami alerts"
-            count={tsunamiState.alerts.length}
             icon={Waves}
             toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-            onClick={tsunamiState.refetch}
+            onClick={() => onOpenSection?.("global-tsunami")}
             isLoading={tsunamiState.isLoading}
           />
         </div>
@@ -159,70 +189,76 @@ const GlobalActivity = ({
         </div>
 
         <div className="flex flex-col gap-3">
-          <SignalSection
-            title="Live Events"
-            icon={Globe2}
-            itemIcon={Globe2}
-            isLoading={eonetState.isLoading}
-            error={eonetState.error}
-            onRefresh={eonetState.refetch}
-            items={eventItems}
-            toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-            itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-            renderItem={(item: SignalItem) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => item.payload && onEonetSelect?.(item.payload)}
-                className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-                aria-label={item.title}
-              >
-                <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
-                  <Globe2 className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] font-semibold text-foreground">
-                    {item.title}
+          <div ref={liveEventsSectionRef} id="sidebar-global-live-events" tabIndex={-1}>
+            <SignalSection
+              title="Live Events"
+              icon={Globe2}
+              itemIcon={Globe2}
+              isLoading={eonetState.isLoading}
+              error={eonetState.error}
+              onRefresh={eonetState.refetch}
+              items={eventItems}
+              toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+              itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+              renderItem={(item: SignalItem) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => item.payload && onEonetSelect?.(item.payload)}
+                  className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
+                  aria-label={item.title}
+                >
+                  <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
+                    <Globe2 className="size-4" />
                   </span>
-                  <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
-                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
-                      {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[11px] font-semibold text-foreground">
+                      {item.title}
                     </span>
-                    <span className="text-muted-foreground">
-                      {item.payload
-                        ? item.payload.date.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : item.subtitle}
+                    <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
+                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
+                        {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {item.payload
+                          ? item.payload.date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : item.subtitle}
+                      </span>
                     </span>
                   </span>
-                </span>
-              </button>
-            )}
-          />
-          <SignalSection
-            title="OpenAQ"
-            icon={Wind}
-            itemIcon={Wind}
-            isLoading={airQualityState.isLoading}
-            error={airQualityState.error}
-            onRefresh={airQualityState.refetch}
-            items={airItems}
-            toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-            itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-          />
-          <SignalSection
-            title="NWS Tsunamis"
-            icon={Waves}
-            itemIcon={Waves}
-            isLoading={tsunamiState.isLoading}
-            error={tsunamiState.error}
-            onRefresh={tsunamiState.refetch}
-            items={tsunamiItems}
-            toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-            itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-          />
+                </button>
+              )}
+            />
+          </div>
+          <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
+            <SignalSection
+              title="OpenAQ"
+              icon={Wind}
+              itemIcon={Wind}
+              isLoading={airQualityState.isLoading}
+              error={airQualityState.error}
+              onRefresh={airQualityState.refetch}
+              items={airItems}
+              toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+              itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+            />
+          </div>
+          <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
+            <SignalSection
+              title="NWS Tsunamis"
+              icon={Waves}
+              itemIcon={Waves}
+              isLoading={tsunamiState.isLoading}
+              error={tsunamiState.error}
+              onRefresh={tsunamiState.refetch}
+              items={tsunamiItems}
+              toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+              itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+            />
+          </div>
         </div>
       </div>
     </TooltipProvider>
@@ -327,16 +363,14 @@ const SignalSection = ({
 
 type MiniSignalProps = {
   label: string;
-  count: number;
   icon: React.ComponentType<{ className?: string }>;
   toneClassName: string;
-  onClick: () => Promise<void>;
+  onClick: () => void;
   isLoading: boolean;
 };
 
 const MiniSignal = ({
   label,
-  count,
   icon: Icon,
   toneClassName,
   onClick,
@@ -352,9 +386,6 @@ const MiniSignal = ({
       >
         <div className={cn("relative flex size-9 items-center justify-center rounded-md", toneClassName)}>
           {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
-          <span className="absolute -bottom-2 -right-2 rounded-full bg-background px-1 text-[9px] font-semibold text-foreground shadow-sm">
-            {count}
-          </span>
         </div>
       </button>
     </TooltipTrigger>
