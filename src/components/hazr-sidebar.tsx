@@ -119,7 +119,7 @@ function HazrSidebar({
                     Hazr
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Live Weather & Quakes
+                    Weather, quakes, air quality & global alerts
                   </p>
                 </div>
               </div>
@@ -138,7 +138,7 @@ function HazrSidebar({
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
+                <TooltipContent side="right">Hazr - Weather, Quakes & Global Alerts</TooltipContent>
               </Tooltip>
             )}
 

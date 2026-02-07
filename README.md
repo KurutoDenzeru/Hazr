@@ -1,8 +1,8 @@
 ![Hazr](public/OpenGraph.webp)
 
-# Hazr - Live Quakes & Weather
+# Hazr - Live Hazard Signals
 
-🗺️ Real-time geospatial hazard dashboard using Vite, Mapcn (MapLibre), & Tailwind, unifying USGS earthquakes, & Open-Meteo weather into map.
+🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts.
 
 ## ☁️ Deploy your own
 
@@ -10,11 +10,12 @@
 
 ## ✨ Features
 
-- **Live Quakes & Weather:** Aggregates USGS real-time earthquake feeds and Open‑Meteo forecasts to show current seismic and weather conditions on a single map.
-- **Interactive Map UI:** Map-based interface (MapLibre via Mapcn) with clustering, zoom, and informative popovers for earthquake and weather details.
-- **Real-time Updates & Efficiency:** Polling and lightweight caching for near‑real‑time data with controls to refresh and limit bandwidth.
-- **Accessible & Responsive:** Desktop docks, resizable panels, and a mobile bottom nav; keyboard accessible controls and ARIA labels across components.
-- **Filterable & Customizable Views:** Filter by magnitude, time range, and weather variables; configurable docks and widgets for custom workflows.
+- **Multi-source Live Signals:** Aggregates USGS earthquakes, Open‑Meteo weather, NASA EONET events, OpenAQ air quality, and NWS tsunami alerts on one map.
+- **Dedicated Signal Panels:** Weather, Seismic Activity, and Global Signals sections with focused feeds for events, air quality, and tsunami alerts.
+- **Interactive Map UI:** MapLibre-based map with clustering, fly-to interactions, and detailed popovers across all supported signal types.
+- **Live + Manual Refresh:** Auto-refresh polling plus per-panel refresh controls with last-updated status in tooltips.
+- **Accessible & Responsive:** Resizable desktop sidebar and mobile navigation with keyboard-friendly controls and ARIA labels.
+- **Filterable Views:** Earthquake magnitude/time filters and weather-focused widgets for fast situational awareness.
 - **Modular & Extensible:** Clean component boundaries and hooks making it easy to add new data sources, widgets, or visualizations.
 
 ## 🧱 Tech Stack
@@ -25,6 +26,14 @@
 - [Tailwind](https://tailwindcss.com/): Utility-first styling system.
 - [MapLibre / Mapcn](https://maplibre.org/): Map rendering and tile handling (Mapcn integration for MapLibre).
 - [shadcn/ui](https://ui.shadcn.com/): UI primitives, composition patterns, and design tokens.
+
+### Data APIs
+
+- [USGS Earthquake API](https://earthquake.usgs.gov/fdsnws/event/1/): Live earthquake feeds.
+- [Open-Meteo API](https://open-meteo.com/): Weather forecasts and current conditions.
+- [NASA EONET API](https://eonet.gsfc.nasa.gov/docs/v3): Global natural event signals.
+- [OpenAQ API](https://docs.openaq.org/): Air quality observations.
+- [NWS Alerts API](https://www.weather.gov/documentation/services-web-alerts): Active tsunami alerts.
 
 ## ⚡ Getting Started
 
@@ -52,36 +61,44 @@ The app is implemented under `src/`. Key areas to customize and extend are:
 
 ```text
 src/
-	App.tsx                 # Root app component
-	main.tsx                # App bootstrap and providers
-	index.css               # Tailwind & base styles
-	components/             # Re-usable UI components
-		hazr-earthquake-item.tsx
-		hazr-menu-panel.tsx
-		hazr-sidebar.tsx
-		hazr-weather-icon.tsx
-		mobile-bottom-nav.tsx
-		openstreet-map.tsx
-		seismic-activity.tsx
-		layout/                # Layout components (header, footer, docks)
-		map/                   # Map-related components and popovers
-			earthquake-popover.tsx
-			hourly-forecast-dock.tsx
-			weather-dock.tsx
-	ui/                     # Shadcn/Radix wrappers and primitives (button, popover, input, etc)
-	hooks/                  # Data hooks (use-earthquakes, use-weather)
-	lib/                    # Helpers (ip-location, utils)
-	types/                  # TypeScript types and API shapes
-public/
-	OpenGraph.webp          # Social preview image
-	robots.txt              # Crawler rules
+  App.tsx
+  main.tsx
+  components/
+    global-activity.tsx           # Global signals panel (EONET, OpenAQ, Tsunami)
+    hazr-earthquake-item.tsx
+    hazr-menu-panel.tsx           # Sidebar section layout
+    hazr-sidebar.tsx              # Main app sidebar shell
+    hazr-weather-icon.tsx
+    mobile-bottom-nav.tsx
+    openstreet-map.tsx            # Main map container
+    seismic-activity.tsx          # Earthquake panel
+    layout/                       # Layout components (header, footer, docks)
+    map/                          # Map-specific helpers and popovers
+      earthquake-popover.tsx
+      hourly-forecast-dock.tsx
+      openstreet-map-helpers.tsx
+      weather-dock.tsx
+  hooks/
+    use-air-quality.ts            # OpenAQ polling, normalization, and refresh state
+    use-earthquakes.ts            # USGS feed fetching, sorting, and metadata
+    use-eonet-events.ts           # NASA EONET live events ingestion and shaping
+    use-tsunami-alerts.ts         # NWS tsunami alert polling and mapping
+    use-weather.ts                # Weather fetch, IP fallback location, and forecast processing
+  lib/
+    geo.ts                        # Geometry helpers for converting API shapes to map points
+    ip-location.ts                # IP geolocation resolver and fallback location utilities
+    utils.ts                      # Shared utility helpers (class names and common transforms)
+  types/
+    api.ts                        # Central API contracts, domain types, and enums
 ```
 
 Quick dev commands:
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
+```
+
 ## 🤝🏻 Contributing
 
 Contributions are always welcome, whether you’re fixing bugs, improving docs, or shipping new features that make the project better for everyone.
