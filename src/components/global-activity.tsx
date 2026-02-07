@@ -148,7 +148,7 @@ const GlobalActivity = ({
       <TooltipProvider delayDuration={0}>
         <div className="flex flex-col items-center gap-2">
           <MiniSignal
-            label="Live events"
+            label="Global Signals"
             icon={Globe2}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             onClick={() => onOpenSection?.("global-live-events")}

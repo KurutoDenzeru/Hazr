@@ -35,32 +35,27 @@ export const SeismicActivity = ({
       range: "day",
     });
 
-  const handleCollapsedEarthquakeSelect = (earthquake: ProcessedEarthquake) => {
-    onOpenSection?.();
-    onEarthquakeSelect?.(earthquake);
-  };
-
   if (collapsed) {
-    if (isLoading) {
-      return (
-        <div className="flex size-12 items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      );
-    }
-
-    const recentQuakes = earthquakes.slice(0, 3);
     return (
-      <div className="flex flex-col gap-1">
-        {recentQuakes.map((eq) => (
-          <EarthquakeItem
-            key={eq.id}
-            earthquake={eq}
-            collapsed
-            onClick={() => handleCollapsedEarthquakeSelect(eq)}
-          />
-        ))}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onOpenSection}
+            className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
+            aria-label="Seismic activity"
+          >
+            <div className="flex size-9 items-center justify-center rounded-md bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200">
+              {isLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Mountain className="size-4" />
+              )}
+            </div>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Seismic Activity</TooltipContent>
+      </Tooltip>
     );
   }
 

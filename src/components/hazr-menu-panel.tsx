@@ -22,6 +22,7 @@ import type {
 } from "@/types/api";
 
 export type HazrMenuFocusTarget =
+  | "weather"
   | "seismic"
   | "global-live-events"
   | "global-openaq"
@@ -74,6 +75,7 @@ function HazrMenuPanel({
   airQualityState,
   tsunamiState,
 }: HazrMenuPanelProps) {
+  const weatherSectionRef = React.useRef<HTMLDivElement | null>(null);
   const seismicSectionRef = React.useRef<HTMLDivElement | null>(null);
   const globalSectionRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -88,6 +90,10 @@ function HazrMenuPanel({
     onRequestExpandAndFocus?.("seismic");
   }, [onRequestExpandAndFocus]);
 
+  const handleOpenWeatherSection = React.useCallback(() => {
+    onRequestExpandAndFocus?.("weather");
+  }, [onRequestExpandAndFocus]);
+
   const handleOpenGlobalSection = React.useCallback(
     (target: "global-live-events" | "global-openaq" | "global-tsunami") => {
       onRequestExpandAndFocus?.(target);
@@ -99,7 +105,9 @@ function HazrMenuPanel({
     if (collapsed || !focusTarget) return;
 
     const targetElement =
-      focusTarget === "seismic"
+      focusTarget === "weather"
+        ? weatherSectionRef.current
+        : focusTarget === "seismic"
         ? seismicSectionRef.current
         : focusTarget.startsWith("global-")
           ? globalSectionRef.current
@@ -113,7 +121,7 @@ function HazrMenuPanel({
     });
     targetElement.focus({ preventScroll: true });
 
-    if (focusTarget === "seismic") {
+    if (focusTarget === "weather" || focusTarget === "seismic") {
       onFocusTargetHandled?.();
     }
   }, [collapsed, focusTarget, onFocusTargetHandled]);
@@ -129,12 +137,18 @@ function HazrMenuPanel({
             Weather
           </p>
         )}
-        <div className={cn("mb-2", collapsed && "flex flex-col items-center")}> 
+        <div
+          ref={weatherSectionRef}
+          id="sidebar-weather"
+          tabIndex={-1}
+          className={cn("mb-2", collapsed && "flex flex-col items-center")}
+        >
           <WeatherDock
             latitude={userLocation?.[1] ?? null}
             longitude={userLocation?.[0] ?? null}
             collapsed={collapsed}
             isLocating={isLocating}
+            onOpenSection={handleOpenWeatherSection}
             unstyled
           />
         </div>

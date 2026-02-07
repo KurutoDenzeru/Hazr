@@ -32,6 +32,7 @@ type WeatherDockProps = {
   className?: string;
   collapsed?: boolean;
   isLocating?: boolean;
+  onOpenSection?: () => void;
   unstyled?: boolean;
 };
 
@@ -106,6 +107,7 @@ export const WeatherDock = ({
   className,
   collapsed = false,
   isLocating = false,
+  onOpenSection,
   unstyled = false,
 }: WeatherDockProps) => {
   const {
@@ -125,9 +127,23 @@ export const WeatherDock = ({
   if (collapsed) {
     if (isLoading) {
       return (
-        <div className="flex size-12 items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onOpenSection}
+              className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
+              aria-label="Weather"
+            >
+              <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
+                <Loader2 className="size-4 animate-spin" />
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {isLocating ? "Locating weather..." : "Fetching weather..."}
+          </TooltipContent>
+        </Tooltip>
       );
     }
 
@@ -135,9 +151,16 @@ export const WeatherDock = ({
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex size-12 items-center justify-center rounded-md text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
-            </div>
+            <button
+              type="button"
+              onClick={onOpenSection}
+              className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
+              aria-label="Weather"
+            >
+              <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
+                <Loader2 className="size-4 animate-spin" />
+              </div>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right">
             {isLocating ? "Locating weather..." : "Fetching weather..."}
@@ -149,16 +172,23 @@ export const WeatherDock = ({
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex size-12 flex-col items-center justify-center rounded-md text-center">
-            <WeatherIcon
-              code={current.weatherCode}
-              isDay={current.isDay}
-              className="size-6 text-sky-500"
-            />
-            <span className="text-xs font-medium leading-none">
+          <button
+            type="button"
+            onClick={onOpenSection}
+            className="flex size-12 flex-col items-center justify-center rounded-md text-center transition-colors hover:bg-muted/70"
+            aria-label="Weather"
+          >
+            <span className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 dark:bg-sky-500/30">
+              <WeatherIcon
+                code={current.weatherCode}
+                isDay={current.isDay}
+                className="size-5 text-sky-500"
+              />
+            </span>
+            <span className="mt-0.5 text-xs font-medium leading-none">
               {Math.round(current.temperature)}°
             </span>
-          </div>
+          </button>
         </TooltipTrigger>
         <TooltipContent side="right">
           <p className="font-medium">{current.description}</p>
