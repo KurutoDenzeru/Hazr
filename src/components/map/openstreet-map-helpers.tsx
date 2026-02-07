@@ -155,6 +155,42 @@ const formatAirQualityConcentration = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`;
 };
 
+type EventToneKey =
+  | "wildfire"
+  | "storm"
+  | "flood"
+  | "volcano"
+  | "ice"
+  | "drought"
+  | "dust"
+  | "default";
+
+const getEventToneKey = (category: string): EventToneKey => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("wildfire") || normalized.includes("fire")) return "wildfire";
+  if (normalized.includes("storm")) return "storm";
+  if (normalized.includes("flood") || normalized.includes("tsunami")) return "flood";
+  if (normalized.includes("volcano")) return "volcano";
+  if (normalized.includes("ice")) return "ice";
+  if (normalized.includes("drought")) return "drought";
+  if (normalized.includes("dust")) return "dust";
+  return "default";
+};
+
+const getEventToneHex = (category: string) => {
+  const toneByKey: Record<EventToneKey, string> = {
+    wildfire: "#f97316",
+    storm: "#f59e0b",
+    flood: "#38bdf8",
+    volcano: "#fb7185",
+    ice: "#22d3ee",
+    drought: "#a16207",
+    dust: "#fbbf24",
+    default: "#f59e0b",
+  };
+  return toneByKey[getEventToneKey(category)];
+};
+
 type OverlayBadge = {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -204,8 +240,8 @@ const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
 };
 
 const getEventTone = (category: string) => {
-  const normalized = category.toLowerCase();
-  if (normalized.includes("wildfire") || normalized.includes("fire")) {
+  const toneKey = getEventToneKey(category);
+  if (toneKey === "wildfire") {
     return {
       lead: "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
       badge: "bg-orange-500/15 text-orange-700 dark:bg-orange-500/25 dark:text-orange-200",
@@ -213,15 +249,15 @@ const getEventTone = (category: string) => {
       detailLabel: "text-orange-700/80 dark:text-orange-200/80",
     };
   }
-  if (normalized.includes("storm")) {
+  if (toneKey === "storm") {
     return {
-      lead: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
-      badge: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-200",
-      detailCard: "bg-indigo-500/8 border border-indigo-500/20 dark:bg-indigo-500/12 dark:border-indigo-400/20",
-      detailLabel: "text-indigo-700/80 dark:text-indigo-200/80",
+      lead: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      badge: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200",
+      detailCard: "bg-amber-500/8 border border-amber-500/20 dark:bg-amber-500/12 dark:border-amber-400/20",
+      detailLabel: "text-amber-700/80 dark:text-amber-200/80",
     };
   }
-  if (normalized.includes("flood") || normalized.includes("tsunami")) {
+  if (toneKey === "flood") {
     return {
       lead: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
       badge: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
@@ -229,12 +265,36 @@ const getEventTone = (category: string) => {
       detailLabel: "text-sky-700/80 dark:text-sky-200/80",
     };
   }
-  if (normalized.includes("volcano")) {
+  if (toneKey === "volcano") {
     return {
-      lead: "bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200",
-      badge: "bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200",
-      detailCard: "bg-rose-500/8 border border-rose-500/20 dark:bg-rose-500/12 dark:border-rose-400/20",
-      detailLabel: "text-rose-700/80 dark:text-rose-200/80",
+      lead: "bg-pink-500/20 text-pink-700 dark:bg-pink-500/30 dark:text-pink-200",
+      badge: "bg-pink-500/15 text-pink-700 dark:bg-pink-500/25 dark:text-pink-200",
+      detailCard: "bg-pink-500/8 border border-pink-500/20 dark:bg-pink-500/12 dark:border-pink-400/20",
+      detailLabel: "text-pink-700/80 dark:text-pink-200/80",
+    };
+  }
+  if (toneKey === "ice") {
+    return {
+      lead: "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+      badge: "bg-cyan-500/15 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-200",
+      detailCard: "bg-cyan-500/8 border border-cyan-500/20 dark:bg-cyan-500/12 dark:border-cyan-400/20",
+      detailLabel: "text-cyan-700/80 dark:text-cyan-200/80",
+    };
+  }
+  if (toneKey === "drought") {
+    return {
+      lead: "bg-yellow-700/20 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-200",
+      badge: "bg-yellow-700/15 text-yellow-700 dark:bg-yellow-700/25 dark:text-yellow-200",
+      detailCard: "bg-yellow-700/8 border border-yellow-700/20 dark:bg-yellow-700/12 dark:border-yellow-500/20",
+      detailLabel: "text-yellow-700/80 dark:text-yellow-200/80",
+    };
+  }
+  if (toneKey === "dust") {
+    return {
+      lead: "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+      badge: "bg-yellow-500/15 text-yellow-700 dark:bg-yellow-500/25 dark:text-yellow-200",
+      detailCard: "bg-yellow-500/8 border border-yellow-500/20 dark:bg-yellow-500/12 dark:border-yellow-400/20",
+      detailLabel: "text-yellow-700/80 dark:text-yellow-200/80",
     };
   }
   return {
@@ -464,18 +524,6 @@ export function GlobalSignalMarkers({
 
   const shouldRenderGlobalMarkers = viewportState.zoom >= GLOBAL_MARKER_MIN_ZOOM;
 
-  const getEventTone = (category: string) => {
-    const normalized = category.toLowerCase();
-    if (normalized.includes("storm")) return "#f59e0b";
-    if (normalized.includes("wildfire") || normalized.includes("fire")) return "#f97316";
-    if (normalized.includes("flood")) return "#38bdf8";
-    if (normalized.includes("volcano")) return "#fb7185";
-    if (normalized.includes("ice")) return "#22d3ee";
-    if (normalized.includes("drought")) return "#a16207";
-    if (normalized.includes("dust")) return "#fbbf24";
-    return "#f59e0b";
-  };
-
   const visibleEvents = React.useMemo(() => {
     if (!shouldRenderGlobalMarkers) return [];
     return events
@@ -503,7 +551,7 @@ export function GlobalSignalMarkers({
     <>
       {layerVisibility.eonet &&
         visibleEvents.map((event) => {
-          const tone = getEventTone(event.category);
+          const tone = getEventToneHex(event.category);
           const EventIcon = getEventIcon(event.category);
           const eventLabel = getEventCategoryLabel(event.category);
           return (
