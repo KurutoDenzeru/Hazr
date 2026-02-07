@@ -562,24 +562,18 @@ export function GlobalSignalMarkers({
 
   const handleMarkerPress = React.useCallback(
     (markerKey: string, onSelect: () => void) => {
-      if (expandedMarkerKey !== markerKey) {
-        setExpandedMarkerKey(markerKey);
-        clearExpandedTimeout();
-        if (typeof window !== "undefined") {
-          collapseTimeoutRef.current = window.setTimeout(() => {
-            setExpandedMarkerKey((current) =>
-              current === markerKey ? null : current
-            );
-          }, 1600);
-        }
-        return;
-      }
-
-      setExpandedMarkerKey(null);
+      setExpandedMarkerKey(markerKey);
       clearExpandedTimeout();
+      if (typeof window !== "undefined") {
+        collapseTimeoutRef.current = window.setTimeout(() => {
+          setExpandedMarkerKey((current) =>
+            current === markerKey ? null : current
+          );
+        }, 1600);
+      }
       onSelect();
     },
-    [clearExpandedTimeout, expandedMarkerKey]
+    [clearExpandedTimeout]
   );
 
   if (!shouldRenderGlobalMarkers) return null;

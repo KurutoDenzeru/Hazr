@@ -175,57 +175,6 @@ export default function GoogleMapsClone() {
     [tsunamiState.alerts],
   );
 
-  const [now] = React.useState(() => Date.now());
-  const getPulseWidth = (magnitude: number) => {
-    if (magnitude >= 7) return 74;
-    if (magnitude >= 6) return 66;
-    if (magnitude >= 5) return 58;
-    if (magnitude >= 4) return 50;
-    return 44;
-  };
-
-  const getPulseHeight = (magnitude: number) => {
-    if (magnitude >= 7) return 40;
-    if (magnitude >= 6) return 36;
-    if (magnitude >= 5) return 32;
-    if (magnitude >= 4) return 28;
-    return 26;
-  };
-
-  const getPulseInnerWidth = (magnitude: number) => {
-    const base = getPulseWidth(magnitude) - 16;
-    return Math.max(base, getMarkerMinWidth(magnitude) + 12);
-  };
-
-  const getPulseInnerHeight = (magnitude: number) => {
-    const base = getPulseHeight(magnitude) - 12;
-    return Math.max(base, getMarkerHeight(magnitude) + 8);
-  };
-
-  const getPulseDuration = (magnitude: number) => {
-    if (magnitude >= 7) return 2200;
-    if (magnitude >= 6) return 2000;
-    if (magnitude >= 5) return 1850;
-    if (magnitude >= 4) return 1700;
-    return 1500;
-  };
-
-  const getMarkerMinWidth = (magnitude: number) => {
-    if (magnitude >= 7) return 56;
-    if (magnitude >= 6) return 52;
-    if (magnitude >= 5) return 48;
-    if (magnitude >= 4) return 44;
-    return 40;
-  };
-
-  const getMarkerHeight = (magnitude: number) => {
-    if (magnitude >= 7) return 30;
-    if (magnitude >= 6) return 28;
-    if (magnitude >= 5) return 26;
-    if (magnitude >= 4) return 24;
-    return 22;
-  };
-
   const getQuakeNodeSize = (magnitude: number) => {
     if (magnitude >= 7) return 18;
     if (magnitude >= 6) return 16;
@@ -234,23 +183,26 @@ export default function GoogleMapsClone() {
     return 12;
   };
 
-  const handleTriggerQuakePulse = React.useCallback(
-    (earthquake: ProcessedEarthquake) => {
-      if (typeof window === "undefined") return;
+  const clearGlobalSelections = React.useCallback(() => {
+    setSelectedEonetEvent(null);
+    setSelectedTsunamiAlert(null);
+    setSelectedAirQualitySite(null);
+  }, []);
 
-      setActiveQuakePulseId(earthquake.id);
-    },
-    []
-  );
+  const clearEarthquakeSelection = React.useCallback(() => {
+    setSelectedEarthquake(null);
+    setActiveQuakePulseId(null);
+  }, []);
 
   // Handle selecting an earthquake (will fly to it via EarthquakeFlyTo component)
   const handleEarthquakeSelect = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
+      clearGlobalSelections();
       setSelectedEarthquake(earthquake);
       setActiveSignalType("earthquake");
-      handleTriggerQuakePulse(earthquake);
+      setActiveQuakePulseId(earthquake.id);
     },
-    [handleTriggerQuakePulse]
+    [clearGlobalSelections]
   );
 
 
@@ -267,25 +219,15 @@ export default function GoogleMapsClone() {
 
   // Close the earthquake popover
   const handleCloseEarthquakePopover = React.useCallback(() => {
-    setSelectedEarthquake(null);
-    setActiveQuakePulseId(null);
-    setActiveSignalType((prev) =>
-      prev === "earthquake"
-        ? selectedEonetEvent || selectedTsunamiAlert || selectedAirQualitySite
-          ? "global"
-          : null
-        : prev
-    );
-  }, [selectedEonetEvent, selectedTsunamiAlert, selectedAirQualitySite]);
+    clearEarthquakeSelection();
+    setActiveSignalType(null);
+  }, [clearEarthquakeSelection]);
 
   const handleCloseEonetEvent = React.useCallback(() => {
-    setSelectedEonetEvent(null);
-    setSelectedTsunamiAlert(null);
-    setSelectedAirQualitySite(null);
-    setActiveSignalType((prev) =>
-      prev === "global" ? (selectedEarthquake ? "earthquake" : null) : prev
-    );
-  }, [selectedEarthquake]);
+    clearGlobalSelections();
+    clearEarthquakeSelection();
+    setActiveSignalType(null);
+  }, [clearGlobalSelections, clearEarthquakeSelection]);
 
   const handleTriggerLocateAnimation = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -348,6 +290,7 @@ export default function GoogleMapsClone() {
 
   const handleEonetSelect = React.useCallback(
     (event: ProcessedEonetEvent) => {
+      clearEarthquakeSelection();
       setLayerVisibility((prev) => ({ ...prev, eonet: true }));
       setSelectedEonetEvent(event);
       setSelectedTsunamiAlert(null);
@@ -359,11 +302,12 @@ export default function GoogleMapsClone() {
         zoom: Math.max(prev.zoom, 5.8),
       }));
     },
-    [handleUserInteraction]
+    [handleUserInteraction, clearEarthquakeSelection]
   );
 
   const handleTsunamiSelect = React.useCallback(
     (alert: ProcessedTsunamiAlert) => {
+      clearEarthquakeSelection();
       setLayerVisibility((prev) => ({ ...prev, tsunami: true }));
       setSelectedTsunamiAlert(alert);
       setSelectedEonetEvent(null);
@@ -375,11 +319,12 @@ export default function GoogleMapsClone() {
         zoom: Math.max(prev.zoom, 5.8),
       }));
     },
-    [handleUserInteraction]
+    [handleUserInteraction, clearEarthquakeSelection]
   );
 
   const handleAirQualitySelect = React.useCallback(
     (site: ProcessedAirQualitySite) => {
+      clearEarthquakeSelection();
       setLayerVisibility((prev) => ({ ...prev, airQuality: true }));
       setSelectedAirQualitySite(site);
       setSelectedEonetEvent(null);
@@ -391,7 +336,7 @@ export default function GoogleMapsClone() {
         zoom: Math.max(prev.zoom, 6),
       }));
     },
-    [handleUserInteraction]
+    [handleUserInteraction, clearEarthquakeSelection]
   );
 
   const globalClusterMaxZoom = 6;
@@ -567,49 +512,10 @@ export default function GoogleMapsClone() {
                             className="relative flex items-center justify-center cursor-pointer"
                             aria-label={`Earthquake: ${eq.title}`}
                           >
-                            {isActive && (
-                              <>
-                                <span
-                                  aria-hidden="true"
-                                  className="absolute rounded-full animate-ping"
-                                  style={{
-                                    backgroundColor: `${magnitudeColor}26`,
-                                    width: `${getPulseWidth(eq.magnitude)}px`,
-                                    height: `${getPulseHeight(eq.magnitude)}px`,
-                                    borderRadius: 9999,
-                                  }}
-                                />
-                                <span
-                                  aria-hidden="true"
-                                  className="absolute rounded-full animate-pulse"
-                                  style={{
-                                    backgroundColor: `${magnitudeColor}1f`,
-                                    width: `${getPulseInnerWidth(eq.magnitude)}px`,
-                                    height: `${getPulseInnerHeight(eq.magnitude)}px`,
-                                    borderRadius: 9999,
-                                  }}
-                                />
-                              </>
-                            )}
-                            {/* Pulse ring for recent earthquakes */}
-                            {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
-                              <span
-                                aria-hidden="true"
-                                className="absolute rounded-full animate-ping"
-                                style={{
-                                  backgroundColor: `${magnitudeColor}30`,
-                                  width: `${getPulseWidth(eq.magnitude)}px`,
-                                  height: `${getPulseHeight(eq.magnitude)}px`,
-                                  borderRadius: 9999,
-                                  animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
-                                }}
-                              />
-                            )}
                             {/* Main marker */}
                             <div
                               className={cn(
                                 "relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-all duration-250",
-                                isActive && "motion-safe:animate-bounce",
                               )}
                               style={{
                                 backgroundColor: magnitudeColor,
@@ -652,8 +558,7 @@ export default function GoogleMapsClone() {
                     const id = feature.properties?.id as string | undefined;
                     const match = eonetState.events.find((event) => event.id === id);
                     if (match) {
-                      setSelectedEonetEvent(match);
-                      setActiveSignalType("global");
+                      handleEonetSelect(match);
                     }
                   }}
                 />
