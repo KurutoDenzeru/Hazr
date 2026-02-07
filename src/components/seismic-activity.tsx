@@ -35,6 +35,12 @@ export const SeismicActivity = ({
       range: "day",
     });
 
+  const strongestMagnitude = earthquakes.reduce<number>(
+    (currentStrongest, earthquake) =>
+      Math.max(currentStrongest, earthquake.magnitude),
+    0
+  );
+
   if (collapsed) {
     return (
       <Tooltip>
@@ -54,7 +60,21 @@ export const SeismicActivity = ({
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">Seismic Activity</TooltipContent>
+        <TooltipContent side="right" className="max-w-56">
+          <p className="font-medium">Seismic Activity</p>
+          {isLoading ? (
+            <p className="text-xs text-muted-foreground">Updating earthquake feed...</p>
+          ) : error ? (
+            <p className="text-xs text-muted-foreground">Unable to load latest data right now.</p>
+          ) : earthquakes.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No earthquakes reported in the last 24h.</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {metadata?.count ?? earthquakes.length} in last 24h, strongest M
+              {strongestMagnitude.toFixed(1)}
+            </p>
+          )}
+        </TooltipContent>
       </Tooltip>
     );
   }

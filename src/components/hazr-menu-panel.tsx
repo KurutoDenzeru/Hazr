@@ -141,7 +141,7 @@ function HazrMenuPanel({
           ref={weatherSectionRef}
           id="sidebar-weather"
           tabIndex={-1}
-          className={cn("mb-2", collapsed && "flex flex-col items-center")}
+          className={cn(!collapsed && "mb-2", collapsed && "flex flex-col items-center")}
         >
           <WeatherDock
             latitude={userLocation?.[1] ?? null}

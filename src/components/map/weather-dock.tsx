@@ -175,7 +175,7 @@ export const WeatherDock = ({
           <button
             type="button"
             onClick={onOpenSection}
-            className="flex size-12 flex-col items-center justify-center rounded-md text-center transition-colors hover:bg-muted/70"
+            className="flex size-12 items-center justify-center rounded-md text-center transition-colors hover:bg-muted/70"
             aria-label="Weather"
           >
             <span className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 dark:bg-sky-500/30">
@@ -185,13 +185,13 @@ export const WeatherDock = ({
                 className="size-5 text-sky-500"
               />
             </span>
-            <span className="mt-0.5 text-xs font-medium leading-none">
-              {Math.round(current.temperature)}°
-            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">
           <p className="font-medium">{current.description}</p>
+          <p className="text-sm text-muted-foreground">
+            {Math.round(current.temperature)}°C
+          </p>
           <p className="text-sm text-muted-foreground">
             {locationInfo?.displayName || "Current location"}
           </p>

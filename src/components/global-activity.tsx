@@ -80,6 +80,16 @@ const formatEonetTitle = (title: string) => {
   return cleaned;
 };
 
+const getTsunamiSeverityRank = (severity: string): number => {
+  const normalized = severity.toLowerCase();
+  if (normalized.includes("extreme")) return 5;
+  if (normalized.includes("severe")) return 4;
+  if (normalized.includes("major")) return 3;
+  if (normalized.includes("moderate")) return 2;
+  if (normalized.includes("minor")) return 1;
+  return 0;
+};
+
 const GlobalActivity = ({
   collapsed,
   focusTarget = null,
@@ -143,6 +153,28 @@ const GlobalActivity = ({
     url: alert.url,
   }));
 
+  const activeEventCount = eonetState.events.length;
+  const activeAirSiteCount = airQualityState.sites.length;
+  const activeTsunamiCount = tsunamiState.alerts.length;
+  const primaryAirSite = airQualityState.sites[0] ?? null;
+  const primaryAirValue = primaryAirSite
+    ? `${primaryAirSite.parameter.toUpperCase()} ${
+        Number.isFinite(primaryAirSite.value)
+          ? primaryAirSite.value.toFixed(1)
+          : `${primaryAirSite.value}`
+      } ${primaryAirSite.unit}`
+    : null;
+  const highestTsunamiSeverity = tsunamiState.alerts.reduce<string | null>(
+    (currentHighest, alert) => {
+      if (!currentHighest) return alert.severity;
+      return getTsunamiSeverityRank(alert.severity) >
+        getTsunamiSeverityRank(currentHighest)
+        ? alert.severity
+        : currentHighest;
+    },
+    null
+  );
+
   if (collapsed) {
     return (
       <TooltipProvider delayDuration={0}>
@@ -153,6 +185,13 @@ const GlobalActivity = ({
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             onClick={() => onOpenSection?.("global-live-events")}
             isLoading={eonetState.isLoading}
+            detail={
+              eonetState.isLoading
+                ? "Updating live events..."
+                : activeEventCount === 0
+                  ? "No active events right now."
+                  : `${activeEventCount} active event${activeEventCount === 1 ? "" : "s"}`
+            }
           />
           <MiniSignal
             label="Air quality"
@@ -160,6 +199,14 @@ const GlobalActivity = ({
             toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
             onClick={() => onOpenSection?.("global-openaq")}
             isLoading={airQualityState.isLoading}
+            detail={
+              airQualityState.isLoading
+                ? "Updating station data..."
+                : activeAirSiteCount === 0
+                  ? "No reporting stations right now."
+                  : `${activeAirSiteCount} site${activeAirSiteCount === 1 ? "" : "s"} reporting`
+            }
+            subDetail={airQualityState.isLoading ? undefined : primaryAirValue ?? undefined}
           />
           <MiniSignal
             label="Tsunami alerts"
@@ -167,6 +214,18 @@ const GlobalActivity = ({
             toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
             onClick={() => onOpenSection?.("global-tsunami")}
             isLoading={tsunamiState.isLoading}
+            detail={
+              tsunamiState.isLoading
+                ? "Checking tsunami alerts..."
+                : activeTsunamiCount === 0
+                  ? "No active alerts."
+                  : `${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`
+            }
+            subDetail={
+              tsunamiState.isLoading || !highestTsunamiSeverity
+                ? undefined
+                : `Highest severity: ${highestTsunamiSeverity}`
+            }
           />
         </div>
       </TooltipProvider>
@@ -367,6 +426,8 @@ type MiniSignalProps = {
   toneClassName: string;
   onClick: () => void;
   isLoading: boolean;
+  detail?: string;
+  subDetail?: string;
 };
 
 const MiniSignal = ({
@@ -375,6 +436,8 @@ const MiniSignal = ({
   toneClassName,
   onClick,
   isLoading,
+  detail,
+  subDetail,
 }: MiniSignalProps) => (
   <Tooltip>
     <TooltipTrigger asChild>
@@ -389,7 +452,11 @@ const MiniSignal = ({
         </div>
       </button>
     </TooltipTrigger>
-    <TooltipContent side="right">{label}</TooltipContent>
+    <TooltipContent side="right" className="max-w-60">
+      <p className="font-medium">{label}</p>
+      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+      {subDetail ? <p className="text-xs text-muted-foreground">{subDetail}</p> : null}
+    </TooltipContent>
   </Tooltip>
 );
 
