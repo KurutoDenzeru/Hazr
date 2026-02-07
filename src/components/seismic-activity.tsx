@@ -12,6 +12,7 @@ import type { ProcessedEarthquake } from "@/types/api";
 type SeismicActivityProps = {
   collapsed: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
+  onOpenSection?: () => void;
 };
 
 // Format time for display
@@ -23,12 +24,21 @@ const formatTime = (date: Date): string => {
   });
 };
 
-export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivityProps) => {
+export const SeismicActivity = ({
+  collapsed,
+  onEarthquakeSelect,
+  onOpenSection,
+}: SeismicActivityProps) => {
   const { earthquakes, isLoading, error, lastUpdated, refetch, metadata } =
     useEarthquakes({
       magnitude: "2.5",
       range: "day",
     });
+
+  const handleCollapsedEarthquakeSelect = (earthquake: ProcessedEarthquake) => {
+    onOpenSection?.();
+    onEarthquakeSelect?.(earthquake);
+  };
 
   if (collapsed) {
     if (isLoading) {
@@ -47,21 +57,9 @@ export const SeismicActivity = ({ collapsed, onEarthquakeSelect }: SeismicActivi
             key={eq.id}
             earthquake={eq}
             collapsed
-            onClick={() => onEarthquakeSelect?.(eq)}
+            onClick={() => handleCollapsedEarthquakeSelect(eq)}
           />
         ))}
-        {earthquakes.length > 3 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex size-12 items-center justify-center rounded-md text-sm font-medium text-muted-foreground">
-                +{earthquakes.length - 3}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {earthquakes.length - 3} more earthquakes
-            </TooltipContent>
-          </Tooltip>
-        )}
       </div>
     );
   }

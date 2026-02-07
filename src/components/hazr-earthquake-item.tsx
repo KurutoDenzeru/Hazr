@@ -7,7 +7,6 @@ import {
   Gauge,
   Waves,
   AlertTriangle,
-  Mountain,
 } from "lucide-react";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
@@ -55,19 +54,11 @@ const EarthquakeItem = ({
             className="relative flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/80 dark:hover:bg-muted/40"
             aria-label={earthquake.title}
           >
-            <span className="absolute left-1 top-1 flex size-4 items-center justify-center rounded-md bg-slate-900/80 text-white">
-              <Mountain className="size-2.5" />
-            </span>
             <div
-              className="flex size-7 items-center justify-center rounded-full text-[9px] font-bold text-white"
+              className="flex size-8 items-center justify-center rounded-full text-[10px] font-bold text-white"
               style={{ backgroundColor: magColor }}
             >
-              <span className="flex items-center gap-0.5">
-                <span className="inline-flex items-center justify-center rounded-full bg-white/85 px-0.5">
-                  <Mountain className="size-2" style={{ color: magColor }} />
-                </span>
-                {earthquake.magnitude.toFixed(1)}
-              </span>
+              {earthquake.magnitude.toFixed(1)}
             </div>
           </button>
         </TooltipTrigger>

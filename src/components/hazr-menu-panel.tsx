@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Settings2 } from "lucide-react";
 
 import { WeatherDock } from "@/components/map/weather-dock";
@@ -20,9 +21,18 @@ import type {
   ProcessedTsunamiAlert,
 } from "@/types/api";
 
+export type HazrMenuFocusTarget =
+  | "seismic"
+  | "global-live-events"
+  | "global-openaq"
+  | "global-tsunami";
+
 type HazrMenuPanelProps = {
   onSelect?: () => void;
   collapsed?: boolean;
+  focusTarget?: HazrMenuFocusTarget | null;
+  onFocusTargetHandled?: () => void;
+  onRequestExpandAndFocus?: (target: HazrMenuFocusTarget) => void;
   userLocation?: [number, number] | null;
   isLocating?: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
@@ -53,6 +63,9 @@ import { GlobalActivity } from "@/components/global-activity";
 function HazrMenuPanel({
   onSelect,
   collapsed = false,
+  focusTarget = null,
+  onFocusTargetHandled,
+  onRequestExpandAndFocus,
   userLocation = null,
   isLocating = false,
   onEarthquakeSelect,
@@ -61,6 +74,50 @@ function HazrMenuPanel({
   airQualityState,
   tsunamiState,
 }: HazrMenuPanelProps) {
+  const seismicSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const globalSectionRef = React.useRef<HTMLDivElement | null>(null);
+
+  const globalFocusTarget =
+    focusTarget === "global-live-events" ||
+    focusTarget === "global-openaq" ||
+    focusTarget === "global-tsunami"
+      ? focusTarget
+      : null;
+
+  const handleOpenSeismicSection = React.useCallback(() => {
+    onRequestExpandAndFocus?.("seismic");
+  }, [onRequestExpandAndFocus]);
+
+  const handleOpenGlobalSection = React.useCallback(
+    (target: "global-live-events" | "global-openaq" | "global-tsunami") => {
+      onRequestExpandAndFocus?.(target);
+    },
+    [onRequestExpandAndFocus]
+  );
+
+  React.useEffect(() => {
+    if (collapsed || !focusTarget) return;
+
+    const targetElement =
+      focusTarget === "seismic"
+        ? seismicSectionRef.current
+        : focusTarget.startsWith("global-")
+          ? globalSectionRef.current
+          : null;
+
+    if (!targetElement) return;
+
+    targetElement.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    targetElement.focus({ preventScroll: true });
+
+    if (focusTarget === "seismic") {
+      onFocusTargetHandled?.();
+    }
+  }, [collapsed, focusTarget, onFocusTargetHandled]);
+
   const handleSettingsClick = () => onSelect?.();
 
   return (
@@ -90,11 +147,16 @@ function HazrMenuPanel({
             Seismic Activity
           </p>
         )}
-        <div className={cn(collapsed && "flex flex-col items-center")}
+        <div
+          ref={seismicSectionRef}
+          id="sidebar-seismic"
+          tabIndex={-1}
+          className={cn(collapsed && "flex flex-col items-center")}
         >
           <SeismicActivity
             collapsed={collapsed}
             onEarthquakeSelect={onEarthquakeSelect}
+            onOpenSection={handleOpenSeismicSection}
           />
         </div>
 
@@ -107,7 +169,12 @@ function HazrMenuPanel({
                 Global Signals
               </p>
             )}
-            <div className={cn(collapsed && "flex flex-col items-center")}>
+            <div
+              ref={globalSectionRef}
+              id="sidebar-global-signals"
+              tabIndex={-1}
+              className={cn(collapsed && "flex flex-col items-center")}
+            >
               <GlobalActivity
                 collapsed={collapsed}
                 eonetState={
@@ -135,6 +202,9 @@ function HazrMenuPanel({
                   }
                 }
                 onEonetSelect={onEonetSelect}
+                focusTarget={globalFocusTarget}
+                onFocusTargetHandled={onFocusTargetHandled}
+                onOpenSection={handleOpenGlobalSection}
               />
             </div>
 
