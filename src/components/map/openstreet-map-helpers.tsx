@@ -490,8 +490,23 @@ export function GlobalSignalMarkers({
     zoom: 0,
     bounds: null as maplibregl.LngLatBounds | null,
   }));
+  const [expandedMarkerKey, setExpandedMarkerKey] = React.useState<string | null>(null);
+  const collapseTimeoutRef = React.useRef<number | null>(null);
   const GLOBAL_MARKER_MIN_ZOOM = 6.2;
   const MAX_VISIBLE_GLOBAL_MARKERS = 90;
+
+  const clearExpandedTimeout = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (collapseTimeoutRef.current === null) return;
+    window.clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = null;
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      clearExpandedTimeout();
+    };
+  }, [clearExpandedTimeout]);
 
   React.useEffect(() => {
     if (!map || !isLoaded) return;
@@ -545,6 +560,28 @@ export function GlobalSignalMarkers({
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
   }, [airQualitySites, isPointVisible, shouldRenderGlobalMarkers]);
 
+  const handleMarkerPress = React.useCallback(
+    (markerKey: string, onSelect: () => void) => {
+      if (expandedMarkerKey !== markerKey) {
+        setExpandedMarkerKey(markerKey);
+        clearExpandedTimeout();
+        if (typeof window !== "undefined") {
+          collapseTimeoutRef.current = window.setTimeout(() => {
+            setExpandedMarkerKey((current) =>
+              current === markerKey ? null : current
+            );
+          }, 1600);
+        }
+        return;
+      }
+
+      setExpandedMarkerKey(null);
+      clearExpandedTimeout();
+      onSelect();
+    },
+    [clearExpandedTimeout, expandedMarkerKey]
+  );
+
   if (!shouldRenderGlobalMarkers) return null;
 
   return (
@@ -554,6 +591,8 @@ export function GlobalSignalMarkers({
           const tone = getEventToneHex(event.category);
           const EventIcon = getEventIcon(event.category);
           const eventLabel = getEventCategoryLabel(event.category);
+          const markerKey = `event-${event.id}`;
+          const isExpanded = expandedMarkerKey === markerKey;
           return (
             <MapMarker
               key={event.id}
@@ -563,17 +602,22 @@ export function GlobalSignalMarkers({
               <MarkerContent>
                 <button
                   type="button"
-                  onClick={() => onEventSelect(event)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  onClick={() => handleMarkerPress(markerKey, () => onEventSelect(event))}
+                  className="relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                   style={{
                     backgroundColor: tone,
                   }}
                   aria-label={`Event: ${event.title}`}
                 >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
                     <EventIcon className="size-3.5" style={{ color: tone }} />
                   </span>
-                  <span className="truncate max-w-[64px]">
+                  <span
+                    className={cn(
+                      "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                      isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                    )}
+                  >
                     {eventLabel}
                   </span>
                 </button>
@@ -583,54 +627,75 @@ export function GlobalSignalMarkers({
         })}
 
       {layerVisibility.tsunami &&
-        visibleTsunamiAlerts.map((alert) => (
-          <MapMarker
-            key={alert.id}
-            longitude={alert.coordinates[0]}
-            latitude={alert.coordinates[1]}
-          >
-            <MarkerContent>
-                <button
-                  type="button"
-                  onClick={() => onTsunamiSelect(alert)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{}}
-                  aria-label="Tsunami alert"
-                >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                    <Waves className="size-3.5 text-blue-600" />
-                  </span>
-                  <span className="truncate max-w-[64px]">Tsunami</span>
-                </button>
-            </MarkerContent>
-          </MapMarker>
-        ))}
+        visibleTsunamiAlerts.map((alert) => {
+          const markerKey = `tsunami-${alert.id}`;
+          const isExpanded = expandedMarkerKey === markerKey;
+          return (
+            <MapMarker
+              key={alert.id}
+              longitude={alert.coordinates[0]}
+              latitude={alert.coordinates[1]}
+            >
+              <MarkerContent>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkerPress(markerKey, () => onTsunamiSelect(alert))}
+                    className="relative flex items-center rounded-full border border-white/15 bg-blue-500 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    aria-label="Tsunami alert"
+                  >
+                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                      <Waves className="size-3.5 text-blue-600" />
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                        isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                      )}
+                    >
+                      Tsunami
+                    </span>
+                  </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        })}
 
       {layerVisibility.airQuality &&
-        visibleAirQualitySites.map((site) => (
-          <MapMarker
-            key={site.id}
-            longitude={site.coordinates[0]}
-            latitude={site.coordinates[1]}
-          >
-            <MarkerContent>
-                <button
-                  type="button"
-                  onClick={() => onAirQualitySelect(site)}
-                  className="relative flex items-center gap-1 rounded-full border border-white/15 bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{}}
-                  aria-label={`Air quality: ${site.location}`}
-                >
-                  <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                    <Wind className="size-3.5 text-emerald-600" />
-                  </span>
-                  <span className="truncate max-w-[72px]">
-                    {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}
-                  </span>
-              </button>
-            </MarkerContent>
-          </MapMarker>
-        ))}
+        visibleAirQualitySites.map((site) => {
+          const markerKey = `air-${site.id}`;
+          const isExpanded = expandedMarkerKey === markerKey;
+          const valueLabel = Number.isFinite(site.value)
+            ? site.value.toFixed(1)
+            : `${site.value}`;
+          return (
+            <MapMarker
+              key={site.id}
+              longitude={site.coordinates[0]}
+              latitude={site.coordinates[1]}
+            >
+              <MarkerContent>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkerPress(markerKey, () => onAirQualitySelect(site))}
+                    className="relative flex items-center rounded-full border border-white/15 bg-emerald-500 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    aria-label={`Air quality: ${site.location}`}
+                  >
+                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                      <Wind className="size-3.5 text-emerald-600" />
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                        isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
+                      )}
+                    >
+                      {site.parameter.toUpperCase()} {valueLabel}
+                    </span>
+                </button>
+              </MarkerContent>
+            </MapMarker>
+          );
+        })}
     </>
   );
 }

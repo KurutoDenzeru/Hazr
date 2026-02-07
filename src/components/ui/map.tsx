@@ -1180,11 +1180,26 @@ function MapClusterLayer<
   const id = useId();
   const sourceId = `cluster-source-${id}`;
   const rafRef = useRef<number | null>(null);
+  const collapseTimeoutRef = useRef<number | null>(null);
   const isMovingRef = useRef(false);
   const lastSignatureRef = useRef("");
+  const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
   const [clusters, setClusters] = useState<
     GeoJSON.Feature<GeoJSON.Point, P>[]
   >([]);
+
+  const clearCollapseTimeout = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (collapseTimeoutRef.current === null) return;
+    window.clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearCollapseTimeout();
+    };
+  }, [clearCollapseTimeout]);
 
   const getClusterTone = useCallback(
     (pointCount: number) => {
@@ -1344,9 +1359,26 @@ function MapClusterLayer<
             : pointCount < clusterThresholds[1]
               ? 15
               : 18;
+        const isExpanded = expandedClusterId === clusterId;
 
         const handleClusterClick = async () => {
           if (!map) return;
+          if (!isExpanded) {
+            setExpandedClusterId(clusterId);
+            clearCollapseTimeout();
+            if (typeof window !== "undefined") {
+              collapseTimeoutRef.current = window.setTimeout(() => {
+                setExpandedClusterId((current) =>
+                  current === clusterId ? null : current
+                );
+              }, 1600);
+            }
+            return;
+          }
+
+          setExpandedClusterId(null);
+          clearCollapseTimeout();
+
           if (onClusterClick) {
             onClusterClick(clusterId, coordinates, pointCount);
             return;
@@ -1381,12 +1413,27 @@ function MapClusterLayer<
                     backgroundColor: tone,
                   }}
                 >
+                  {ClusterIcon && compactNodeSize >= 14 ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2 inline-flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90"
+                      style={{ color: tone }}
+                    >
+                      <ClusterIcon className="size-2.5" />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                    />
+                  )}
                   <span
-                    aria-hidden="true"
-                    className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
-                  />
-                  <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                    {countLabel}
+                    className={cn(
+                      "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                      isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                    )}
+                  >
+                    {labelText} {countLabel}
                   </span>
                 </button>
               ) : (
@@ -1395,7 +1442,7 @@ function MapClusterLayer<
                   onClick={handleClusterClick}
                   aria-label={`${labelText} cluster: ${pointCount}`}
                   className={cn(
-                    "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                    "group relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
                     "hover:scale-105"
                   )}
                   style={{
@@ -1411,7 +1458,12 @@ function MapClusterLayer<
                       </span>
                     )}
                   </span>
-                  <span className="truncate max-w-27.5">
+                  <span
+                    className={cn(
+                      "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                      isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
+                    )}
+                  >
                     {labelText} {countLabel}
                   </span>
                 </button>

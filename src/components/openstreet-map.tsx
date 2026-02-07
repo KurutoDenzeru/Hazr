@@ -608,21 +608,27 @@ export default function GoogleMapsClone() {
                             {/* Main marker */}
                             <div
                               className={cn(
-                                "relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur",
+                                "relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-all duration-250",
                                 isActive && "motion-safe:animate-bounce",
                               )}
                               style={{
                                 backgroundColor: magnitudeColor,
                               }}
                             >
-                              <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
+                              <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
                                   <Mountain
                                     className="size-3.5"
                                     style={{ color: magnitudeColor }}
                                   />
                               </span>
-                              <span>Quake</span>
-                              <span>{eq.magnitude.toFixed(1)}</span>
+                              <span
+                                className={cn(
+                                  "overflow-hidden whitespace-nowrap transition-all duration-250",
+                                  isActive ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                                )}
+                              >
+                                Quake {eq.magnitude.toFixed(1)}
+                              </span>
                             </div>
                           </button>
                         </MarkerContent>
