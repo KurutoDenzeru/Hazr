@@ -732,15 +732,6 @@ export function SignalOverlay({
       )
     : [];
 
-  const typeBadges = activeEarthquake?.types
-    ? activeEarthquake.types
-        .split(",")
-        .map((type) => type.trim())
-        .filter((type) =>
-          Boolean(type) && !["origin", "phase-data"].includes(type.toLowerCase()),
-        )
-    : [];
-
   const earthquakeBadges: OverlayBadge[] = activeEarthquake
     ? [
         {
@@ -801,14 +792,6 @@ export function SignalOverlay({
           label: getEventCategoryLabel(activeEvent.category),
           icon: activeEvent ? getEventIcon(activeEvent.category) : Globe2,
           className: cn("gap-1", getEventTone(activeEvent.category).badge),
-        },
-        {
-          label: activeEvent.date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          icon: Clock,
-          className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
         },
       ]
     : [];
@@ -962,23 +945,6 @@ export function SignalOverlay({
             ariaLabel: "View USGS event details",
           }}
         >
-          {typeBadges.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Event tags
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {typeBadges.map((type) => (
-                  <Badge
-                    key={type}
-                    className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200"
-                  >
-                    {type}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
           <div className="flex flex-wrap gap-2">
             <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
               <MapPin className="size-3" />
@@ -1002,11 +968,7 @@ export function SignalOverlay({
           title={activeEvent.title}
           onClose={onCloseEvent}
           badges={eventBadges}
-          details={eventDetails.map((detail) => ({
-            ...detail,
-            cardClassName: activeEventTone.detailCard,
-            labelClassName: activeEventTone.detailLabel,
-          }))}
+          details={eventDetails}
         />
       ) : null}
 

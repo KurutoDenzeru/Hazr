@@ -226,25 +226,6 @@ export default function GoogleMapsClone() {
     return 22;
   };
 
-  const getMarkerPaddingX = (magnitude: number) => {
-    if (magnitude >= 7) return 10;
-    if (magnitude >= 6) return 9;
-    if (magnitude >= 5) return 8;
-    return 7;
-  };
-
-  const getMarkerFontSize = (magnitude: number) => {
-    if (magnitude >= 6) return 11;
-    if (magnitude >= 4) return 10;
-    return 9;
-  };
-
-  const getMarkerIconSize = (magnitude: number) => {
-    if (magnitude >= 6) return 12;
-    if (magnitude >= 4) return 11;
-    return 10;
-  };
-
   const handleTriggerQuakePulse = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       if (typeof window === "undefined") return;
@@ -537,7 +518,7 @@ export default function GoogleMapsClone() {
                         <button
                           type="button"
                           onClick={() => handleEarthquakeSelect(eq)}
-                          className="group relative flex items-center justify-center cursor-pointer"
+                          className="relative flex items-center justify-center cursor-pointer"
                           aria-label={`Earthquake: ${eq.title}`}
                         >
                           {activeQuakePulseId === eq.id && (
@@ -581,31 +562,21 @@ export default function GoogleMapsClone() {
                           {/* Main marker */}
                           <div
                             className={cn(
-                              "relative flex items-center justify-center rounded-full font-bold text-white transition-transform group-hover:scale-110",
+                              "relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur",
                               activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
                             style={{
-                              minWidth: `${getMarkerMinWidth(eq.magnitude)}px`,
-                              height: `${getMarkerHeight(eq.magnitude)}px`,
-                              paddingLeft: `${getMarkerPaddingX(eq.magnitude)}px`,
-                              paddingRight: `${getMarkerPaddingX(eq.magnitude)}px`,
-                              fontSize: `${getMarkerFontSize(eq.magnitude)}px`,
                               backgroundColor: getMagnitudeColor(eq.magnitude),
                             }}
                           >
-                            <span className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-1">
+                            <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
                                 <Mountain
-                                  style={{
-                                    width: getMarkerIconSize(eq.magnitude),
-                                    height: getMarkerIconSize(eq.magnitude),
-                                    color: getMagnitudeColor(eq.magnitude),
-                                  }}
+                                  className="size-3.5"
+                                  style={{ color: getMagnitudeColor(eq.magnitude) }}
                                 />
-                              </span>
-                              Quake
-                              <span>{eq.magnitude.toFixed(1)}</span>
                             </span>
+                            <span>Quake</span>
+                            <span>{eq.magnitude.toFixed(1)}</span>
                           </div>
                         </button>
                       </MarkerContent>
