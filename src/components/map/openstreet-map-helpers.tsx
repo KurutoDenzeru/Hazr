@@ -32,6 +32,12 @@ import {
   Waves,
   X,
   Wind,
+  CalendarClock,
+  MapPinned,
+  ScanLine,
+  FlaskConical,
+  Building2,
+  Ruler,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -127,8 +133,190 @@ export const getEventIcon = (category: string) => {
 const getEventCategoryLabel = (category: string) => {
   const normalized = category.toLowerCase();
   if (normalized.includes("storm")) return "Storm";
+  if (normalized.includes("wildfire") || normalized.includes("fire")) return "Wildfire";
+  if (normalized.includes("flood")) return "Flood";
+  if (normalized.includes("drought")) return "Drought";
+  if (normalized.includes("ice")) return "Ice";
+  if (normalized.includes("dust")) return "Dust";
   if (normalized.includes("volcano")) return "Volcano";
   return category;
+};
+
+const formatAirQualityParameterLabel = (parameter: string) => {
+  const normalized = parameter.trim().toLowerCase();
+  if (normalized === "pm2.5") return "Fine particles (PM2.5)";
+  if (normalized === "pm10") return "Coarse particles (PM10)";
+  if (normalized === "no2") return "Nitrogen dioxide (NO₂)";
+  if (normalized === "o3") return "Ozone (O₃)";
+  return parameter.toUpperCase();
+};
+
+const formatAirQualityConcentration = (value: number, unit: string) => {
+  return `${value.toFixed(1)} ${unit}`;
+};
+
+type OverlayBadge = {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  className?: string;
+};
+
+type OverlayDetailItem = {
+  label: string;
+  value: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  cardClassName?: string;
+  labelClassName?: string;
+};
+
+type OverlayAction = {
+  label: string;
+  url: string;
+  ariaLabel: string;
+};
+
+const isDefined = <T,>(value: T | null | undefined): value is T => value !== null && value !== undefined;
+
+const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
+  if (details.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {details.map((detail) => (
+        <div
+          key={detail.label}
+          className={cn("rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20", detail.cardClassName)}
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground",
+              detail.labelClassName,
+            )}
+          >
+            {detail.icon ? <detail.icon className="size-3" /> : null}
+            <span>{detail.label}</span>
+          </div>
+          <p className="text-sm font-medium text-foreground">{detail.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const getEventTone = (category: string) => {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("wildfire") || normalized.includes("fire")) {
+    return {
+      lead: "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+      badge: "bg-orange-500/15 text-orange-700 dark:bg-orange-500/25 dark:text-orange-200",
+      detailCard: "bg-orange-500/8 border border-orange-500/20 dark:bg-orange-500/12 dark:border-orange-400/20",
+      detailLabel: "text-orange-700/80 dark:text-orange-200/80",
+    };
+  }
+  if (normalized.includes("storm")) {
+    return {
+      lead: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+      badge: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-200",
+      detailCard: "bg-indigo-500/8 border border-indigo-500/20 dark:bg-indigo-500/12 dark:border-indigo-400/20",
+      detailLabel: "text-indigo-700/80 dark:text-indigo-200/80",
+    };
+  }
+  if (normalized.includes("flood") || normalized.includes("tsunami")) {
+    return {
+      lead: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+      badge: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
+      detailCard: "bg-sky-500/8 border border-sky-500/20 dark:bg-sky-500/12 dark:border-sky-400/20",
+      detailLabel: "text-sky-700/80 dark:text-sky-200/80",
+    };
+  }
+  if (normalized.includes("volcano")) {
+    return {
+      lead: "bg-rose-500/20 text-rose-700 dark:bg-rose-500/30 dark:text-rose-200",
+      badge: "bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200",
+      detailCard: "bg-rose-500/8 border border-rose-500/20 dark:bg-rose-500/12 dark:border-rose-400/20",
+      detailLabel: "text-rose-700/80 dark:text-rose-200/80",
+    };
+  }
+  return {
+    lead: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+    badge: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200",
+    detailCard: "bg-amber-500/8 border border-amber-500/20 dark:bg-amber-500/12 dark:border-amber-400/20",
+    detailLabel: "text-amber-700/80 dark:text-amber-200/80",
+  };
+};
+
+const UnifiedSignalPopover = ({
+  leading,
+  title,
+  titlePrefixIcon: TitlePrefixIcon,
+  onClose,
+  badges,
+  details,
+  footerAction,
+  children,
+}: {
+  leading: React.ReactNode;
+  title: string;
+  titlePrefixIcon?: React.ComponentType<{ className?: string }>;
+  onClose: () => void;
+  badges?: OverlayBadge[];
+  details?: OverlayDetailItem[];
+  footerAction?: OverlayAction | null;
+  children?: React.ReactNode;
+}) => {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        {leading}
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+              {TitlePrefixIcon ? <TitlePrefixIcon className="size-3.5 shrink-0" /> : null}
+              <p className="line-clamp-2 text-foreground font-semibold leading-snug">{title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
+              aria-label="Close popover"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          {badges && badges.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {badges.map((badge) => (
+                <Badge key={badge.label} className={badge.className}>
+                  {badge.icon ? <badge.icon className="size-3" /> : null}
+                  {badge.label}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {details ? <OverlayDetailGrid details={details} /> : null}
+      {children}
+
+      {footerAction ? (
+        <Button
+          asChild
+          className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
+        >
+          <a
+            href={footerAction.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={footerAction.ariaLabel}
+          >
+            {footerAction.label}
+            <ExternalLink className="size-4" />
+          </a>
+        </Button>
+      ) : null}
+    </div>
+  );
 };
 
 export function MapStateSync({
@@ -502,7 +690,7 @@ export function SignalOverlay({
     return `${diffDays}d ago`;
   };
 
-  const detailItems = activeEarthquake
+  const detailItems: OverlayDetailItem[] = activeEarthquake
     ? (
         [
           {
@@ -540,24 +728,202 @@ export function SignalOverlay({
           activeEarthquake.nst !== null
             ? { label: "Stations reporting", value: `${activeEarthquake.nst}`, icon: Radio }
             : null,
-        ].filter(Boolean) as Array<{ label: string; value: string; icon: React.ComponentType<{ className?: string }> }>
+        ].filter(isDefined)
       )
     : [];
 
-  const typeBadges = activeEarthquake?.types
-    ? activeEarthquake.types
-        .split(",")
-        .map((type) => type.trim())
-        .filter((type) =>
-          Boolean(type) && !["origin", "phase-data"].includes(type.toLowerCase()),
-        )
+  const earthquakeBadges: OverlayBadge[] = activeEarthquake
+    ? [
+        {
+          label: `Updated ${formatRelativeTime(activeEarthquake.updated)}`,
+          icon: Clock,
+          className: "gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+        },
+        activeEarthquake.alert
+          ? {
+              label: `Alert ${activeEarthquake.alert}`,
+              icon: AlertTriangle,
+              className: cn(
+                "gap-1",
+                activeEarthquake.alert === "yellow" &&
+                  "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+                activeEarthquake.alert === "orange" &&
+                  "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+                activeEarthquake.alert === "red" &&
+                  "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+                activeEarthquake.alert === "green" &&
+                  "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
+              ),
+            }
+          : null,
+        activeEarthquake.tsunami
+          ? {
+              label: "Tsunami risk",
+              icon: Waves,
+              className: "gap-1 bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200",
+            }
+          : null,
+      ].filter(isDefined)
     : [];
+
+  const eventDetails: OverlayDetailItem[] = activeEvent
+    ? [
+        {
+          label: "Coordinates",
+          value: `${activeEvent.coordinates[1].toFixed(4)}, ${activeEvent.coordinates[0].toFixed(4)}`,
+          icon: MapPinned,
+        },
+        {
+          label: "Reported",
+          value: activeEvent.date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }),
+          icon: CalendarClock,
+        },
+      ]
+    : [];
+
+  const eventBadges: OverlayBadge[] = activeEvent
+    ? [
+        {
+          label: getEventCategoryLabel(activeEvent.category),
+          icon: activeEvent ? getEventIcon(activeEvent.category) : Globe2,
+          className: cn("gap-1", getEventTone(activeEvent.category).badge),
+        },
+      ]
+    : [];
+
+  const tsunamiDetails: OverlayDetailItem[] = activeTsunami
+    ? [
+        {
+          label: "Coordinates",
+          value: `${activeTsunami.coordinates[1].toFixed(4)}, ${activeTsunami.coordinates[0].toFixed(4)}`,
+          icon: MapPinned,
+        },
+      ]
+    : [];
+
+  const tsunamiBadges: OverlayBadge[] = activeTsunami
+    ? [
+        {
+          label: activeTsunami.severity,
+          className: "bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200",
+        },
+          activeTsunami.sent
+            ? {
+                label: activeTsunami.sent.toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                icon: CalendarClock,
+                className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+              }
+            : null,
+      ].filter(isDefined)
+    : [];
+
+  const airQualityBadges: OverlayBadge[] = activeAirQuality
+    ? [
+        {
+          label: formatAirQualityParameterLabel(activeAirQuality.parameter),
+          className: "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200",
+        },
+        {
+          label: `Concentration ${formatAirQualityConcentration(activeAirQuality.value, activeAirQuality.unit)}`,
+          className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+        },
+      ]
+    : [];
+
+  const airQualityDetails: OverlayDetailItem[] = activeAirQuality
+    ? (
+        [
+          {
+            label: "Coordinates",
+            value: `${activeAirQuality.coordinates[1].toFixed(4)}, ${activeAirQuality.coordinates[0].toFixed(4)}`,
+            icon: MapPinned,
+          },
+          activeAirQuality.measuredAt
+            ? {
+                label: "Measured",
+                value: activeAirQuality.measuredAt.toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }),
+                icon: CalendarClock,
+              }
+            : null,
+          activeAirQuality.averagingPeriod
+            ? {
+                label: "Averaging period",
+                value: activeAirQuality.averagingPeriod,
+                icon: ScanLine,
+              }
+            : null,
+          activeAirQuality.coveragePercent !== null && activeAirQuality.coveragePercent !== undefined
+            ? {
+                label: "Data coverage",
+                value: `${activeAirQuality.coveragePercent.toFixed(0)}%`,
+                icon: Signal,
+              }
+            : null,
+          {
+            label: "Location ID",
+            value: `${activeAirQuality.locationId}`,
+            icon: Building2,
+          },
+          {
+            label: "Sensor ID",
+            value: `${activeAirQuality.sensorId}`,
+            icon: Radio,
+          },
+          activeAirQuality.city || activeAirQuality.country
+            ? {
+                label: "Region",
+                value: [activeAirQuality.city, activeAirQuality.country].filter(Boolean).join(", "),
+                icon: MapPin,
+              }
+            : null,
+          activeAirQuality.averageValue !== null && activeAirQuality.averageValue !== undefined
+            ? {
+                label: "Average",
+                value: formatAirQualityConcentration(activeAirQuality.averageValue, activeAirQuality.unit),
+                icon: Ruler,
+              }
+            : null,
+          activeAirQuality.minValue !== null && activeAirQuality.minValue !== undefined
+            ? {
+                label: "Minimum",
+                value: formatAirQualityConcentration(activeAirQuality.minValue, activeAirQuality.unit),
+                icon: FlaskConical,
+              }
+            : null,
+          activeAirQuality.maxValue !== null && activeAirQuality.maxValue !== undefined
+            ? {
+                label: "Maximum",
+                value: formatAirQualityConcentration(activeAirQuality.maxValue, activeAirQuality.unit),
+                icon: FlaskConical,
+              }
+            : null,
+        ].filter(isDefined)
+      )
+    : [];
+
+  const ActiveEventIcon = activeEvent ? getEventIcon(activeEvent.category) : Globe2;
+  const activeEventTone = activeEvent ? getEventTone(activeEvent.category) : getEventTone("default");
 
   return createPortal(
     <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3 shadow-lg">
-      {activeEarthquake && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+      {activeEarthquake ? (
+        <UnifiedSignalPopover
+          leading={(
             <div
               className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
               style={{
@@ -567,86 +933,18 @@ export function SignalOverlay({
             >
               {activeEarthquake.magnitude.toFixed(1)}
             </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-                  <MapPin className="size-3.5" />
-                  <span className="line-clamp-2 text-foreground font-semibold leading-snug">
-                    {activeEarthquake.place}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onCloseEarthquake}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="gap-1 bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
-                  <Clock className="size-3" />
-                  Updated {formatRelativeTime(activeEarthquake.updated)}
-                </Badge>
-                {activeEarthquake.alert ? (
-                  <Badge
-                    className={cn(
-                      "gap-1",
-                      activeEarthquake.alert === "yellow" &&
-                        "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
-                      activeEarthquake.alert === "orange" &&
-                        "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
-                      activeEarthquake.alert === "red" &&
-                        "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
-                      activeEarthquake.alert === "green" &&
-                        "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
-                    )}
-                  >
-                    <AlertTriangle className="size-3" />
-                    Alert {activeEarthquake.alert}
-                  </Badge>
-                ) : null}
-                {activeEarthquake.tsunami ? (
-                  <Badge className="gap-1 bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200">
-                    <Waves className="size-3" />
-                    Tsunami risk
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {detailItems.map((item) => (
-              <div key={item.label} className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
-                  <item.icon className="size-3" />
-                  <span>{item.label}</span>
-                </div>
-                <p className="text-sm font-medium text-foreground">{item.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {typeBadges.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Event tags
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {typeBadges.map((type) => (
-                  <Badge
-                    key={type}
-                    className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200"
-                  >
-                    {type}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
+          )}
+          title={activeEarthquake.place}
+          titlePrefixIcon={MapPin}
+          onClose={onCloseEarthquake}
+          badges={earthquakeBadges}
+          details={detailItems}
+          footerAction={{
+            label: "View on USGS",
+            url: activeEarthquake.url,
+            ariaLabel: "View USGS event details",
+          }}
+        >
           <div className="flex flex-wrap gap-2">
             <Badge className="gap-1 bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
               <MapPin className="size-3" />
@@ -657,188 +955,50 @@ export function SignalOverlay({
               Longitude: {activeEarthquake.coordinates[0].toFixed(4)}
             </Badge>
           </div>
+        </UnifiedSignalPopover>
+      ) : null}
 
-          <Button
-            asChild
-            className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
-          >
-            <a href={activeEarthquake.url} target="_blank" rel="noopener noreferrer">
-              View on USGS
-              <ExternalLink className="size-4" />
-            </a>
-          </Button>
-        </div>
-      )}
-
-      {activeEvent && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 shadow-lg dark:bg-amber-500/30 dark:text-amber-200">
-              <Globe2 className="size-6" />
+      {activeEvent ? (
+        <UnifiedSignalPopover
+          leading={(
+            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg shadow-lg", activeEventTone.lead)}>
+              <ActiveEventIcon className="size-6" />
             </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeEvent.title}</p>
-                <button
-                  type="button"
-                  onClick={onCloseEvent}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
-                  {getEventCategoryLabel(activeEvent.category)}
-                </Badge>
-                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                  {activeEvent.date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </Badge>
-              </div>
-            </div>
-          </div>
+          )}
+          title={activeEvent.title}
+          onClose={onCloseEvent}
+          badges={eventBadges}
+          details={eventDetails}
+        />
+      ) : null}
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Coordinates</p>
-              <p className="text-sm font-medium text-foreground">
-                {activeEvent.coordinates[1].toFixed(4)}, {activeEvent.coordinates[0].toFixed(4)}
-              </p>
-            </div>
-            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Reported</p>
-              <p className="text-sm font-medium text-foreground">
-                {activeEvent.date.toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
-
-          <Button
-            asChild
-            className="w-full gap-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium transition-colors"
-          >
-            <a
-              href={activeEvent.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="View event source"
-            >
-              View source
-              <ExternalLink className="size-4" />
-            </a>
-          </Button>
-        </div>
-      )}
-
-      {activeTsunami && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+      {activeTsunami ? (
+        <UnifiedSignalPopover
+          leading={(
             <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 shadow-lg dark:bg-sky-500/30 dark:text-sky-200">
               <Waves className="size-6" />
             </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeTsunami.headline}</p>
-                <button
-                  type="button"
-                  onClick={onCloseEvent}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-sky-500/15 text-sky-700 dark:bg-sky-500/25 dark:text-sky-200">
-                  {activeTsunami.severity}
-                </Badge>
-                {activeTsunami.sent && (
-                  <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                    {activeTsunami.sent.toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Coordinates</p>
-              <p className="text-sm font-medium text-foreground">
-                {activeTsunami.coordinates[1].toFixed(4)}, {activeTsunami.coordinates[0].toFixed(4)}
-              </p>
-            </div>
-          </div>
-
-          {activeTsunami.url && (
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                if (typeof window === "undefined") return;
-                window.open(activeTsunami.url, "_blank", "noopener,noreferrer");
-              }}
-              aria-label="View alert source"
-            >
-              View source
-            </Button>
           )}
-        </div>
-      )}
+          title={activeTsunami.headline}
+          onClose={onCloseEvent}
+          badges={tsunamiBadges}
+          details={tsunamiDetails}
+        />
+      ) : null}
 
-      {activeAirQuality && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+      {activeAirQuality ? (
+        <UnifiedSignalPopover
+          leading={(
             <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 shadow-lg dark:bg-emerald-500/30 dark:text-emerald-200">
               <Wind className="size-6" />
             </div>
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <p className="line-clamp-2 text-sm font-semibold text-foreground">{activeAirQuality.location}</p>
-                <button
-                  type="button"
-                  onClick={onCloseEvent}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200">
-                  {activeAirQuality.parameter.toUpperCase()}
-                </Badge>
-                <Badge className="bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200">
-                  {activeAirQuality.value} {activeAirQuality.unit}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="rounded-lg bg-muted/40 px-3 py-2 dark:bg-muted/20">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Coordinates</p>
-              <p className="text-sm font-medium text-foreground">
-                {activeAirQuality.coordinates[1].toFixed(4)}, {activeAirQuality.coordinates[0].toFixed(4)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+          title={activeAirQuality.location}
+          onClose={onCloseEvent}
+          badges={airQualityBadges}
+          details={airQualityDetails}
+        />
+      ) : null}
     </div>,
     overlayContainer
   );
