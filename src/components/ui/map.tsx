@@ -178,6 +178,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       style: initialStyle,
       renderWorldCopies: true,
       attributionControl: false,
+      refreshExpiredTiles: props.refreshExpiredTiles ?? false,
+      maxTileCacheSize: props.maxTileCacheSize ?? 512,
+      cancelPendingTileRequestsWhileZooming:
+        props.cancelPendingTileRequestsWhileZooming ?? true,
       ...props,
       canvasContextAttributes,
     });
@@ -1173,6 +1177,8 @@ function MapClusterLayer<
   const id = useId();
   const sourceId = `cluster-source-${id}`;
   const rafRef = useRef<number | null>(null);
+  const isMovingRef = useRef(false);
+  const lastSignatureRef = useRef("");
   const [clusters, setClusters] = useState<
     GeoJSON.Feature<GeoJSON.Point, P>[]
   >([]);
@@ -1228,8 +1234,11 @@ function MapClusterLayer<
   }, [isLoaded, map, data, sourceId]);
 
   const refreshClusters = useCallback(() => {
-    if (!map || !isLoaded || !visible) {
-      setClusters([]);
+    if (!map || !isLoaded || !visible || isMovingRef.current) {
+      if (lastSignatureRef.current !== "") {
+        lastSignatureRef.current = "";
+        setClusters([]);
+      }
       return;
     }
     if (!map.getSource(sourceId)) return;
@@ -1245,8 +1254,24 @@ function MapClusterLayer<
         unique.set(clusterId, feature);
       }
     }
-    setClusters(Array.from(unique.values()));
-  }, [clusterMaxZoom, isLoaded, map, sourceId, visible]);
+
+    const nextClusters = Array.from(unique.values());
+    const signature = nextClusters
+      .map((feature) => {
+        const clusterId = feature.properties?.cluster_id as number | undefined;
+        const pointCount = feature.properties?.point_count as number | undefined;
+        if (typeof clusterId !== "number" || typeof pointCount !== "number") {
+          return "";
+        }
+        return `${clusterId}:${pointCount}`;
+      })
+      .sort()
+      .join("|");
+
+    if (lastSignatureRef.current === signature) return;
+    lastSignatureRef.current = signature;
+    setClusters(nextClusters);
+  }, [isLoaded, map, sourceId, visible]);
 
   const scheduleRefresh = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -1257,14 +1282,31 @@ function MapClusterLayer<
 
   useEffect(() => {
     if (!map || !isLoaded) return;
+
+    const handleMoveStart = () => {
+      isMovingRef.current = true;
+    };
+    const handleMoveSettled = () => {
+      isMovingRef.current = false;
+      scheduleRefresh();
+    };
+
     scheduleRefresh();
-    map.on("zoomend", scheduleRefresh);
-    map.on("moveend", scheduleRefresh);
-    map.on("sourcedata", scheduleRefresh);
+    map.on("movestart", handleMoveStart);
+    map.on("zoomstart", handleMoveStart);
+    map.on("moveend", handleMoveSettled);
+    map.on("zoomend", handleMoveSettled);
+    map.on("idle", scheduleRefresh);
+
     return () => {
-      map.off("zoomend", scheduleRefresh);
-      map.off("moveend", scheduleRefresh);
-      map.off("sourcedata", scheduleRefresh);
+      map.off("movestart", handleMoveStart);
+      map.off("zoomstart", handleMoveStart);
+      map.off("moveend", handleMoveSettled);
+      map.off("zoomend", handleMoveSettled);
+      map.off("idle", scheduleRefresh);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
   }, [isLoaded, map, scheduleRefresh]);
 
