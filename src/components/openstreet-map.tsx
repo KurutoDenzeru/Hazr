@@ -27,6 +27,7 @@ import type {
 } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import {
+  AirQualityFlyTo,
   EarthquakeFlyTo,
   EonetFlyTo,
   GlobalSignalMarkers,
@@ -34,6 +35,7 @@ import {
   MapStateSync,
   MapViewController,
   SignalOverlay,
+  TsunamiFlyTo,
   useIsTablet,
   type MapViewState,
 } from "@/components/map/openstreet-map-helpers";
@@ -340,7 +342,15 @@ export default function GoogleMapsClone() {
   );
 
   const globalClusterMaxZoom = 6;
-  const isZoomedOutNodeMode = viewState.zoom <= 3.8;
+  const globalCompactNodeZoom = .2;
+  const seismicCompactNodeZoom = 3.2;
+  const seismicDetailMinZoom = 6.8;
+  const isZoomedOutNodeMode = viewState.zoom <= seismicCompactNodeZoom;
+  const shouldRenderSeismicMarkers =
+    layerVisibility.earthquakes &&
+    (isZoomedOutNodeMode || viewState.zoom >= seismicDetailMinZoom);
+  const shouldShowGlobalClusters =
+    viewState.zoom > globalCompactNodeZoom && viewState.zoom <= globalClusterMaxZoom;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -461,7 +471,7 @@ export default function GoogleMapsClone() {
                 )}
 
                 {/* Earthquake Markers */}
-                {layerVisibility.earthquakes &&
+                {shouldRenderSeismicMarkers &&
                   earthquakes.map((eq) => {
                     const magnitudeColor = getMagnitudeColor(eq.magnitude);
                     const quakeNodeSize = getQuakeNodeSize(eq.magnitude);
@@ -544,12 +554,12 @@ export default function GoogleMapsClone() {
 
                 <MapClusterLayer
                   data={eonetGeojson}
-                  visible={layerVisibility.eonet}
+                  visible={layerVisibility.eonet && shouldShowGlobalClusters}
                   labelPrefix="E"
                   clusterLabel="Signals"
                   clusterIcon={Activity}
-                  compactAtOrBelowZoom={4.2}
-                  pointColor="transparent"
+                  compactAtOrBelowZoom={globalCompactNodeZoom}
+                  pointColor="#f59e0b"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
@@ -564,12 +574,12 @@ export default function GoogleMapsClone() {
                 />
                 <MapClusterLayer
                   data={airQualityGeojson}
-                  visible={layerVisibility.airQuality}
+                  visible={layerVisibility.airQuality && shouldShowGlobalClusters}
                   labelPrefix="AQ"
                   clusterLabel="Air"
                   clusterIcon={Wind}
-                  compactAtOrBelowZoom={4.2}
-                  pointColor="transparent"
+                  compactAtOrBelowZoom={globalCompactNodeZoom}
+                  pointColor="#10b981"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
@@ -584,12 +594,12 @@ export default function GoogleMapsClone() {
                 />
                 <MapClusterLayer
                   data={tsunamiGeojson}
-                  visible={layerVisibility.tsunami}
+                  visible={layerVisibility.tsunami && shouldShowGlobalClusters}
                   labelPrefix="T"
                   clusterLabel="Tsunami"
                   clusterIcon={Waves}
-                  compactAtOrBelowZoom={4.2}
-                  pointColor="transparent"
+                  compactAtOrBelowZoom={globalCompactNodeZoom}
+                  pointColor="#3b82f6"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
@@ -607,6 +617,8 @@ export default function GoogleMapsClone() {
                 <EarthquakeFlyTo earthquake={selectedEarthquake} />
 
                 <EonetFlyTo event={selectedEonetEvent} />
+                <TsunamiFlyTo alert={selectedTsunamiAlert} />
+                <AirQualityFlyTo site={selectedAirQualitySite} />
 
                 <SignalOverlay
                   activeType={activeSignalType}
@@ -622,6 +634,9 @@ export default function GoogleMapsClone() {
                   events={eonetState.events}
                   tsunamiAlerts={tsunamiState.alerts}
                   airQualitySites={airQualityState.sites}
+                  selectedEvent={selectedEonetEvent}
+                  selectedTsunamiAlert={selectedTsunamiAlert}
+                  selectedAirQualitySite={selectedAirQualitySite}
                   layerVisibility={layerVisibility}
                   onEventSelect={handleEonetSelect}
                   onTsunamiSelect={handleTsunamiSelect}

@@ -472,6 +472,9 @@ export function GlobalSignalMarkers({
   events,
   tsunamiAlerts,
   airQualitySites,
+  selectedEvent,
+  selectedTsunamiAlert,
+  selectedAirQualitySite,
   layerVisibility,
   onEventSelect,
   onTsunamiSelect,
@@ -480,6 +483,9 @@ export function GlobalSignalMarkers({
   events: ProcessedEonetEvent[];
   tsunamiAlerts: ProcessedTsunamiAlert[];
   airQualitySites: ProcessedAirQualitySite[];
+  selectedEvent: ProcessedEonetEvent | null;
+  selectedTsunamiAlert: ProcessedTsunamiAlert | null;
+  selectedAirQualitySite: ProcessedAirQualitySite | null;
   layerVisibility: Pick<LayerVisibility, "eonet" | "airQuality" | "tsunami">;
   onEventSelect: (event: ProcessedEonetEvent) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
@@ -492,7 +498,9 @@ export function GlobalSignalMarkers({
   }));
   const [expandedMarkerKey, setExpandedMarkerKey] = React.useState<string | null>(null);
   const collapseTimeoutRef = React.useRef<number | null>(null);
-  const GLOBAL_MARKER_MIN_ZOOM = 6.2;
+  const GLOBAL_COMPACT_MAX_ZOOM = 4.2;
+  const GLOBAL_DETAIL_MIN_ZOOM = 6;
+  const GLOBAL_COMPACT_NODE_SIZE = 13;
   const MAX_VISIBLE_GLOBAL_MARKERS = 90;
 
   const clearExpandedTimeout = React.useCallback(() => {
@@ -537,28 +545,98 @@ export function GlobalSignalMarkers({
     [viewportState.bounds]
   );
 
-  const shouldRenderGlobalMarkers = viewportState.zoom >= GLOBAL_MARKER_MIN_ZOOM;
+  const isCompactNodeMode = viewportState.zoom <= GLOBAL_COMPACT_MAX_ZOOM;
+  const isDetailMode = viewportState.zoom >= GLOBAL_DETAIL_MIN_ZOOM;
+  const shouldRenderGlobalMarkers = isCompactNodeMode || isDetailMode;
+  const isBridgeZoomMode = !isCompactNodeMode && !isDetailMode;
+
+  const withSelectedPriority = React.useCallback(
+    <T extends { id: string; coordinates: [number, number] }>(
+      items: T[],
+      selected: T | null
+    ) => {
+      if (!selected) return items;
+
+      const selectedIsVisible = isPointVisible(selected.coordinates);
+      if (!selectedIsVisible) return items;
+
+      const alreadyIncluded = items.some((item) => item.id === selected.id);
+      if (alreadyIncluded) return items;
+
+      if (items.length === 0) return [selected];
+      return [selected, ...items.slice(0, items.length - 1)];
+    },
+    [isPointVisible]
+  );
 
   const visibleEvents = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.eonet || !selectedEvent) return [];
+      if (!isPointVisible(selectedEvent.coordinates)) return [];
+      return [selectedEvent];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return events
+    const base = events
       .filter((event) => isPointVisible(event.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [events, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(base, layerVisibility.eonet ? selectedEvent : null);
+  }, [
+    events,
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.eonet,
+    selectedEvent,
+    shouldRenderGlobalMarkers,
+    withSelectedPriority,
+  ]);
 
   const visibleTsunamiAlerts = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.tsunami || !selectedTsunamiAlert) return [];
+      if (!isPointVisible(selectedTsunamiAlert.coordinates)) return [];
+      return [selectedTsunamiAlert];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return tsunamiAlerts
+    const base = tsunamiAlerts
       .filter((alert) => isPointVisible(alert.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [tsunamiAlerts, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(
+      base,
+      layerVisibility.tsunami ? selectedTsunamiAlert : null
+    );
+  }, [
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.tsunami,
+    selectedTsunamiAlert,
+    shouldRenderGlobalMarkers,
+    tsunamiAlerts,
+    withSelectedPriority,
+  ]);
 
   const visibleAirQualitySites = React.useMemo(() => {
+    if (isBridgeZoomMode) {
+      if (!layerVisibility.airQuality || !selectedAirQualitySite) return [];
+      if (!isPointVisible(selectedAirQualitySite.coordinates)) return [];
+      return [selectedAirQualitySite];
+    }
     if (!shouldRenderGlobalMarkers) return [];
-    return airQualitySites
+    const base = airQualitySites
       .filter((site) => isPointVisible(site.coordinates))
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
-  }, [airQualitySites, isPointVisible, shouldRenderGlobalMarkers]);
+    return withSelectedPriority(
+      base,
+      layerVisibility.airQuality ? selectedAirQualitySite : null
+    );
+  }, [
+    airQualitySites,
+    isBridgeZoomMode,
+    isPointVisible,
+    layerVisibility.airQuality,
+    selectedAirQualitySite,
+    shouldRenderGlobalMarkers,
+    withSelectedPriority,
+  ]);
 
   const handleMarkerPress = React.useCallback(
     (markerKey: string, onSelect: () => void) => {
@@ -576,7 +654,7 @@ export function GlobalSignalMarkers({
     [clearExpandedTimeout]
   );
 
-  if (!shouldRenderGlobalMarkers) return null;
+  if (!viewportState.bounds) return null;
 
   return (
     <>
@@ -597,23 +675,58 @@ export function GlobalSignalMarkers({
                 <button
                   type="button"
                   onClick={() => handleMarkerPress(markerKey, () => onEventSelect(event))}
-                  className="relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                  style={{
-                    backgroundColor: tone,
-                  }}
+                  className={cn(
+                    "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                    isCompactNodeMode
+                      ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                      : "flex items-center rounded-full border-white/15 px-1.5 py-1"
+                  )}
+                  style={
+                    isCompactNodeMode
+                      ? {
+                          width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                          backgroundColor: tone,
+                        }
+                      : {
+                          backgroundColor: tone,
+                        }
+                  }
                   aria-label={`Event: ${event.title}`}
+                  title={`${eventLabel}: ${event.title}`}
                 >
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                    <EventIcon className="size-3.5" style={{ color: tone }} />
-                  </span>
-                  <span
-                    className={cn(
-                      "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
-                      isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
-                    )}
-                  >
-                    {eventLabel}
-                  </span>
+                  {isCompactNodeMode ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                      />
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                          isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                        )}
+                      >
+                        {eventLabel}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                        <EventIcon className="size-3.5" style={{ color: tone }} />
+                      </span>
+                      <span
+                        className={cn(
+                          "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                          isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                        )}
+                      >
+                        {eventLabel}
+                      </span>
+                    </>
+                  )}
                 </button>
               </MarkerContent>
             </MapMarker>
@@ -634,20 +747,56 @@ export function GlobalSignalMarkers({
                   <button
                     type="button"
                     onClick={() => handleMarkerPress(markerKey, () => onTsunamiSelect(alert))}
-                    className="relative flex items-center rounded-full border border-white/15 bg-blue-500 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    className={cn(
+                      "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                      isCompactNodeMode
+                        ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                        : "flex items-center rounded-full border-white/15 bg-blue-500 px-1.5 py-1"
+                    )}
+                    style={
+                      isCompactNodeMode
+                        ? {
+                            width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            backgroundColor: "#3b82f6",
+                          }
+                        : undefined
+                    }
                     aria-label="Tsunami alert"
+                    title="Tsunami"
                   >
-                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                      <Waves className="size-3.5 text-blue-600" />
-                    </span>
-                    <span
-                      className={cn(
-                        "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
-                        isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
-                      )}
-                    >
-                      Tsunami
-                    </span>
+                    {isCompactNodeMode ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                        />
+                        <span
+                          className={cn(
+                            "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                            isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                          )}
+                        >
+                          Tsunami
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                          <Waves className="size-3.5 text-blue-600" />
+                        </span>
+                        <span
+                          className={cn(
+                            "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                            isExpanded ? "ml-1 max-w-24 opacity-100" : "ml-0 max-w-0 opacity-0"
+                          )}
+                        >
+                          Tsunami
+                        </span>
+                      </>
+                    )}
                   </button>
               </MarkerContent>
             </MapMarker>
@@ -671,21 +820,57 @@ export function GlobalSignalMarkers({
                   <button
                     type="button"
                     onClick={() => handleMarkerPress(markerKey, () => onAirQualitySelect(site))}
-                    className="relative flex items-center rounded-full border border-white/15 bg-emerald-500 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    className={cn(
+                      "relative border text-[10px] font-bold text-white backdrop-blur transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                      isCompactNodeMode
+                        ? "group rounded-full border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)]"
+                        : "flex items-center rounded-full border-white/15 bg-emerald-500 px-1.5 py-1"
+                    )}
+                    style={
+                      isCompactNodeMode
+                        ? {
+                            width: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            height: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minWidth: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            minHeight: `${GLOBAL_COMPACT_NODE_SIZE}px`,
+                            backgroundColor: "#10b981",
+                          }
+                        : undefined
+                    }
                     aria-label={`Air quality: ${site.location}`}
+                    title={`${site.parameter.toUpperCase()} ${valueLabel}`}
                   >
-                    <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                      <Wind className="size-3.5 text-emerald-600" />
-                    </span>
-                    <span
-                      className={cn(
-                        "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
-                        isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
-                      )}
-                    >
-                      {site.parameter.toUpperCase()} {valueLabel}
-                    </span>
-                </button>
+                    {isCompactNodeMode ? (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                        />
+                        <span
+                          className={cn(
+                            "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
+                            isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                          )}
+                        >
+                          {site.parameter.toUpperCase()} {valueLabel}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                          <Wind className="size-3.5 text-emerald-600" />
+                        </span>
+                        <span
+                          className={cn(
+                            "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
+                            isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
+                          )}
+                        >
+                          {site.parameter.toUpperCase()} {valueLabel}
+                        </span>
+                      </>
+                    )}
+                  </button>
               </MarkerContent>
             </MapMarker>
           );
@@ -728,12 +913,9 @@ export function EonetFlyTo({
   event: ProcessedEonetEvent | null;
 }) {
   const { map } = useMap();
-  const prevEventId = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!map || !event) return;
-    if (prevEventId.current === event.id) return;
-    prevEventId.current = event.id;
 
     map.stop();
     map.easeTo({
@@ -743,6 +925,50 @@ export function EonetFlyTo({
       essential: true,
     });
   }, [map, event]);
+
+  return null;
+}
+
+export function TsunamiFlyTo({
+  alert,
+}: {
+  alert: ProcessedTsunamiAlert | null;
+}) {
+  const { map } = useMap();
+
+  React.useEffect(() => {
+    if (!map || !alert) return;
+
+    map.stop();
+    map.easeTo({
+      center: alert.coordinates,
+      zoom: Math.max(map.getZoom(), 5.8),
+      duration: 900,
+      essential: true,
+    });
+  }, [map, alert]);
+
+  return null;
+}
+
+export function AirQualityFlyTo({
+  site,
+}: {
+  site: ProcessedAirQualitySite | null;
+}) {
+  const { map } = useMap();
+
+  React.useEffect(() => {
+    if (!map || !site) return;
+
+    map.stop();
+    map.easeTo({
+      center: site.coordinates,
+      zoom: Math.max(map.getZoom(), 6),
+      duration: 900,
+      essential: true,
+    });
+  }, [map, site]);
 
   return null;
 }
