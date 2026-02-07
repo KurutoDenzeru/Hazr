@@ -52,7 +52,7 @@ export const SeismicActivity = ({
             type="button"
             onClick={onOpenSection}
             className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
-            aria-label="Seismic activity"
+            aria-label="USGS earthquakes"
           >
             <div className="flex size-9 items-center justify-center rounded-md bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200">
               {isLoading ? (
@@ -64,7 +64,7 @@ export const SeismicActivity = ({
           </button>
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-56">
-          <p className="font-medium">Seismic Activity</p>
+          <p className="font-medium">USGS Earthquakes</p>
           {isLoading ? (
             <p className="text-xs text-muted-foreground">Updating earthquake feed...</p>
           ) : error ? (
@@ -92,7 +92,7 @@ export const SeismicActivity = ({
               <Mountain className="size-5 text-red-700 dark:text-red-200" />
             </div>
             <div>
-              <h3 className="text-sm font-medium">Live Earthquakes</h3>
+              <h3 className="text-sm font-medium">USGS Earthquakes</h3>
               <p className="text-sm text-muted-foreground">{metadata?.count ?? 0} in the last 24h</p>
             </div>
           </div>

@@ -137,7 +137,7 @@ function HazrMenuPanel({
         {/* Weather Section */}
         {!collapsed && (
           <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Weather
+            Open Meteo Weather
           </p>
         )}
         <div
@@ -161,7 +161,7 @@ function HazrMenuPanel({
         {/* Earthquakes Section */}
         {!collapsed && (
           <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Seismic Activity
+            USGS Earthquakes
           </p>
         )}
         <div
@@ -183,7 +183,7 @@ function HazrMenuPanel({
           <>
             {!collapsed && (
               <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Global Signals
+                NASA EONET Live Signals
               </p>
             )}
             <div

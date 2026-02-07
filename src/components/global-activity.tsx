@@ -2,9 +2,14 @@
 
 import React from "react";
 import {
+  Activity,
   AlertTriangle,
+  ChevronRight,
+  Clock3,
   Globe2,
+  Gauge,
   Loader2,
+  MapPin,
   RefreshCw,
   Waves,
   Wind,
@@ -14,8 +19,15 @@ import type {
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
 } from "@/types/api";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type GlobalActivityProps = {
@@ -23,7 +35,7 @@ type GlobalActivityProps = {
   focusTarget?: "global-live-events" | "global-openaq" | "global-tsunami" | null;
   onFocusTargetHandled?: () => void;
   onOpenSection?: (
-    target: "global-live-events" | "global-openaq" | "global-tsunami"
+    target: "global-live-events" | "global-openaq" | "global-tsunami",
   ) => void;
   eonetState: {
     events: ProcessedEonetEvent[];
@@ -49,12 +61,19 @@ type GlobalActivityProps = {
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
 };
 
+type SignalBadge = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+};
+
 type SignalItem = {
   id: string;
   title: string;
   subtitle: string;
+  badges: SignalBadge[];
   url?: string;
-  payload?: ProcessedEonetEvent;
+  onClick?: () => void;
 };
 
 const handleOpen = (url?: string) => {
@@ -93,12 +112,46 @@ const getTsunamiSeverityRank = (severity: string): number => {
   return 0;
 };
 
+const getTsunamiSeverityBadgeClass = (severity: string): string => {
+  const normalized = severity.toLowerCase();
+  if (normalized.includes("extreme") || normalized.includes("severe")) {
+    return "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200";
+  }
+  if (normalized.includes("major")) {
+    return "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200";
+  }
+  if (normalized.includes("moderate")) {
+    return "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200";
+  }
+  return "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200";
+};
+
 const formatTime = (date: Date): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
+};
+
+const formatRelativeTime = (date: Date): string => {
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+};
+
+const formatCoordinate = (value: number, positive: string, negative: string): string => {
+  return `${Math.abs(value).toFixed(1)}°${value >= 0 ? positive : negative}`;
+};
+
+const toSignalBadges = (badges: Array<SignalBadge | null>): SignalBadge[] => {
+  return badges.filter((badge): badge is SignalBadge => Boolean(badge));
 };
 
 const GlobalActivity = ({
@@ -135,33 +188,92 @@ const GlobalActivity = ({
     onFocusTargetHandled?.();
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const eventItems: SignalItem[] = eonetState.events.slice(0, 4).map((event) => ({
+  const eventItems: SignalItem[] = eonetState.events.slice(0, 10).map((event) => ({
     id: event.id,
     title: formatEonetTitle(event.title),
-    subtitle: `${formatEonetCategory(event.category)} • ${event.date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    })}`,
+    subtitle: "NASA EONET live event",
     url: event.url,
-    payload: event,
+    onClick: onEonetSelect ? () => onEonetSelect(event) : undefined,
+    badges: toSignalBadges([
+      {
+        label: formatEonetCategory(event.category),
+        icon: Globe2,
+        className:
+          "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      },
+      {
+        label: formatRelativeTime(event.date),
+        icon: Clock3,
+        className:
+          "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+      },
+      {
+        label: `${formatCoordinate(event.coordinates[1], "N", "S")} ${formatCoordinate(event.coordinates[0], "E", "W")}`,
+        icon: MapPin,
+        className:
+          "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+      },
+    ]),
   }));
 
-  const airItems: SignalItem[] = airQualityState.sites.slice(0, 4).map((site) => ({
-    id: site.id,
-    title: site.location,
-    subtitle: `${site.parameter.toUpperCase()} ${site.value} ${site.unit}`,
-  }));
+  const airItems: SignalItem[] = airQualityState.sites.slice(0, 10).map((site) => {
+    const value = Number.isFinite(site.value) ? site.value.toFixed(1) : `${site.value}`;
+    const locationHint = [site.city, site.country].filter(Boolean).join(", ");
 
-  const tsunamiItems: SignalItem[] = tsunamiState.alerts.slice(0, 4).map((alert) => ({
+    return {
+      id: site.id,
+      title: site.location,
+      subtitle: locationHint || "OpenAQ reporting station",
+      url: site.sourceUrl,
+      badges: toSignalBadges([
+        {
+          label: `${site.parameter.toUpperCase()} ${value} ${site.unit}`,
+          icon: Gauge,
+          className:
+            "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
+        },
+        {
+          label: site.measuredAt ? formatRelativeTime(site.measuredAt) : "Time unknown",
+          icon: Clock3,
+          className:
+            "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+        },
+        site.coveragePercent !== null && site.coveragePercent !== undefined
+          ? {
+              label: `Coverage ${site.coveragePercent.toFixed(0)}%`,
+              icon: Activity,
+              className:
+                "bg-lime-500/20 text-lime-700 dark:bg-lime-500/30 dark:text-lime-200",
+            }
+          : null,
+      ]),
+    };
+  });
+
+  const tsunamiItems: SignalItem[] = tsunamiState.alerts.slice(0, 10).map((alert) => ({
     id: alert.id,
     title: alert.headline,
-    subtitle: `${alert.severity} • ${alert.sent?.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }) ?? "Unknown"}`,
+    subtitle: "NWS tsunami bulletin",
     url: alert.url,
+    badges: toSignalBadges([
+      {
+        label: alert.severity,
+        icon: AlertTriangle,
+        className: getTsunamiSeverityBadgeClass(alert.severity),
+      },
+      {
+        label: alert.sent ? formatRelativeTime(alert.sent) : "Time unknown",
+        icon: Clock3,
+        className:
+          "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+      },
+      {
+        label: "NWS source",
+        icon: Waves,
+        className:
+          "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+      },
+    ]),
   }));
 
   const activeEventCount = eonetState.events.length;
@@ -183,7 +295,7 @@ const GlobalActivity = ({
         ? alert.severity
         : currentHighest;
     },
-    null
+    null,
   );
 
   if (collapsed) {
@@ -191,28 +303,28 @@ const GlobalActivity = ({
       <TooltipProvider delayDuration={0}>
         <div className="flex flex-col items-center gap-2">
           <MiniSignal
-            label="Global Signals"
+            label="NASA EONET Live Signals"
             icon={Globe2}
             toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             onClick={() => onOpenSection?.("global-live-events")}
             isLoading={eonetState.isLoading}
             detail={
               eonetState.isLoading
-                ? "Updating live events..."
+                ? "Updating EONET events..."
                 : activeEventCount === 0
                   ? "No active events right now."
                   : `${activeEventCount} active event${activeEventCount === 1 ? "" : "s"}`
             }
           />
           <MiniSignal
-            label="Air quality"
+            label="OpenAQ"
             icon={Wind}
             toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
             onClick={() => onOpenSection?.("global-openaq")}
             isLoading={airQualityState.isLoading}
             detail={
               airQualityState.isLoading
-                ? "Updating station data..."
+                ? "Updating OpenAQ stations..."
                 : activeAirSiteCount === 0
                   ? "No reporting stations right now."
                   : `${activeAirSiteCount} site${activeAirSiteCount === 1 ? "" : "s"} reporting`
@@ -220,14 +332,14 @@ const GlobalActivity = ({
             subDetail={airQualityState.isLoading ? undefined : primaryAirValue ?? undefined}
           />
           <MiniSignal
-            label="Tsunami alerts"
+            label="NWS Tsunamic Alerts"
             icon={Waves}
             toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
             onClick={() => onOpenSection?.("global-tsunami")}
             isLoading={tsunamiState.isLoading}
             detail={
               tsunamiState.isLoading
-                ? "Checking tsunami alerts..."
+                ? "Checking NWS tsunami alerts..."
                 : activeTsunamiCount === 0
                   ? "No active alerts."
                   : `${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`
@@ -252,8 +364,8 @@ const GlobalActivity = ({
               <Globe2 className="size-5 text-sky-700 dark:text-sky-200" />
             </div>
             <div>
-              <h3 className="text-sm font-medium">Global Signals</h3>
-              <p className="text-sm text-muted-foreground">Storms, fires, air quality, tsunamis</p>
+              <h3 className="text-sm font-medium">NASA EONET Live Signals</h3>
+              <p className="text-sm text-muted-foreground">Global events, OpenAQ air quality, NWS tsunamic alerts</p>
             </div>
           </div>
         </div>
@@ -261,7 +373,7 @@ const GlobalActivity = ({
         <div className="flex flex-col gap-3">
           <div ref={liveEventsSectionRef} id="sidebar-global-live-events" tabIndex={-1}>
             <SignalSection
-              title="Live Events"
+              title="NASA EONET Live Signals"
               icon={Globe2}
               itemIcon={Globe2}
               isLoading={eonetState.isLoading}
@@ -271,37 +383,6 @@ const GlobalActivity = ({
               items={eventItems}
               toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
               itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-              renderItem={(item: SignalItem) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => item.payload && onEonetSelect?.(item.payload)}
-                  className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-                  aria-label={item.title}
-                >
-                  <span className={cn("flex size-7 items-center justify-center rounded-md", "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-200")}>
-                    <Globe2 className="size-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[11px] font-semibold text-foreground">
-                      {item.title}
-                    </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-2 text-[10px]">
-                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/25 dark:text-amber-200">
-                        {item.payload ? formatEonetCategory(item.payload.category) : "Event"}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {item.payload
-                          ? item.payload.date.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : item.subtitle}
-                      </span>
-                    </span>
-                  </span>
-                </button>
-              )}
             />
           </div>
           <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
@@ -320,7 +401,7 @@ const GlobalActivity = ({
           </div>
           <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
             <SignalSection
-              title="NWS Tsunamis"
+              title="NWS Tsunamic Alerts"
               icon={Waves}
               itemIcon={Waves}
               isLoading={tsunamiState.isLoading}
@@ -349,7 +430,6 @@ type SignalSectionProps = {
   items: SignalItem[];
   toneClassName: string;
   itemToneClassName: string;
-  renderItem?: (item: SignalItem) => React.ReactNode;
 };
 
 const SignalSection = ({
@@ -363,7 +443,6 @@ const SignalSection = ({
   items,
   toneClassName,
   itemToneClassName,
-  renderItem,
 }: SignalSectionProps) => {
   const handleRefresh = () => {
     void onRefresh();
@@ -418,31 +497,72 @@ const SignalSection = ({
         ) : items.length === 0 ? (
           <div className="py-2 text-xs text-muted-foreground">No active signals</div>
         ) : (
-          <div className="flex flex-col gap-1">
-            {items.map((item) =>
-              renderItem ? (
-                renderItem(item)
-              ) : (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleOpen(item.url)}
-                  className="flex w-full items-center gap-2 rounded-md bg-background/60 px-2 py-2 text-left text-xs transition-colors hover:bg-background"
-                  aria-label={item.title}
-                >
-                  <span className={cn("flex size-6 items-center justify-center rounded-md", itemToneClassName)}>
-                    <ItemIcon className="size-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="truncate block text-[11px] font-semibold text-foreground">
-                      {item.title}
-                    </span>
-                    <span className="truncate block text-[10px] text-muted-foreground">{item.subtitle}</span>
-                  </span>
-                </button>
-              )
-            )}
-          </div>
+          <>
+            <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+              History
+            </p>
+            <ScrollArea className="h-52 rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
+              <div className="flex flex-col gap-1">
+                {items.map((item) => {
+                  const handleItemClick = () => {
+                    if (item.onClick) {
+                      item.onClick();
+                      return;
+                    }
+                    handleOpen(item.url);
+                  };
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={handleItemClick}
+                      className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
+                      aria-label={item.title}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={cn(
+                            "flex size-10 shrink-0 items-center justify-center rounded-full shadow-lg transition-transform group-hover:scale-105",
+                            itemToneClassName,
+                          )}
+                        >
+                          <ItemIcon className="size-4" />
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {item.title}
+                            </p>
+                            <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
+                          </div>
+                          <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                            {item.subtitle}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {item.badges.map((badge, index) => (
+                              <Badge
+                                key={`${item.id}-${badge.label}-${index}`}
+                                variant="secondary"
+                                className={cn(
+                                  "h-auto border-none rounded-md px-2 py-1 text-[10px] font-medium",
+                                  badge.className,
+                                )}
+                              >
+                                <badge.icon className="size-3" />
+                                <span>{badge.label}</span>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </>
         )}
       </div>
     </div>

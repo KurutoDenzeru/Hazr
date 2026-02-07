@@ -1541,7 +1541,7 @@ export function MapOverlayUI({
           },
           {
             icon: Cloud,
-            label: "Weather",
+            label: "Open Meteo",
             onClick: () => setIsWeatherDrawerOpen(true),
           },
           {
