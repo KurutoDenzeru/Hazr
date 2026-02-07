@@ -1144,6 +1144,8 @@ type MapClusterLayerProps<
   clusterColors?: [string, string, string];
   /** Point count thresholds for color/size steps: [medium, large] (default: [100, 750]) */
   clusterThresholds?: [number, number];
+  /** Render compact node markers when map zoom is at or below this threshold */
+  compactAtOrBelowZoom?: number;
   /** Color for unclustered individual points (default: "#3b82f6") */
   pointColor?: string;
   /** Callback when an unclustered point is clicked */
@@ -1171,6 +1173,7 @@ function MapClusterLayer<
   clusterRadius = 50,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
   clusterThresholds = [100, 750],
+  compactAtOrBelowZoom,
   onClusterClick,
 }: MapClusterLayerProps<P>) {
   const { map, isLoaded } = useMap();
@@ -1256,6 +1259,9 @@ function MapClusterLayer<
     }
 
     const nextClusters = Array.from(unique.values());
+    const isCompactMode =
+      typeof compactAtOrBelowZoom === "number" &&
+      map.getZoom() <= compactAtOrBelowZoom;
     const signature = nextClusters
       .map((feature) => {
         const clusterId = feature.properties?.cluster_id as number | undefined;
@@ -1267,11 +1273,12 @@ function MapClusterLayer<
       })
       .sort()
       .join("|");
+    const modeAwareSignature = `${isCompactMode ? "compact" : "badge"}|${signature}`;
 
-    if (lastSignatureRef.current === signature) return;
-    lastSignatureRef.current = signature;
+    if (lastSignatureRef.current === modeAwareSignature) return;
+    lastSignatureRef.current = modeAwareSignature;
     setClusters(nextClusters);
-  }, [isLoaded, map, sourceId, visible]);
+  }, [compactAtOrBelowZoom, isLoaded, map, sourceId, visible]);
 
   const scheduleRefresh = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -1313,6 +1320,9 @@ function MapClusterLayer<
   if (!visible) return null;
 
   const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
+  const isCompactMode =
+    typeof compactAtOrBelowZoom === "number" &&
+    (map?.getZoom() ?? Number.POSITIVE_INFINITY) <= compactAtOrBelowZoom;
 
   return (
     <>
@@ -1328,6 +1338,12 @@ function MapClusterLayer<
         if (!coordinates) return null;
         const tone = getClusterTone(pointCount);
         const countLabel = formatCount(pointCount);
+        const compactNodeSize =
+          pointCount < clusterThresholds[0]
+            ? 12
+            : pointCount < clusterThresholds[1]
+              ? 15
+              : 18;
 
         const handleClusterClick = async () => {
           if (!map) return;
@@ -1347,31 +1363,59 @@ function MapClusterLayer<
             latitude={coordinates[1]}
           >
             <MarkerContent>
-              <button
-                type="button"
-                onClick={handleClusterClick}
-                aria-label={`${labelText} cluster: ${pointCount}`}
-                className={cn(
-                  "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-                  "hover:scale-105"
-                )}
-                style={{
-                  backgroundColor: tone,
-                }}
-              >
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                  {ClusterIcon ? (
-                    <ClusterIcon className="size-3.5" />
-                  ) : (
-                    <span className="text-[10px] font-bold" style={{ color: tone }}>
-                      {labelPrefix ?? "C"}
-                    </span>
+              {isCompactMode ? (
+                <button
+                  type="button"
+                  onClick={handleClusterClick}
+                  aria-label={`${labelText} cluster: ${pointCount}`}
+                  title={`${labelText}: ${pointCount}`}
+                  className={cn(
+                    "group relative rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_0_18px_rgba(0,0,0,0.28)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
+                    "hover:scale-110"
                   )}
-                </span>
-                <span className="truncate max-w-27.5">
-                  {labelText} {countLabel}
-                </span>
-              </button>
+                  style={{
+                    width: `${compactNodeSize}px`,
+                    height: `${compactNodeSize}px`,
+                    minWidth: `${compactNodeSize}px`,
+                    minHeight: `${compactNodeSize}px`,
+                    backgroundColor: tone,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                  />
+                  <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    {countLabel}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleClusterClick}
+                  aria-label={`${labelText} cluster: ${pointCount}`}
+                  className={cn(
+                    "group relative flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                    "hover:scale-105"
+                  )}
+                  style={{
+                    backgroundColor: tone,
+                  }}
+                >
+                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                    {ClusterIcon ? (
+                      <ClusterIcon className="size-3.5" />
+                    ) : (
+                      <span className="text-[10px] font-bold" style={{ color: tone }}>
+                        {labelPrefix ?? "C"}
+                      </span>
+                    )}
+                  </span>
+                  <span className="truncate max-w-27.5">
+                    {labelText} {countLabel}
+                  </span>
+                </button>
+              )}
             </MarkerContent>
           </MapMarker>
         );

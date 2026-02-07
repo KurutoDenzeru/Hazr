@@ -226,6 +226,14 @@ export default function GoogleMapsClone() {
     return 22;
   };
 
+  const getQuakeNodeSize = (magnitude: number) => {
+    if (magnitude >= 7) return 18;
+    if (magnitude >= 6) return 16;
+    if (magnitude >= 5) return 14;
+    if (magnitude >= 4) return 13;
+    return 12;
+  };
+
   const handleTriggerQuakePulse = React.useCallback(
     (earthquake: ProcessedEarthquake) => {
       if (typeof window === "undefined") return;
@@ -387,6 +395,7 @@ export default function GoogleMapsClone() {
   );
 
   const globalClusterMaxZoom = 6;
+  const isZoomedOutNodeMode = viewState.zoom <= 3.8;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -508,80 +517,118 @@ export default function GoogleMapsClone() {
 
                 {/* Earthquake Markers */}
                 {layerVisibility.earthquakes &&
-                  earthquakes.map((eq) => (
-                    <MapMarker
-                      key={eq.id}
-                      longitude={eq.coordinates[0]}
-                      latitude={eq.coordinates[1]}
-                    >
-                      <MarkerContent>
-                        <button
-                          type="button"
-                          onClick={() => handleEarthquakeSelect(eq)}
-                          className="relative flex items-center justify-center cursor-pointer"
-                          aria-label={`Earthquake: ${eq.title}`}
+                  earthquakes.map((eq) => {
+                    const magnitudeColor = getMagnitudeColor(eq.magnitude);
+                    const quakeNodeSize = getQuakeNodeSize(eq.magnitude);
+                    const isActive = activeQuakePulseId === eq.id;
+
+                    if (isZoomedOutNodeMode) {
+                      return (
+                        <MapMarker
+                          key={eq.id}
+                          longitude={eq.coordinates[0]}
+                          latitude={eq.coordinates[1]}
                         >
-                          {activeQuakePulseId === eq.id && (
-                            <>
+                          <MarkerContent>
+                            <button
+                              type="button"
+                              onClick={() => handleEarthquakeSelect(eq)}
+                              className="group relative cursor-pointer rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                              aria-label={`Earthquake: ${eq.title}`}
+                              title={`${eq.title} (${eq.magnitude.toFixed(1)})`}
+                              style={{
+                                width: `${quakeNodeSize}px`,
+                                height: `${quakeNodeSize}px`,
+                                minWidth: `${quakeNodeSize}px`,
+                                minHeight: `${quakeNodeSize}px`,
+                                backgroundColor: magnitudeColor,
+                              }}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
+                              />
+                            </button>
+                          </MarkerContent>
+                        </MapMarker>
+                      );
+                    }
+
+                    return (
+                      <MapMarker
+                        key={eq.id}
+                        longitude={eq.coordinates[0]}
+                        latitude={eq.coordinates[1]}
+                      >
+                        <MarkerContent>
+                          <button
+                            type="button"
+                            onClick={() => handleEarthquakeSelect(eq)}
+                            className="relative flex items-center justify-center cursor-pointer"
+                            aria-label={`Earthquake: ${eq.title}`}
+                          >
+                            {isActive && (
+                              <>
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute rounded-full animate-ping"
+                                  style={{
+                                    backgroundColor: `${magnitudeColor}26`,
+                                    width: `${getPulseWidth(eq.magnitude)}px`,
+                                    height: `${getPulseHeight(eq.magnitude)}px`,
+                                    borderRadius: 9999,
+                                  }}
+                                />
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute rounded-full animate-pulse"
+                                  style={{
+                                    backgroundColor: `${magnitudeColor}1f`,
+                                    width: `${getPulseInnerWidth(eq.magnitude)}px`,
+                                    height: `${getPulseInnerHeight(eq.magnitude)}px`,
+                                    borderRadius: 9999,
+                                  }}
+                                />
+                              </>
+                            )}
+                            {/* Pulse ring for recent earthquakes */}
+                            {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
                               <span
                                 aria-hidden="true"
                                 className="absolute rounded-full animate-ping"
                                 style={{
-                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}26`,
+                                  backgroundColor: `${magnitudeColor}30`,
                                   width: `${getPulseWidth(eq.magnitude)}px`,
                                   height: `${getPulseHeight(eq.magnitude)}px`,
                                   borderRadius: 9999,
+                                  animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
                                 }}
                               />
-                              <span
-                                aria-hidden="true"
-                                className="absolute rounded-full animate-pulse"
-                                style={{
-                                  backgroundColor: `${getMagnitudeColor(eq.magnitude)}1f`,
-                                  width: `${getPulseInnerWidth(eq.magnitude)}px`,
-                                  height: `${getPulseInnerHeight(eq.magnitude)}px`,
-                                  borderRadius: 9999,
-                                }}
-                              />
-                            </>
-                          )}
-                          {/* Pulse ring for recent earthquakes */}
-                          {!activeQuakePulseId && now - eq.time.getTime() < 3600000 && (
-                            <span
-                              aria-hidden="true"
-                              className="absolute rounded-full animate-ping"
-                              style={{
-                                backgroundColor: `${getMagnitudeColor(eq.magnitude)}30`,
-                                width: `${getPulseWidth(eq.magnitude)}px`,
-                                height: `${getPulseHeight(eq.magnitude)}px`,
-                                borderRadius: 9999,
-                                animationDuration: `${getPulseDuration(eq.magnitude)}ms`,
-                              }}
-                            />
-                          )}
-                          {/* Main marker */}
-                          <div
-                            className={cn(
-                              "relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur",
-                              activeQuakePulseId === eq.id && "motion-safe:animate-bounce",
                             )}
-                            style={{
-                              backgroundColor: getMagnitudeColor(eq.magnitude),
-                            }}
-                          >
-                            <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
-                                <Mountain
-                                  className="size-3.5"
-                                  style={{ color: getMagnitudeColor(eq.magnitude) }}
-                                />
-                            </span>
-                            <span>Quake</span>
-                            <span>{eq.magnitude.toFixed(1)}</span>
-                          </div>
-                        </button>
-                      </MarkerContent>
-                    </MapMarker>
-                  ))}
+                            {/* Main marker */}
+                            <div
+                              className={cn(
+                                "relative flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur",
+                                isActive && "motion-safe:animate-bounce",
+                              )}
+                              style={{
+                                backgroundColor: magnitudeColor,
+                              }}
+                            >
+                              <span className="inline-flex items-center justify-center rounded-full bg-white/90 px-0.5">
+                                  <Mountain
+                                    className="size-3.5"
+                                    style={{ color: magnitudeColor }}
+                                  />
+                              </span>
+                              <span>Quake</span>
+                              <span>{eq.magnitude.toFixed(1)}</span>
+                            </div>
+                          </button>
+                        </MarkerContent>
+                      </MapMarker>
+                    );
+                  })}
 
                 <MapClusterLayer
                   data={eonetGeojson}
@@ -589,6 +636,7 @@ export default function GoogleMapsClone() {
                   labelPrefix="E"
                   clusterLabel="Signals"
                   clusterIcon={Activity}
+                  compactAtOrBelowZoom={4.2}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
@@ -609,6 +657,7 @@ export default function GoogleMapsClone() {
                   labelPrefix="AQ"
                   clusterLabel="Air"
                   clusterIcon={Wind}
+                  compactAtOrBelowZoom={4.2}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
@@ -628,6 +677,7 @@ export default function GoogleMapsClone() {
                   labelPrefix="T"
                   clusterLabel="Tsunami"
                   clusterIcon={Waves}
+                  compactAtOrBelowZoom={4.2}
                   pointColor="transparent"
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
