@@ -503,6 +503,26 @@ export function GlobalSignalMarkers({
   const GLOBAL_COMPACT_NODE_SIZE = 13;
   const MAX_VISIBLE_GLOBAL_MARKERS = 90;
 
+  const activePopoverMarkerKey = React.useMemo(() => {
+    if (layerVisibility.eonet && selectedEvent) {
+      return `event-${selectedEvent.id}`;
+    }
+    if (layerVisibility.tsunami && selectedTsunamiAlert) {
+      return `tsunami-${selectedTsunamiAlert.id}`;
+    }
+    if (layerVisibility.airQuality && selectedAirQualitySite) {
+      return `air-${selectedAirQualitySite.id}`;
+    }
+    return null;
+  }, [
+    layerVisibility.airQuality,
+    layerVisibility.eonet,
+    layerVisibility.tsunami,
+    selectedAirQualitySite,
+    selectedEvent,
+    selectedTsunamiAlert,
+  ]);
+
   const clearExpandedTimeout = React.useCallback(() => {
     if (typeof window === "undefined") return;
     if (collapseTimeoutRef.current === null) return;
@@ -515,6 +535,15 @@ export function GlobalSignalMarkers({
       clearExpandedTimeout();
     };
   }, [clearExpandedTimeout]);
+
+  React.useEffect(() => {
+    clearExpandedTimeout();
+    if (!activePopoverMarkerKey) {
+      setExpandedMarkerKey(null);
+      return;
+    }
+    setExpandedMarkerKey(activePopoverMarkerKey);
+  }, [activePopoverMarkerKey, clearExpandedTimeout]);
 
   React.useEffect(() => {
     if (!map || !isLoaded) return;
@@ -642,7 +671,7 @@ export function GlobalSignalMarkers({
     (markerKey: string, onSelect: () => void) => {
       setExpandedMarkerKey(markerKey);
       clearExpandedTimeout();
-      if (typeof window !== "undefined") {
+      if (markerKey !== activePopoverMarkerKey && typeof window !== "undefined") {
         collapseTimeoutRef.current = window.setTimeout(() => {
           setExpandedMarkerKey((current) =>
             current === markerKey ? null : current
@@ -651,7 +680,7 @@ export function GlobalSignalMarkers({
       }
       onSelect();
     },
-    [clearExpandedTimeout]
+    [activePopoverMarkerKey, clearExpandedTimeout]
   );
 
   if (!viewportState.bounds) return null;
@@ -664,7 +693,8 @@ export function GlobalSignalMarkers({
           const EventIcon = getEventIcon(event.category);
           const eventLabel = getEventCategoryLabel(event.category);
           const markerKey = `event-${event.id}`;
-          const isExpanded = expandedMarkerKey === markerKey;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
           return (
             <MapMarker
               key={event.id}
@@ -736,7 +766,8 @@ export function GlobalSignalMarkers({
       {layerVisibility.tsunami &&
         visibleTsunamiAlerts.map((alert) => {
           const markerKey = `tsunami-${alert.id}`;
-          const isExpanded = expandedMarkerKey === markerKey;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
           return (
             <MapMarker
               key={alert.id}
@@ -806,7 +837,8 @@ export function GlobalSignalMarkers({
       {layerVisibility.airQuality &&
         visibleAirQualitySites.map((site) => {
           const markerKey = `air-${site.id}`;
-          const isExpanded = expandedMarkerKey === markerKey;
+          const isExpanded =
+            expandedMarkerKey === markerKey || activePopoverMarkerKey === markerKey;
           const valueLabel = Number.isFinite(site.value)
             ? site.value.toFixed(1)
             : `${site.value}`;
