@@ -277,6 +277,21 @@ export type OpenAQLatestResult = {
   };
   sensorsId: number;
   locationsId: number;
+  location?: string | null;
+  city?: string | null;
+  country?: string | null;
+  period?: {
+    label?: string | null;
+    interval?: string | null;
+  } | null;
+  coverage?: {
+    percentCoverage?: number | null;
+  } | null;
+  summary?: {
+    avg?: number | null;
+    min?: number | null;
+    max?: number | null;
+  } | null;
 };
 
 export type OpenAQLatestResponse = {
@@ -290,6 +305,18 @@ export type ProcessedAirQualitySite = {
   value: number;
   unit: string;
   coordinates: [number, number];
+  locationId: number;
+  sensorId: number;
+  measuredAt: Date | null;
+  locationName?: string | null;
+  city?: string | null;
+  country?: string | null;
+  averagingPeriod?: string | null;
+  coveragePercent?: number | null;
+  averageValue?: number | null;
+  minValue?: number | null;
+  maxValue?: number | null;
+  sourceUrl?: string;
 };
 
 export type NwsAlertFeature = {

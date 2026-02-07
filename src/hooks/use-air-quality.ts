@@ -28,18 +28,34 @@ const buildOpenAqUrl = (limit: number) => {
   return `${OPENAQ_BASE_URL}?${params.toString()}`;
 };
 
+const buildOpenAqLocationUrl = (locationId: number) => `https://openaq.org/locations/${locationId}`;
+
 const toProcessedSites = (data: OpenAQLatestResponse): ProcessedAirQualitySite[] => {
   return data.results
     .map((result, index): ProcessedAirQualitySite | null => {
       const { latitude, longitude } = result.coordinates;
       if (latitude === null || longitude === null) return null;
+      const measuredAt = result.datetime?.utc ? new Date(result.datetime.utc) : null;
+      const hasValidMeasuredAt = measuredAt instanceof Date && !Number.isNaN(measuredAt.getTime());
       return {
         id: `${result.locationsId}-${result.sensorsId}-${index}`,
-        location: `Location ${result.locationsId}`,
+        location: result.location?.trim() || `Location ${result.locationsId}`,
         parameter: OPENAQ_PARAMETER.label,
         value: result.value,
         unit: OPENAQ_PARAMETER.unit,
         coordinates: [longitude, latitude],
+        locationId: result.locationsId,
+        sensorId: result.sensorsId,
+        measuredAt: hasValidMeasuredAt ? measuredAt : null,
+        locationName: result.location ?? null,
+        city: result.city ?? null,
+        country: result.country ?? null,
+        averagingPeriod: result.period?.label ?? result.period?.interval ?? null,
+        coveragePercent: result.coverage?.percentCoverage ?? null,
+        averageValue: result.summary?.avg ?? null,
+        minValue: result.summary?.min ?? null,
+        maxValue: result.summary?.max ?? null,
+        sourceUrl: buildOpenAqLocationUrl(result.locationsId),
       };
     })
     .filter((site): site is ProcessedAirQualitySite => Boolean(site));
