@@ -1285,12 +1285,12 @@ export function SignalOverlay({
   const activeEventTone = activeEvent ? getEventTone(activeEvent.category) : getEventTone("default");
 
   return createPortal(
-    <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3 shadow-lg">
+    <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3">
       {activeEarthquake ? (
         <UnifiedSignalPopover
           leading={(
             <div
-              className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
+              className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
               style={{
                 backgroundColor: getMagnitudeColor(activeEarthquake.magnitude),
                 boxShadow: `0 4px 14px ${getMagnitudeColor(activeEarthquake.magnitude)}40`,
@@ -1326,7 +1326,7 @@ export function SignalOverlay({
       {activeEvent ? (
         <UnifiedSignalPopover
           leading={(
-            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg shadow-lg", activeEventTone.lead)}>
+            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg", activeEventTone.lead)}>
               <ActiveEventIcon className="size-6" />
             </div>
           )}
@@ -1340,7 +1340,7 @@ export function SignalOverlay({
       {activeTsunami ? (
         <UnifiedSignalPopover
           leading={(
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 shadow-lg dark:bg-sky-500/30 dark:text-sky-200">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
               <Waves className="size-6" />
             </div>
           )}
@@ -1354,7 +1354,7 @@ export function SignalOverlay({
       {activeAirQuality ? (
         <UnifiedSignalPopover
           leading={(
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 shadow-lg dark:bg-emerald-500/30 dark:text-emerald-200">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200">
               <Wind className="size-6" />
             </div>
           )}

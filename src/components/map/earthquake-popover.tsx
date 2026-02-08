@@ -123,12 +123,12 @@ export function EarthquakePopover({
 
   return createPortal(
     <div
-      className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3 shadow-lg"
+      className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-2 sm:p-3"
     >
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <div
-            className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
+            className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
             style={{
               backgroundColor: magColor,
               boxShadow: `0 4px 14px ${magColor}40`,
