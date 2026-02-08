@@ -66,10 +66,8 @@ import type {
   ProcessedTsunamiAlert,
 } from "@/types/api";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1449,25 +1447,41 @@ function MobileDrawerHeader({
   title,
   description,
   iconToneClassName,
+  onClose,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   iconToneClassName: string;
+  onClose: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-3 px-1">
-      <div
-        className={cn(
-          "flex size-9 items-center justify-center rounded-xl shadow-lg",
-          iconToneClassName,
-        )}
-      >
-        <Icon className="size-5 text-white" />
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="border-b border-border/60 px-4 pb-3 pt-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div
+            className={cn(
+              "flex size-8 shrink-0 items-center justify-center rounded-md border border-white/20",
+              iconToneClassName,
+            )}
+          >
+            <Icon className="size-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">{title}</h3>
+            <p className="truncate text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="shrink-0 rounded-md border border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          onClick={onClose}
+          aria-label={`Close ${title} drawer`}
+        >
+          <X className="size-4" />
+        </Button>
       </div>
     </div>
   );
@@ -1526,10 +1540,7 @@ export function MapOverlayUI({
   layerVisibility: LayerVisibility;
   onLayerVisibilityChange: React.Dispatch<React.SetStateAction<LayerVisibility>>;
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
-  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
-  const [isGlobalSignalsDrawerOpen, setIsGlobalSignalsDrawerOpen] = React.useState(false);
+  const [activeMobileDrawer, setActiveMobileDrawer] = React.useState<"menu" | "quakes" | "weather" | "global" | null>(null);
   const isMobile = useIsMobile();
   const [quakePage, setQuakePage] = React.useState(1);
   const quakePageSize = 8;
@@ -1549,24 +1560,19 @@ export function MapOverlayUI({
 
   React.useEffect(() => {
     if (isMobile) return;
-    setIsMobileMenuOpen(false);
-    setIsQuakesDrawerOpen(false);
-    setIsWeatherDrawerOpen(false);
-    setIsGlobalSignalsDrawerOpen(false);
+    setActiveMobileDrawer(null);
   }, [isMobile]);
 
-  const activateDrawer = React.useCallback(
-    (drawer: "menu" | "quakes" | "weather" | "global") => {
-      setIsMobileMenuOpen(drawer === "menu");
-      setIsQuakesDrawerOpen(drawer === "quakes");
-      setIsWeatherDrawerOpen(drawer === "weather");
-      setIsGlobalSignalsDrawerOpen(drawer === "global");
-    },
-    []
-  );
+  const activateDrawer = React.useCallback((drawer: "menu" | "quakes" | "weather" | "global") => {
+    setActiveMobileDrawer(drawer);
+  }, []);
+
+  const closeDrawer = React.useCallback(() => {
+    setActiveMobileDrawer(null);
+  }, []);
 
   const handleQuakeClick = (eq: ProcessedEarthquake) => {
-    setIsQuakesDrawerOpen(false);
+    closeDrawer();
     onEarthquakeSelect(eq);
   };
 
@@ -1604,245 +1610,229 @@ export function MapOverlayUI({
       ) : null}
 
       <Drawer
-        open={isMobileMenuOpen}
+        open={activeMobileDrawer !== null}
         onOpenChange={(open) => {
-          if (open) {
-            activateDrawer("menu");
-            return;
+          if (!open) {
+            closeDrawer();
           }
-          setIsMobileMenuOpen(false);
         }}
       >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <MobileDrawerHeader
-              icon={SlidersHorizontal}
-              iconToneClassName="bg-slate-500 shadow-slate-500/20"
-              title="Menu"
-              description="Settings are embedded here on mobile for quick control."
-            />
-            <ScrollArea className="h-[62vh] rounded-md border border-border/60 bg-muted/20 p-3">
-              <div className="space-y-3 pr-3">
-                <HazrSettingsPanel
-                  settings={appSettings}
-                  onSettingsChange={onAppSettingsChange}
-                  layerVisibility={layerVisibility}
-                  onLayerVisibilityChange={onLayerVisibilityChange}
-                  onResetDefaults={onResetDefaults}
-                  showInlineReset
-                />
-              </div>
-            </ScrollArea>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      <Drawer
-        open={isQuakesDrawerOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            activateDrawer("quakes");
-            return;
-          }
-          setIsQuakesDrawerOpen(false);
-        }}
-      >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <MobileDrawerHeader
-              icon={Activity}
-              iconToneClassName="bg-red-500 shadow-red-500/20"
-              title="Live Earthquakes"
-              description={`${earthquakes.length} in the last 24h`}
-            />
-            <Separator className="mb-2" />
-            {!layerVisibility.earthquakes ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                USGS earthquakes are hidden in settings.
-              </div>
-            ) : earthquakes.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No recent earthquakes
-              </div>
-            ) : (
+        <DrawerContent className="h-[88dvh] max-h-[88dvh] min-h-0 rounded-t-2xl border-t border-border/70 p-0">
+          <div className="flex h-full min-h-0 flex-col">
+            {activeMobileDrawer === "menu" ? (
               <>
-                <ScrollArea className="h-[56vh] rounded-md bg-muted/20 pr-3">
-                  <div className="flex flex-col gap-1">
-                    {paginatedEarthquakes.map((eq) => (
-                      <EarthquakeItem
-                        key={eq.id}
-                        earthquake={eq}
-                        onClick={() => handleQuakeClick(eq)}
-                      />
-                    ))}
+                <MobileDrawerHeader
+                  icon={SlidersHorizontal}
+                  iconToneClassName="bg-slate-500"
+                  title="Menu"
+                  description="Settings and layer controls"
+                  onClose={closeDrawer}
+                />
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="rounded-md border border-border/60 bg-muted/15 p-3">
+                    <HazrSettingsPanel
+                      settings={appSettings}
+                      onSettingsChange={onAppSettingsChange}
+                      layerVisibility={layerVisibility}
+                      onLayerVisibilityChange={onLayerVisibilityChange}
+                      onResetDefaults={onResetDefaults}
+                      showInlineReset
+                    />
                   </div>
-                </ScrollArea>
-                {totalQuakePages > 1 ? (
-                  <Pagination className="mt-3">
-                    <PaginationContent className="hidden sm:flex">
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={handlePreviousQuakePage}
-                          disabled={quakePage === 1}
-                          aria-disabled={quakePage === 1}
-                        />
-                      </PaginationItem>
-                      {quakePaginationRange.map((entry, index) => (
-                        <PaginationItem key={`mobile-quake-page-${entry}-${index}`}>
-                          {entry === "ellipsis" ? (
-                            <PaginationEllipsis />
-                          ) : (
-                            <PaginationButton
-                              onClick={() => setQuakePage(entry)}
-                              isActive={entry === quakePage}
-                              aria-label={`Go to quake page ${entry}`}
-                            >
-                              {entry}
-                            </PaginationButton>
-                          )}
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={handleNextQuakePage}
-                          disabled={quakePage === totalQuakePages}
-                          aria-disabled={quakePage === totalQuakePages}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                    <PaginationContent className="flex w-full items-center justify-between gap-2 sm:hidden">
-                      <PaginationItem>
-                        <PaginationButton
-                          size="sm"
-                          className="px-2.5"
-                          onClick={handlePreviousQuakePage}
-                          disabled={quakePage === 1}
-                          aria-disabled={quakePage === 1}
-                          aria-label="Go to previous quake page"
-                        >
-                          Prev
-                        </PaginationButton>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <span className="text-xs text-muted-foreground">
-                          Page {quakePage} of {totalQuakePages}
-                        </span>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationButton
-                          size="sm"
-                          className="px-2.5"
-                          onClick={handleNextQuakePage}
-                          disabled={quakePage === totalQuakePages}
-                          aria-disabled={quakePage === totalQuakePages}
-                          aria-label="Go to next quake page"
-                        >
-                          Next
-                        </PaginationButton>
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                ) : null}
+                </div>
               </>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
+            ) : null}
 
-      <Drawer
-        open={isGlobalSignalsDrawerOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            activateDrawer("global");
-            return;
-          }
-          setIsGlobalSignalsDrawerOpen(false);
-        }}
-      >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full min-h-0 flex-col p-3 sm:p-4">
-            <MobileDrawerHeader
-              icon={Globe2}
-              iconToneClassName="bg-amber-500 shadow-amber-500/20"
-              title="Global Signals"
-              description="NASA EONET Live Signals, OpenAQ, and NWS Tsunami alerts."
-            />
-            <ScrollArea className="h-[62vh] pr-1">
-              <div className="min-w-0 pr-1">
-                {!layerVisibility.eonet &&
-                !layerVisibility.airQuality &&
-                !layerVisibility.tsunami ? (
-                  <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
-                    Global sources are hidden in settings.
+            {activeMobileDrawer === "quakes" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Activity}
+                  iconToneClassName="bg-red-500"
+                  title="Live Earthquakes"
+                  description={`${earthquakes.length} in the last 24h`}
+                  onClose={closeDrawer}
+                />
+                <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+                  {!layerVisibility.earthquakes ? (
+                    <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/60 bg-muted/15 px-3 py-6 text-center text-sm text-muted-foreground">
+                      USGS earthquakes are hidden in settings.
+                    </div>
+                  ) : earthquakes.length === 0 ? (
+                    <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/60 bg-muted/15 px-3 py-6 text-center text-sm text-muted-foreground">
+                      No recent earthquakes
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        data-vaul-no-drag
+                        className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border border-border/60 bg-muted/15 p-1.5"
+                      >
+                        <div className="flex flex-col gap-1">
+                          {paginatedEarthquakes.map((eq) => (
+                            <EarthquakeItem
+                              key={eq.id}
+                              earthquake={eq}
+                              onClick={() => handleQuakeClick(eq)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {totalQuakePages > 1 ? (
+                        <Pagination className="mt-2">
+                          <PaginationContent className="hidden sm:flex">
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={handlePreviousQuakePage}
+                                disabled={quakePage === 1}
+                                aria-disabled={quakePage === 1}
+                              />
+                            </PaginationItem>
+                            {quakePaginationRange.map((entry, index) => (
+                              <PaginationItem key={`mobile-quake-page-${entry}-${index}`}>
+                                {entry === "ellipsis" ? (
+                                  <PaginationEllipsis />
+                                ) : (
+                                  <PaginationButton
+                                    onClick={() => setQuakePage(entry)}
+                                    isActive={entry === quakePage}
+                                    aria-label={`Go to quake page ${entry}`}
+                                  >
+                                    {entry}
+                                  </PaginationButton>
+                                )}
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={handleNextQuakePage}
+                                disabled={quakePage === totalQuakePages}
+                                aria-disabled={quakePage === totalQuakePages}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                          <PaginationContent className="flex w-full items-center justify-between gap-2 px-1 sm:hidden">
+                            <PaginationItem>
+                              <PaginationButton
+                                size="sm"
+                                className="px-2.5"
+                                onClick={handlePreviousQuakePage}
+                                disabled={quakePage === 1}
+                                aria-disabled={quakePage === 1}
+                                aria-label="Go to previous quake page"
+                              >
+                                Prev
+                              </PaginationButton>
+                            </PaginationItem>
+                            <PaginationItem className="min-w-0 flex-1 text-center">
+                              <span className="text-xs text-muted-foreground">
+                                {quakePage}/{totalQuakePages}
+                              </span>
+                            </PaginationItem>
+                            <PaginationItem>
+                              <PaginationButton
+                                size="sm"
+                                className="px-2.5"
+                                onClick={handleNextQuakePage}
+                                disabled={quakePage === totalQuakePages}
+                                aria-disabled={quakePage === totalQuakePages}
+                                aria-label="Go to next quake page"
+                              >
+                                Next
+                              </PaginationButton>
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {activeMobileDrawer === "global" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Globe2}
+                  iconToneClassName="bg-amber-500"
+                  title="Global Signals"
+                  description="NASA EONET, OpenAQ, and NWS Tsunami alerts"
+                  onClose={closeDrawer}
+                />
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="min-w-0 rounded-md border border-border/60 bg-muted/15 p-2">
+                    {!layerVisibility.eonet &&
+                    !layerVisibility.airQuality &&
+                    !layerVisibility.tsunami ? (
+                      <div className="rounded-md border border-border/60 bg-background/70 px-3 py-6 text-center text-sm text-muted-foreground">
+                        Global sources are hidden in settings.
+                      </div>
+                    ) : (
+                      <GlobalActivity
+                        collapsed={false}
+                        visibility={{
+                          eonet: layerVisibility.eonet,
+                          airQuality: layerVisibility.airQuality,
+                          tsunami: layerVisibility.tsunami,
+                        }}
+                        eonetState={eonetState}
+                        airQualityState={airQualityState}
+                        tsunamiState={tsunamiState}
+                        onEonetSelect={(event) => {
+                          closeDrawer();
+                          onEonetSelect(event);
+                        }}
+                        onAirQualitySelect={(site) => {
+                          closeDrawer();
+                          onAirQualitySelect(site);
+                        }}
+                        onTsunamiSelect={(alert) => {
+                          closeDrawer();
+                          onTsunamiSelect(alert);
+                        }}
+                      />
+                    )}
                   </div>
-                ) : (
-                  <GlobalActivity
-                    collapsed={false}
-                    visibility={{
-                      eonet: layerVisibility.eonet,
-                      airQuality: layerVisibility.airQuality,
-                      tsunami: layerVisibility.tsunami,
-                    }}
-                    eonetState={eonetState}
-                    airQualityState={airQualityState}
-                    tsunamiState={tsunamiState}
-                    onEonetSelect={(event) => {
-                      setIsGlobalSignalsDrawerOpen(false);
-                      onEonetSelect(event);
-                    }}
-                    onAirQualitySelect={(site) => {
-                      setIsGlobalSignalsDrawerOpen(false);
-                      onAirQualitySelect(site);
-                    }}
-                    onTsunamiSelect={(alert) => {
-                      setIsGlobalSignalsDrawerOpen(false);
-                      onTsunamiSelect(alert);
-                    }}
-                  />
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-        </DrawerContent>
-      </Drawer>
+                </div>
+              </>
+            ) : null}
 
-      <Drawer
-        open={isWeatherDrawerOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            activateDrawer("weather");
-            return;
-          }
-          setIsWeatherDrawerOpen(false);
-        }}
-      >
-        <DrawerContent className="max-h-[78dvh]">
-          <div className="flex min-h-0 flex-col p-3 sm:p-4">
-            <MobileDrawerHeader
-              icon={Cloud}
-              iconToneClassName="bg-sky-500 shadow-sky-500/20"
-              title="Weather"
-              description="Local conditions and hourly outlook from Open-Meteo data."
-            />
-            <ScrollArea
-              data-vaul-no-drag
-              className="max-h-[calc(78dvh-7.5rem)] overflow-y-auto overscroll-contain pr-1"
-            >
-              <div className="min-w-0 space-y-4 pr-1 pb-2">
-                <WeatherDock
-                  latitude={resolvedLocation?.[1] ?? null}
-                  longitude={resolvedLocation?.[0] ?? null}
-                  temperatureUnit={appSettings.temperatureUnit}
-                  unstyled
+            {activeMobileDrawer === "weather" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Cloud}
+                  iconToneClassName="bg-sky-500"
+                  title="Weather"
+                  description="Local conditions and hourly outlook"
+                  onClose={closeDrawer}
                 />
-                <HourlyForecastDock
-                  latitude={resolvedLocation?.[1] ?? null}
-                  longitude={resolvedLocation?.[0] ?? null}
-                  temperatureUnit={appSettings.temperatureUnit}
-                  className="md:hidden"
-                />
-              </div>
-            </ScrollArea>
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="min-w-0 space-y-3 rounded-md border border-border/60 bg-muted/15 p-2">
+                    <WeatherDock
+                      latitude={resolvedLocation?.[1] ?? null}
+                      longitude={resolvedLocation?.[0] ?? null}
+                      temperatureUnit={appSettings.temperatureUnit}
+                      unstyled
+                    />
+                    <HourlyForecastDock
+                      latitude={resolvedLocation?.[1] ?? null}
+                      longitude={resolvedLocation?.[0] ?? null}
+                      temperatureUnit={appSettings.temperatureUnit}
+                      className="md:hidden"
+                      compact
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </DrawerContent>
       </Drawer>
@@ -1852,25 +1842,25 @@ export function MapOverlayUI({
           {
             icon: Activity,
             label: "Quakes",
-            active: isQuakesDrawerOpen,
+            active: activeMobileDrawer === "quakes",
             onClick: () => activateDrawer("quakes"),
           },
           {
             icon: Cloud,
             label: "Weather",
-            active: isWeatherDrawerOpen,
+            active: activeMobileDrawer === "weather",
             onClick: () => activateDrawer("weather"),
           },
           {
             icon: Globe2,
             label: "Global Meteo",
-            active: isGlobalSignalsDrawerOpen,
+            active: activeMobileDrawer === "global",
             onClick: () => activateDrawer("global"),
           },
           {
             icon: Menu,
             label: "Menu",
-            active: isMobileMenuOpen,
+            active: activeMobileDrawer === "menu",
             onClick: () => activateDrawer("menu"),
           },
         ]}

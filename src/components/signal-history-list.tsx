@@ -93,7 +93,7 @@ const SignalHistoryList = ({
   };
 
   return (
-    <div className={cn("pb-1", className)}>
+    <div className={cn("min-w-0 pb-1", className)}>
       <p className="my-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
         <History className="size-3.5 text-muted-foreground/90" />
         History
@@ -125,7 +125,7 @@ const SignalHistoryList = ({
                 className="group flex w-full flex-col gap-2 overflow-hidden rounded-md border border-border/60 bg-background/35 px-2.5 py-2.5 text-left transition-all hover:bg-muted/40 dark:bg-background/20 dark:hover:bg-muted/20"
                 aria-label={item.title}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span
                     className={cn(
                       "flex size-10 shrink-0 items-center justify-center rounded-md border border-white/15 transition-transform group-hover:scale-105",
@@ -148,17 +148,17 @@ const SignalHistoryList = ({
                         {item.subtitle}
                       </span>
                     ) : null}
-                    <span className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                       {item.badges.map((badge, index) => (
                         <span
                           key={`${item.id}-${badge.label}-${index}`}
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs font-semibold",
+                            "inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs font-semibold",
                             badge.className,
                           )}
                         >
-                          <badge.icon className="size-3" />
-                          <span>{badge.label}</span>
+                          <badge.icon className="size-3 shrink-0" />
+                          <span className="min-w-0 truncate">{badge.label}</span>
                         </span>
                       ))}
                     </span>
@@ -202,11 +202,11 @@ const SignalHistoryList = ({
               />
             </PaginationItem>
           </PaginationContent>
-          <PaginationContent className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-1 sm:hidden">
+          <PaginationContent className="flex w-full items-center justify-between gap-2 px-1 sm:hidden">
             <PaginationItem>
               <PaginationButton
                 size="sm"
-                className="h-8 px-2 text-xs whitespace-nowrap"
+                className="h-8 shrink-0 px-2 text-xs whitespace-nowrap"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
                 aria-disabled={currentPage === 1}
@@ -215,7 +215,7 @@ const SignalHistoryList = ({
                 Prev
               </PaginationButton>
             </PaginationItem>
-            <PaginationItem className="min-w-0 px-1 text-center">
+            <PaginationItem className="min-w-0 flex-1 px-1 text-center">
               <span className="block truncate text-xs text-muted-foreground">
                 <span className="sr-only">Page </span>
                 {currentPage}/{totalPages}
@@ -224,7 +224,7 @@ const SignalHistoryList = ({
             <PaginationItem>
               <PaginationButton
                 size="sm"
-                className="h-8 px-2 text-xs whitespace-nowrap"
+                className="h-8 shrink-0 px-2 text-xs whitespace-nowrap"
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
                 aria-disabled={currentPage === totalPages}
