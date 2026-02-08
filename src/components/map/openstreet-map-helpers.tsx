@@ -136,7 +136,7 @@ const getEventCategoryLabel = (category: string) => {
   if (normalized.includes("wildfire") || normalized.includes("fire")) return "Wildfire";
   if (normalized.includes("flood")) return "Flood";
   if (normalized.includes("drought")) return "Drought";
-  if (normalized.includes("ice")) return "Ice";
+  if (normalized.includes("ice")) return "Iceberg";
   if (normalized.includes("dust")) return "Dust";
   if (normalized.includes("volcano")) return "Volcano";
   return category;

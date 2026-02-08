@@ -131,7 +131,6 @@ export function EarthquakePopover({
             className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
             style={{
               backgroundColor: magColor,
-              boxShadow: `0 4px 14px ${magColor}40`,
             }}
           >
             {earthquake.magnitude.toFixed(1)}

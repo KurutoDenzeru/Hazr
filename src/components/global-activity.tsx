@@ -5,12 +5,17 @@ import {
   Activity,
   AlertTriangle,
   ChevronRight,
+  CloudRain,
   Clock3,
+  Flame,
   Globe2,
   Gauge,
   Loader2,
   MapPin,
+  Mountain,
   RefreshCw,
+  Snowflake,
+  Sun,
   Waves,
   Wind,
 } from "lucide-react";
@@ -22,6 +27,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -70,8 +76,10 @@ type SignalBadge = {
 type SignalItem = {
   id: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   badges: SignalBadge[];
+  itemIcon?: React.ComponentType<{ className?: string }>;
+  itemToneClassName?: string;
   url?: string;
   onClick?: () => void;
 };
@@ -84,10 +92,10 @@ const handleOpen = (url?: string) => {
 const formatEonetCategory = (category: string) => {
   const normalized = category.toLowerCase();
   if (normalized.includes("storm")) return "Storms";
-  if (normalized.includes("wildfire")) return "Fires";
+  if (normalized.includes("wildfire")) return "Wildfire";
   if (normalized.includes("flood")) return "Floods";
   if (normalized.includes("drought")) return "Drought";
-  if (normalized.includes("ice")) return "Ice";
+  if (normalized.includes("ice")) return "Iceberg";
   if (normalized.includes("dust")) return "Dust";
   if (normalized.includes("volcano")) return "Volcanoes";
   return category;
@@ -100,6 +108,80 @@ const formatEonetTitle = (title: string) => {
   cleaned = cleaned.replace(/Tropical Cyclone/gi, "Tropical Storm");
   cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
   return cleaned;
+};
+
+const getEonetCategoryVisual = (category: string) => {
+  const normalized = category.toLowerCase();
+
+  if (normalized.includes("fire")) {
+    return {
+      icon: Flame,
+      className:
+        "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+      label: "Wildfire",
+    };
+  }
+
+  if (normalized.includes("storm")) {
+    return {
+      icon: CloudRain,
+      className:
+        "bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200",
+      label: "Storms",
+    };
+  }
+
+  if (normalized.includes("flood")) {
+    return {
+      icon: Waves,
+      className:
+        "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+      label: "Floods",
+    };
+  }
+
+  if (normalized.includes("drought")) {
+    return {
+      icon: Sun,
+      className:
+        "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      label: "Drought",
+    };
+  }
+
+  if (normalized.includes("ice")) {
+    return {
+      icon: Snowflake,
+      className:
+        "bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200",
+      label: "Iceberg",
+    };
+  }
+
+  if (normalized.includes("volcano")) {
+    return {
+      icon: Mountain,
+      className:
+        "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+      label: "Volcanoes",
+    };
+  }
+
+  if (normalized.includes("dust")) {
+    return {
+      icon: Wind,
+      className:
+        "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+      label: "Dust",
+    };
+  }
+
+  return {
+    icon: Globe2,
+    className:
+      "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+    label: category,
+  };
 };
 
 const getTsunamiSeverityRank = (severity: string): number => {
@@ -188,33 +270,38 @@ const GlobalActivity = ({
     onFocusTargetHandled?.();
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const eventItems: SignalItem[] = eonetState.events.slice(0, 7).map((event) => ({
-    id: event.id,
-    title: formatEonetTitle(event.title),
-    subtitle: "NASA EONET live event",
-    url: event.url,
-    onClick: onEonetSelect ? () => onEonetSelect(event) : undefined,
-    badges: toSignalBadges([
-      {
-        label: formatEonetCategory(event.category),
-        icon: Globe2,
-        className:
-          "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
-      },
-      {
-        label: formatRelativeTime(event.date),
-        icon: Clock3,
-        className:
-          "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
-      },
-      {
-        label: `${formatCoordinate(event.coordinates[1], "N", "S")} ${formatCoordinate(event.coordinates[0], "E", "W")}`,
-        icon: MapPin,
-        className:
-          "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
-      },
-    ]),
-  }));
+  const eventItems: SignalItem[] = eonetState.events.slice(0, 7).map((event) => {
+    const categoryLabel = formatEonetCategory(event.category);
+    const categoryVisual = getEonetCategoryVisual(categoryLabel);
+
+    return {
+      id: event.id,
+      title: formatEonetTitle(event.title),
+      url: event.url,
+      onClick: onEonetSelect ? () => onEonetSelect(event) : undefined,
+      itemIcon: categoryVisual.icon,
+      itemToneClassName: categoryVisual.className,
+      badges: toSignalBadges([
+        {
+          label: categoryVisual.label,
+          icon: categoryVisual.icon,
+          className: categoryVisual.className,
+        },
+        {
+          label: formatRelativeTime(event.date),
+          icon: Clock3,
+          className:
+            "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+        },
+        {
+          label: `${formatCoordinate(event.coordinates[1], "N", "S")} ${formatCoordinate(event.coordinates[0], "E", "W")}`,
+          icon: MapPin,
+          className:
+            "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+        },
+      ]),
+    };
+  });
 
   const airItems: SignalItem[] = airQualityState.sites.slice(0, 7).map((site) => {
     const value = Number.isFinite(site.value) ? site.value.toFixed(1) : `${site.value}`;
@@ -223,7 +310,7 @@ const GlobalActivity = ({
     return {
       id: site.id,
       title: site.location,
-      subtitle: locationHint || "OpenAQ reporting station",
+      subtitle: locationHint || undefined,
       url: site.sourceUrl,
       badges: toSignalBadges([
         {
@@ -377,6 +464,7 @@ const GlobalActivity = ({
               itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
             />
           </div>
+          <Separator className="my-1" />
           <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
             <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
               OpenAQ
@@ -395,6 +483,7 @@ const GlobalActivity = ({
               itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
             />
           </div>
+          <Separator className="my-1" />
           <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
             <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
               NWS Tsunamic Alerts
@@ -508,6 +597,9 @@ const SignalSection = ({
             <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
               <div className="flex flex-col gap-1">
                 {items.map((item) => {
+                  const ItemIconComponent = item.itemIcon ?? ItemIcon;
+                  const itemToneClass = item.itemToneClassName ?? itemToneClassName;
+
                   const handleItemClick = () => {
                     if (item.onClick) {
                       item.onClick();
@@ -527,11 +619,11 @@ const SignalSection = ({
                       <div className="flex items-center gap-3">
                         <span
                           className={cn(
-                            "flex size-10 shrink-0 items-center justify-center rounded-full shadow-lg transition-transform group-hover:scale-105",
-                            itemToneClassName,
+                            "flex size-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-105",
+                            itemToneClass,
                           )}
                         >
-                          <ItemIcon className="size-4" />
+                          <ItemIconComponent className="size-4" />
                         </span>
 
                         <div className="min-w-0 flex-1">
@@ -541,9 +633,11 @@ const SignalSection = ({
                             </p>
                             <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
                           </div>
-                          <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                            {item.subtitle}
-                          </p>
+                          {item.subtitle ? (
+                            <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                              {item.subtitle}
+                            </p>
+                          ) : null}
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {item.badges.map((badge, index) => (
                               <Badge
