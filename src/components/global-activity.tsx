@@ -4,7 +4,6 @@ import React from "react";
 import {
   Activity,
   AlertTriangle,
-  ChevronRight,
   CloudRain,
   Clock3,
   Flame,
@@ -24,9 +23,12 @@ import type {
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
 } from "@/types/api";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  SignalHistoryList,
+  type SignalBadge,
+  type SignalHistoryItem,
+} from "@/components/signal-history-list";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -65,28 +67,7 @@ type GlobalActivityProps = {
     refetch: () => Promise<void>;
   };
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
-};
-
-type SignalBadge = {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  className: string;
-};
-
-type SignalItem = {
-  id: string;
-  title: string;
-  subtitle?: string;
-  badges: SignalBadge[];
-  itemIcon?: React.ComponentType<{ className?: string }>;
-  itemToneClassName?: string;
-  url?: string;
-  onClick?: () => void;
-};
-
-const handleOpen = (url?: string) => {
-  if (!url || typeof window === "undefined") return;
-  window.open(url, "_blank", "noopener,noreferrer");
+  onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
 };
 
 const formatEonetCategory = (category: string) => {
@@ -232,6 +213,10 @@ const formatCoordinate = (value: number, positive: string, negative: string): st
   return `${Math.abs(value).toFixed(1)}°${value >= 0 ? positive : negative}`;
 };
 
+const isCoordinateOnlyLabel = (value: string) => {
+  return /^\d+(\.\d+)?°[NS]\s+\d+(\.\d+)?°[EW]$/i.test(value.trim());
+};
+
 const toSignalBadges = (badges: Array<SignalBadge | null>): SignalBadge[] => {
   return badges.filter((badge): badge is SignalBadge => Boolean(badge));
 };
@@ -245,6 +230,7 @@ const GlobalActivity = ({
   airQualityState,
   tsunamiState,
   onEonetSelect,
+  onAirQualitySelect,
 }: GlobalActivityProps) => {
   const liveEventsSectionRef = React.useRef<HTMLDivElement | null>(null);
   const openAqSectionRef = React.useRef<HTMLDivElement | null>(null);
@@ -270,7 +256,7 @@ const GlobalActivity = ({
     onFocusTargetHandled?.();
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const eventItems: SignalItem[] = eonetState.events.slice(0, 7).map((event) => {
+  const eventItems: SignalHistoryItem[] = eonetState.events.slice(0, 7).map((event) => {
     const categoryLabel = formatEonetCategory(event.category);
     const categoryVisual = getEonetCategoryVisual(categoryLabel);
 
@@ -303,15 +289,22 @@ const GlobalActivity = ({
     };
   });
 
-  const airItems: SignalItem[] = airQualityState.sites.slice(0, 7).map((site) => {
+  const airItems: SignalHistoryItem[] = airQualityState.sites.slice(0, 7).map((site) => {
     const value = Number.isFinite(site.value) ? site.value.toFixed(1) : `${site.value}`;
     const locationHint = [site.city, site.country].filter(Boolean).join(", ");
+    const coordinateLabel = `${formatCoordinate(site.coordinates[1], "N", "S")} ${formatCoordinate(site.coordinates[0], "E", "W")}`;
+    const locationLooksCoordinate = isCoordinateOnlyLabel(site.location);
+    const friendlyTitle = locationLooksCoordinate
+      ? site.locationName?.trim() || locationHint || "OpenAQ station"
+      : site.location;
+    const subtitle = locationHint && locationHint !== friendlyTitle ? locationHint : undefined;
 
     return {
       id: site.id,
-      title: site.location,
-      subtitle: locationHint || undefined,
-      url: site.sourceUrl,
+      title: friendlyTitle,
+      subtitle,
+      url: onAirQualitySelect ? undefined : site.sourceUrl,
+      onClick: onAirQualitySelect ? () => onAirQualitySelect(site) : undefined,
       badges: toSignalBadges([
         {
           label: `${site.parameter.toUpperCase()} ${value} ${site.unit}`,
@@ -325,6 +318,12 @@ const GlobalActivity = ({
           className:
             "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
         },
+        {
+          label: coordinateLabel,
+          icon: MapPin,
+          className:
+            "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+        },
         site.coveragePercent !== null && site.coveragePercent !== undefined
           ? {
               label: `Coverage ${site.coveragePercent.toFixed(0)}%`,
@@ -337,7 +336,7 @@ const GlobalActivity = ({
     };
   });
 
-  const tsunamiItems: SignalItem[] = tsunamiState.alerts.slice(0, 7).map((alert) => ({
+  const tsunamiItems: SignalHistoryItem[] = tsunamiState.alerts.slice(0, 7).map((alert) => ({
     id: alert.id,
     title: alert.headline,
     subtitle: "NWS tsunami bulletin",
@@ -517,7 +516,7 @@ type SignalSectionProps = {
   error: Error | null;
   lastUpdated: Date | null;
   onRefresh: () => Promise<void>;
-  items: SignalItem[];
+  items: SignalHistoryItem[];
   toneClassName: string;
   itemToneClassName: string;
 };
@@ -590,77 +589,11 @@ const SignalSection = ({
             <p className="text-sm text-muted-foreground">No active signals</p>
           </div>
         ) : (
-          <>
-            <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
-              History
-            </p>
-            <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
-              <div className="flex flex-col gap-1">
-                {items.map((item) => {
-                  const ItemIconComponent = item.itemIcon ?? ItemIcon;
-                  const itemToneClass = item.itemToneClassName ?? itemToneClassName;
-
-                  const handleItemClick = () => {
-                    if (item.onClick) {
-                      item.onClick();
-                      return;
-                    }
-                    handleOpen(item.url);
-                  };
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={handleItemClick}
-                      className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
-                      aria-label={item.title}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={cn(
-                            "flex size-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-105",
-                            itemToneClass,
-                          )}
-                        >
-                          <ItemIconComponent className="size-4" />
-                        </span>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-semibold text-foreground">
-                              {item.title}
-                            </p>
-                            <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
-                          </div>
-                          {item.subtitle ? (
-                            <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                              {item.subtitle}
-                            </p>
-                          ) : null}
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {item.badges.map((badge, index) => (
-                              <Badge
-                                key={`${item.id}-${badge.label}-${index}`}
-                                variant="secondary"
-                                className={cn(
-                                  "h-auto border-none rounded-md px-2 py-1 text-[10px] font-medium",
-                                  badge.className,
-                                )}
-                              >
-                                <badge.icon className="size-3" />
-                                <span>{badge.label}</span>
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </>
+          <SignalHistoryList
+            items={items}
+            defaultItemIcon={ItemIcon}
+            defaultItemToneClassName={itemToneClassName}
+          />
         )}
       </div>
     </div>

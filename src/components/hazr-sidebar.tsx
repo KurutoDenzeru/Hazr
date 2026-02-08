@@ -41,6 +41,7 @@ type HazrSidebarProps = {
   isLocating?: boolean
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
   onEonetSelect?: (event: ProcessedEonetEvent) => void
+  onAirQualitySelect?: (site: ProcessedAirQualitySite) => void
   eonetState?: {
     events: ProcessedEonetEvent[]
     isLoading: boolean
@@ -69,6 +70,7 @@ function HazrSidebar({
   isLocating,
   onEarthquakeSelect,
   onEonetSelect,
+  onAirQualitySelect,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -179,6 +181,7 @@ function HazrSidebar({
           isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}
           onEonetSelect={onEonetSelect}
+          onAirQualitySelect={onAirQualitySelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}

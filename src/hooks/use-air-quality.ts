@@ -30,6 +30,42 @@ const buildOpenAqUrl = (limit: number) => {
 
 const buildOpenAqLocationUrl = (locationId: number) => `https://openaq.org/locations/${locationId}`;
 
+const formatCoordinatePart = (value: number, positive: string, negative: string) => {
+  return `${Math.abs(value).toFixed(2)}°${value >= 0 ? positive : negative}`;
+};
+
+const resolveOpenAqLocationLabel = (
+  rawLocation: string | null | undefined,
+  city: string | null | undefined,
+  country: string | null | undefined,
+  latitude: number,
+  longitude: number,
+) => {
+  const cleanLocation = rawLocation?.trim() ?? "";
+  const cleanCity = city?.trim() ?? "";
+  const cleanCountry = country?.trim() ?? "";
+
+  const locationLooksGeneric = /^location\s+\d+$/i.test(cleanLocation);
+
+  if (cleanLocation && !locationLooksGeneric) {
+    return cleanLocation;
+  }
+
+  if (cleanCity && cleanCountry) {
+    return `${cleanCity}, ${cleanCountry}`;
+  }
+
+  if (cleanCity) {
+    return cleanCity;
+  }
+
+  if (cleanCountry) {
+    return cleanCountry;
+  }
+
+  return `${formatCoordinatePart(latitude, "N", "S")} ${formatCoordinatePart(longitude, "E", "W")}`;
+};
+
 const toProcessedSites = (data: OpenAQLatestResponse): ProcessedAirQualitySite[] => {
   return data.results
     .map((result, index): ProcessedAirQualitySite | null => {
@@ -37,9 +73,16 @@ const toProcessedSites = (data: OpenAQLatestResponse): ProcessedAirQualitySite[]
       if (latitude === null || longitude === null) return null;
       const measuredAt = result.datetime?.utc ? new Date(result.datetime.utc) : null;
       const hasValidMeasuredAt = measuredAt instanceof Date && !Number.isNaN(measuredAt.getTime());
+      const resolvedLocationLabel = resolveOpenAqLocationLabel(
+        result.location,
+        result.city,
+        result.country,
+        latitude,
+        longitude,
+      );
       return {
         id: `${result.locationsId}-${result.sensorsId}-${index}`,
-        location: result.location?.trim() || `Location ${result.locationsId}`,
+        location: resolvedLocationLabel,
         parameter: OPENAQ_PARAMETER.label,
         value: result.value,
         unit: OPENAQ_PARAMETER.unit,

@@ -414,6 +414,7 @@ export default function GoogleMapsClone() {
           isLocating={isLocating}
           onEarthquakeSelect={handleEarthquakeSelect}
           onEonetSelect={handleEonetSelect}
+          onAirQualitySelect={handleAirQualitySelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}

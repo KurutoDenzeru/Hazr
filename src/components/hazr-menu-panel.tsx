@@ -38,6 +38,7 @@ type HazrMenuPanelProps = {
   isLocating?: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
+  onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
   eonetState?: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -74,6 +75,7 @@ function HazrMenuPanel({
   isLocating = false,
   onEarthquakeSelect,
   onEonetSelect,
+  onAirQualitySelect,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -217,6 +219,7 @@ function HazrMenuPanel({
                   }
                 }
                 onEonetSelect={onEonetSelect}
+                onAirQualitySelect={onAirQualitySelect}
                 focusTarget={globalFocusTarget}
                 onFocusTargetHandled={onFocusTargetHandled}
                 onOpenSection={handleOpenGlobalSection}

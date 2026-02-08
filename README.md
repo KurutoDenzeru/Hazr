@@ -72,6 +72,7 @@ src/
     mobile-bottom-nav.tsx
     openstreet-map.tsx            # Main map container
     seismic-activity.tsx          # Earthquake panel
+    signal-history-list.tsx       # Reusable history list/cards for signal sections
     layout/                       # Layout components (header, footer, docks)
     map/                          # Map-specific helpers and popovers
       earthquake-popover.tsx
@@ -79,7 +80,7 @@ src/
       openstreet-map-helpers.tsx
       weather-dock.tsx
   hooks/
-    use-air-quality.ts            # OpenAQ polling, normalization, and refresh state
+    use-air-quality.ts            # OpenAQ polling with friendly location label normalization
     use-earthquakes.ts            # USGS feed fetching, sorting, and metadata
     use-eonet-events.ts           # NASA EONET live events ingestion and shaping
     use-tsunami-alerts.ts         # NWS tsunami alert polling and mapping
