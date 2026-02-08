@@ -38,22 +38,26 @@ type HazrMenuPanelProps = {
   isLocating?: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
+  onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
   eonetState?: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   airQualityState?: {
     sites: ProcessedAirQualitySite[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
   tsunamiState?: {
     alerts: ProcessedTsunamiAlert[];
     isLoading: boolean;
     error: Error | null;
+    lastUpdated: Date | null;
     refetch: () => Promise<void>;
   };
 };
@@ -71,6 +75,7 @@ function HazrMenuPanel({
   isLocating = false,
   onEarthquakeSelect,
   onEonetSelect,
+  onAirQualitySelect,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -134,7 +139,7 @@ function HazrMenuPanel({
         {/* Weather Section */}
         {!collapsed && (
           <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Weather
+            Open Meteo Weather
           </p>
         )}
         <div
@@ -158,7 +163,7 @@ function HazrMenuPanel({
         {/* Earthquakes Section */}
         {!collapsed && (
           <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Seismic Activity
+            USGS Earthquakes
           </p>
         )}
         <div
@@ -178,11 +183,6 @@ function HazrMenuPanel({
 
         {(eonetState || airQualityState || tsunamiState) && (
           <>
-            {!collapsed && (
-              <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Global Signals
-              </p>
-            )}
             <div
               ref={globalSectionRef}
               id="sidebar-global-signals"
@@ -196,6 +196,7 @@ function HazrMenuPanel({
                     events: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }
@@ -204,6 +205,7 @@ function HazrMenuPanel({
                     sites: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }
@@ -212,10 +214,12 @@ function HazrMenuPanel({
                     alerts: [],
                     isLoading: false,
                     error: null,
+                    lastUpdated: null,
                     refetch: async () => {},
                   }
                 }
                 onEonetSelect={onEonetSelect}
+                onAirQualitySelect={onAirQualitySelect}
                 focusTarget={globalFocusTarget}
                 onFocusTargetHandled={onFocusTargetHandled}
                 onOpenSection={handleOpenGlobalSection}

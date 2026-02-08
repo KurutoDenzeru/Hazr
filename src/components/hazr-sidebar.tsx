@@ -41,22 +41,26 @@ type HazrSidebarProps = {
   isLocating?: boolean
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
   onEonetSelect?: (event: ProcessedEonetEvent) => void
+  onAirQualitySelect?: (site: ProcessedAirQualitySite) => void
   eonetState?: {
     events: ProcessedEonetEvent[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
   airQualityState?: {
     sites: ProcessedAirQualitySite[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
   tsunamiState?: {
     alerts: ProcessedTsunamiAlert[]
     isLoading: boolean
     error: Error | null
+    lastUpdated: Date | null
     refetch: () => Promise<void>
   }
 }
@@ -66,6 +70,7 @@ function HazrSidebar({
   isLocating,
   onEarthquakeSelect,
   onEonetSelect,
+  onAirQualitySelect,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -116,7 +121,7 @@ function HazrSidebar({
                     Hazr
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Live Weather & Quakes
+                    Weather, quakes, air quality & global alerts
                   </p>
                 </div>
               </div>
@@ -135,7 +140,7 @@ function HazrSidebar({
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="right">Hazr - Live Quakes & Weather</TooltipContent>
+                <TooltipContent side="right">Hazr - Weather, Quakes & Global Alerts</TooltipContent>
               </Tooltip>
             )}
 
@@ -176,6 +181,7 @@ function HazrSidebar({
           isLocating={isLocating}
           onEarthquakeSelect={onEarthquakeSelect}
           onEonetSelect={onEonetSelect}
+          onAirQualitySelect={onAirQualitySelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}

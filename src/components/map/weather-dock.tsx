@@ -123,6 +123,9 @@ export const WeatherDock = ({
     longitude,
     forecastHours: 48,
   });
+  const handleRefresh = () => {
+    void refetch();
+  };
 
   if (collapsed) {
     if (isLoading) {
@@ -133,7 +136,7 @@ export const WeatherDock = ({
               type="button"
               onClick={onOpenSection}
               className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
-              aria-label="Weather"
+              aria-label="Open Meteo weather"
             >
               <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
                 <Loader2 className="size-4 animate-spin" />
@@ -141,7 +144,10 @@ export const WeatherDock = ({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {isLocating ? "Locating weather..." : "Fetching weather..."}
+            <p className="font-medium">Open Meteo Weather</p>
+            <p className="text-xs text-muted-foreground">
+              {isLocating ? "Locating weather..." : "Fetching weather..."}
+            </p>
           </TooltipContent>
         </Tooltip>
       );
@@ -155,7 +161,7 @@ export const WeatherDock = ({
               type="button"
               onClick={onOpenSection}
               className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
-              aria-label="Weather"
+              aria-label="Open Meteo weather"
             >
               <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
                 <Loader2 className="size-4 animate-spin" />
@@ -163,7 +169,10 @@ export const WeatherDock = ({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {isLocating ? "Locating weather..." : "Fetching weather..."}
+            <p className="font-medium">Open Meteo Weather</p>
+            <p className="text-xs text-muted-foreground">
+              {isLocating ? "Locating weather..." : "Fetching weather..."}
+            </p>
           </TooltipContent>
         </Tooltip>
       );
@@ -176,7 +185,7 @@ export const WeatherDock = ({
             type="button"
             onClick={onOpenSection}
             className="flex size-12 items-center justify-center rounded-md text-center transition-colors hover:bg-muted/70"
-            aria-label="Weather"
+            aria-label="Open Meteo weather"
           >
             <span className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 dark:bg-sky-500/30">
               <WeatherIcon
@@ -188,7 +197,8 @@ export const WeatherDock = ({
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">
-          <p className="font-medium">{current.description}</p>
+          <p className="font-medium">Open Meteo Weather</p>
+          <p className="text-sm text-muted-foreground">{current.description}</p>
           <p className="text-sm text-muted-foreground">
             {Math.round(current.temperature)}°C
           </p>
@@ -264,14 +274,21 @@ export const WeatherDock = ({
                 variant="ghost"
                 size="icon-sm"
                 className="shrink-0 rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
-                onClick={() => refetch()}
+                type="button"
+                onClick={handleRefresh}
                 disabled={isLoading}
-                aria-label="Refresh weather"
+                aria-label="Refresh Open Meteo weather"
               >
                 <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Refresh</TooltipContent>
+            <TooltipContent>
+              {isLoading
+                ? "Refreshing..."
+                : lastUpdated
+                  ? `Updated ${formatTime(lastUpdated)}`
+                  : "Refresh Open Meteo weather"}
+            </TooltipContent>
           </Tooltip>
         </div>
 
@@ -288,7 +305,7 @@ export const WeatherDock = ({
               </div>
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-light tracking-tight">
+                  <span className="text-lg font-light tracking-tight">
                     {Math.round(current.temperature)}
                   </span>
                   <span className="text-lg text-muted-foreground">°C</span>
@@ -430,14 +447,6 @@ export const WeatherDock = ({
           </div>
         )}
 
-        {/* Last updated */}
-        {lastUpdated && (
-          <div className="pt-2">
-            <p className="text-xs text-muted-foreground/60">
-              Updated {formatTime(lastUpdated)}
-            </p>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );

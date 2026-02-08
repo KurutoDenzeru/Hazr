@@ -136,7 +136,7 @@ const getEventCategoryLabel = (category: string) => {
   if (normalized.includes("wildfire") || normalized.includes("fire")) return "Wildfire";
   if (normalized.includes("flood")) return "Flood";
   if (normalized.includes("drought")) return "Drought";
-  if (normalized.includes("ice")) return "Ice";
+  if (normalized.includes("ice")) return "Iceberg";
   if (normalized.includes("dust")) return "Dust";
   if (normalized.includes("volcano")) return "Volcano";
   return category;
@@ -1285,12 +1285,12 @@ export function SignalOverlay({
   const activeEventTone = activeEvent ? getEventTone(activeEvent.category) : getEventTone("default");
 
   return createPortal(
-    <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3 shadow-lg">
+    <div className="w-full max-w-sm sm:max-w-md max-h-[75vh] overflow-y-auto rounded-lg border border-border/60 bg-background/95 p-3">
       {activeEarthquake ? (
         <UnifiedSignalPopover
           leading={(
             <div
-              className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white shadow-lg"
+              className="flex size-12 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-white"
               style={{
                 backgroundColor: getMagnitudeColor(activeEarthquake.magnitude),
                 boxShadow: `0 4px 14px ${getMagnitudeColor(activeEarthquake.magnitude)}40`,
@@ -1326,7 +1326,7 @@ export function SignalOverlay({
       {activeEvent ? (
         <UnifiedSignalPopover
           leading={(
-            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg shadow-lg", activeEventTone.lead)}>
+            <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-lg", activeEventTone.lead)}>
               <ActiveEventIcon className="size-6" />
             </div>
           )}
@@ -1340,7 +1340,7 @@ export function SignalOverlay({
       {activeTsunami ? (
         <UnifiedSignalPopover
           leading={(
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 shadow-lg dark:bg-sky-500/30 dark:text-sky-200">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200">
               <Waves className="size-6" />
             </div>
           )}
@@ -1354,7 +1354,7 @@ export function SignalOverlay({
       {activeAirQuality ? (
         <UnifiedSignalPopover
           leading={(
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 shadow-lg dark:bg-emerald-500/30 dark:text-emerald-200">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200">
               <Wind className="size-6" />
             </div>
           )}
@@ -1541,7 +1541,7 @@ export function MapOverlayUI({
           },
           {
             icon: Cloud,
-            label: "Weather",
+            label: "Open Meteo",
             onClick: () => setIsWeatherDrawerOpen(true),
           },
           {
@@ -1572,6 +1572,13 @@ function CustomMapControls({
   const [is3D, setIs3D] = React.useState(false);
   const [waitingForLocation, setWaitingForLocation] = React.useState(false);
   const compassRef = React.useRef<SVGSVGElement>(null);
+  const is3DEnabledRef = React.useRef(false);
+  const sync3DBuildingsRef = React.useRef<(() => void) | null>(null);
+  const buildingLayerVisibilityRef = React.useRef<Record<string, "visible" | "none" | undefined>>({});
+
+  React.useEffect(() => {
+    is3DEnabledRef.current = is3D;
+  }, [is3D]);
 
   React.useEffect(() => {
     if (!map) return;
@@ -1597,77 +1604,179 @@ function CustomMapControls({
 
     const globeMap = map as GlobeCapableMap;
     const layerId = "3d-buildings";
+    type StyleLayerLike = {
+      id: string;
+      type?: string;
+      source?: string;
+      "source-layer"?: string;
+      layout?: {
+        visibility?: "visible" | "none";
+      };
+      minzoom?: number;
+    };
+
+    const setLayerVisibilitySafe = (targetLayerId: string, visibility: "visible" | "none") => {
+      try {
+        globeMap.setLayoutProperty(targetLayerId, "visibility", visibility);
+      } catch {
+        // Ignore layer timing races during style switches.
+      }
+    };
+
+    const isBuildingSourceLayer = (sourceLayerName?: string) => {
+      return typeof sourceLayerName === "string" && sourceLayerName.toLowerCase().includes("building");
+    };
+
+    const getBuildingFillLayers = () => {
+      const styleLayers = (globeMap.getStyle().layers ?? []) as StyleLayerLike[];
+      return styleLayers.filter((layer) => {
+        if (layer.type !== "fill") return false;
+        if (typeof layer.source !== "string") return false;
+        return isBuildingSourceLayer(layer["source-layer"]);
+      });
+    };
+
+    const getBuildingExtrusionLayers = () => {
+      const styleLayers = (globeMap.getStyle().layers ?? []) as StyleLayerLike[];
+      return styleLayers.filter((layer) => {
+        if (layer.type !== "fill-extrusion") return false;
+        if (typeof layer.source !== "string") return false;
+        if (isBuildingSourceLayer(layer["source-layer"])) return true;
+        return layer.id.toLowerCase().includes("building");
+      });
+    };
+
+    const hideBuildingFillLayers = () => {
+      const buildingFillLayers = getBuildingFillLayers();
+      for (const layer of buildingFillLayers) {
+        if (!(layer.id in buildingLayerVisibilityRef.current)) {
+          buildingLayerVisibilityRef.current[layer.id] = layer.layout?.visibility;
+        }
+        setLayerVisibilitySafe(layer.id, "none");
+      }
+    };
+
+    const restoreBuildingFillLayers = () => {
+      const originalVisibility = buildingLayerVisibilityRef.current;
+      const layerIds = Object.keys(originalVisibility);
+      for (const layerIdToRestore of layerIds) {
+        setLayerVisibilitySafe(layerIdToRestore, originalVisibility[layerIdToRestore] ?? "visible");
+      }
+      buildingLayerVisibilityRef.current = {};
+    };
+
+    const hideBuildingExtrusions = () => {
+      const buildingExtrusionLayers = getBuildingExtrusionLayers();
+      for (const layer of buildingExtrusionLayers) {
+        if (layer.id === layerId) continue;
+        setLayerVisibilitySafe(layer.id, "none");
+      }
+    };
 
     const handle3DBuildings = () => {
-      globeMap.setProjection({ name: is3D ? "globe" : "mercator" });
+      if (!globeMap.isStyleLoaded()) return;
 
-      if (is3D) {
+      const is3DEnabled = is3DEnabledRef.current;
+      try {
+        globeMap.setProjection({ name: is3DEnabled ? "globe" : "mercator" });
+      } catch {
+        // Style can still be mid-transition during theme/style swaps.
+        return;
+      }
+
+      if (is3DEnabled) {
+        hideBuildingFillLayers();
+        hideBuildingExtrusions();
+
+        const baseBuildingLayer = getBuildingFillLayers()[0] ?? getBuildingExtrusionLayers()[0];
+        if (!baseBuildingLayer?.source || !baseBuildingLayer["source-layer"]) return;
+
+        const styleLayers = globeMap.getStyle().layers ?? [];
+        const beforeLayerId = styleLayers.find((layer) => layer.type === "symbol")?.id;
+        const minZoom = baseBuildingLayer.minzoom ?? 14.5;
+
         if (!globeMap.getLayer(layerId)) {
-          const sources = map.getStyle().sources;
-          const buildingSource = Object.keys(sources).find(
-            (s) => s.includes("maptiles") || s.includes("carto"),
-          );
-
-          if (buildingSource) {
+          try {
             globeMap.addLayer(
               {
                 id: layerId,
-                source: buildingSource,
-                "source-layer": "building",
+                source: baseBuildingLayer.source,
+                "source-layer": baseBuildingLayer["source-layer"],
                 type: "fill-extrusion",
-                minzoom: 15,
+                minzoom: minZoom,
                 paint: {
                   "fill-extrusion-color": [
                     "interpolate",
                     ["linear"],
-                    ["get", "render_height"],
+                    ["coalesce", ["get", "render_height"], ["get", "height"], 0],
                     0,
-                    "#aaa",
-                    200,
-                    "#888",
+                    "#a3a3a3",
+                    180,
+                    "#737373",
                   ],
                   "fill-extrusion-height": [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
-                    15,
+                    minZoom,
                     0,
-                    15.05,
-                    ["get", "render_height"],
+                    minZoom + 0.1,
+                    ["coalesce", ["get", "render_height"], ["get", "height"], 0],
                   ],
                   "fill-extrusion-base": [
                     "interpolate",
                     ["linear"],
                     ["zoom"],
-                    15,
+                    minZoom,
                     0,
-                    15.05,
-                    ["get", "render_min_height"],
+                    minZoom + 0.1,
+                    ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
                   ],
-                  "fill-extrusion-opacity": 0.8,
+                  "fill-extrusion-opacity": 0.9,
                 },
               },
-              map
-                .getStyle()
-                .layers.find((l) => l.type === "symbol")?.id,
+              beforeLayerId,
             );
+          } catch {
+            // Ignore transient add errors during style updates.
           }
-        } else {
-          globeMap.setLayoutProperty(layerId, "visibility", "visible");
+          return;
         }
-      } else if (globeMap.getLayer(layerId)) {
-        globeMap.setLayoutProperty(layerId, "visibility", "none");
+
+        setLayerVisibilitySafe(layerId, "visible");
+        return;
+      }
+
+      restoreBuildingFillLayers();
+      hideBuildingExtrusions();
+      if (globeMap.getLayer(layerId)) {
+        setLayerVisibilitySafe(layerId, "none");
       }
     };
 
-    globeMap.on("styledata", handle3DBuildings);
+    const handleStyleData = () => {
+      if (!globeMap.isStyleLoaded()) return;
+      handle3DBuildings();
+    };
+
+    sync3DBuildingsRef.current = handle3DBuildings;
+    globeMap.on("styledata", handleStyleData);
     if (globeMap.isStyleLoaded()) {
       handle3DBuildings();
     }
 
     return () => {
-      globeMap.off("styledata", handle3DBuildings);
+      globeMap.off("styledata", handleStyleData);
+      if (sync3DBuildingsRef.current === handle3DBuildings) {
+        sync3DBuildingsRef.current = null;
+      }
     };
+  }, [map]);
+
+  React.useEffect(() => {
+    if (!map) return;
+    if (!map.isStyleLoaded()) return;
+    sync3DBuildingsRef.current?.();
   }, [map, is3D]);
 
   type GlobeCapableMap = MapLibreMap & {
@@ -1734,6 +1843,7 @@ function CustomMapControls({
 
   const toggle3D = () => {
     const new3D = !is3D;
+    is3DEnabledRef.current = new3D;
     setIs3D(new3D);
     if (!map) return;
 
@@ -1757,6 +1867,8 @@ function CustomMapControls({
       globeMap.setFog?.(undefined);
       map.easeTo({ pitch: 0, duration: 600, easing: ease, essential: true });
     }
+
+    sync3DBuildingsRef.current?.();
   };
 
   const toggleTheme = () => {

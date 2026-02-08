@@ -55,7 +55,7 @@ const EarthquakeItem = ({
             aria-label={earthquake.title}
           >
             <div
-              className="flex size-8 items-center justify-center rounded-full text-[10px] font-bold text-white"
+              className="flex size-8 items-center justify-center rounded-md text-[10px] font-bold text-white"
               style={{ backgroundColor: magColor }}
             >
               {earthquake.magnitude.toFixed(1)}
@@ -131,10 +131,9 @@ const EarthquakeItem = ({
     >
         <div className="flex items-center gap-3">
           <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-lg transition-transform group-hover:scale-105"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md text-sm font-bold text-white transition-transform group-hover:scale-105"
             style={{
               backgroundColor: magColor,
-              boxShadow: `0 4px 14px ${magColor}40`,
             }}
           >
             <span className="flex items-center gap-1">
