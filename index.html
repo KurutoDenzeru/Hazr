@@ -3,19 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0f14" />
 
-    <title>Hazr</title>
+    <title>Hazr | Live Weather, Earthquakes, Air Quality, and Global Alerts</title>
     <meta
       name="description"
-      content="Hazr is a live map for earthquakes, weather, and hazard insights."
+      content="🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts."
     />
     <meta
       name="keywords"
-      content="hazr, earthquakes, seismic activity, weather, hazards, map, alerts"
+      content="hazr, live hazard map, earthquakes, seismic activity, weather forecast, air quality, tsunami alerts, NASA EONET, OpenAQ, USGS map"
     />
-    <meta name="author" content="Hazr" />
-    <meta name="creator" content="Hazr" />
+    <meta name="author" content="KurutoDenzeru" />
+    <meta name="creator" content="Hazr Team" />
     <meta name="publisher" content="Hazr" />
+    <meta name="metadataBase" content="https://hazr.vercel.app/" />
     <meta name="metadata-base" content="https://hazr.vercel.app/" />
     <meta
       name="robots"
@@ -27,29 +29,39 @@
     />
 
     <link rel="canonical" href="https://hazr.vercel.app/" />
+    <link rel="alternate" href="https://hazr.vercel.app/" hreflang="en-US" />
     <link rel="alternate" href="https://hazr.vercel.app/" hreflang="en" />
     <link rel="alternate" href="https://hazr.vercel.app/" hreflang="x-default" />
 
-    <link rel="icon" type="image/webp" href="/brand.webp" />
+    <link rel="icon" type="image/webp" sizes="192x192" href="/brand.webp" />
+    <link rel="shortcut icon" type="image/webp" href="/brand.webp" />
     <link rel="apple-touch-icon" href="/brand.webp" />
+    <link rel="mask-icon" href="/brand.webp" color="#0b0f14" />
 
-    <meta property="og:title" content="Hazr" />
+    <meta property="og:title" content="Hazr | Live Weather, Earthquakes, Air Quality, and Global Alerts" />
     <meta
       property="og:description"
-      content="Real-time geospatial hazard dashboard using Vite, Mapcn (MapLibre), & Tailwind, unifying USGS earthquakes, & Open-Meteo weather into map."
+      content="🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://hazr.vercel.app/" />
-    <meta property="og:image" content="https://hazr.vercel.app/brand.webp" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://hazr.vercel.app/OpenGraph.webp" />
+    <meta property="og:image:secure_url" content="https://hazr.vercel.app/OpenGraph.webp" />
+    <meta property="og:image:type" content="image/webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Hazr real-time hazard map dashboard preview" />
     <meta property="og:site_name" content="Hazr" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Hazr" />
+    <meta name="twitter:title" content="Hazr | Live Weather, Earthquakes, Air Quality, and Global Alerts" />
     <meta
       name="twitter:description"
-      content="Real-time geospatial hazard dashboard using Vite, Mapcn (MapLibre), & Tailwind, unifying USGS earthquakes, & Open-Meteo weather into map."
+      content="🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts."
     />
-    <meta name="twitter:image" content="https://hazr.vercel.app/brand.webp" />
+    <meta name="twitter:image" content="https://hazr.vercel.app/OpenGraph.webp" />
+    <meta name="twitter:image:alt" content="Hazr real-time hazard map dashboard preview" />
 
     <script type="application/ld+json">
       {
@@ -60,15 +72,37 @@
             "@id": "https://hazr.vercel.app/#organization",
             "name": "Hazr",
             "url": "https://hazr.vercel.app/",
-            "logo": "https://hazr.vercel.app/brand.webp"
+            "logo": "https://hazr.vercel.app/brand.webp",
+            "sameAs": [
+              "https://github.com/KurutoDenzeru/Hazr"
+            ]
           },
           {
             "@type": "WebSite",
             "@id": "https://hazr.vercel.app/#website",
             "url": "https://hazr.vercel.app/",
             "name": "Hazr",
+            "description": "🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts.",
             "publisher": {
               "@id": "https://hazr.vercel.app/#organization"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://hazr.vercel.app/#webapp",
+            "name": "Hazr",
+            "url": "https://hazr.vercel.app/",
+            "applicationCategory": "WeatherApplication",
+            "operatingSystem": "Web",
+            "image": "https://hazr.vercel.app/OpenGraph.webp",
+            "description": "🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts.",
+            "publisher": {
+              "@id": "https://hazr.vercel.app/#organization"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
             }
           }
         ]

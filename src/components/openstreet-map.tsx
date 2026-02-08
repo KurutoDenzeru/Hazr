@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveIpLocation } from "@/lib/ip-location";
 import { HazrSidebar } from "@/components/hazr-sidebar";
+import { HazrAboutDialog } from "@/components/hazr-about-dialog";
 import { HazrSettingsDialog } from "@/components/hazr-settings-panel";
 import { useAppSettings } from "@/hooks/use-app-settings";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
@@ -97,6 +98,7 @@ export default function GoogleMapsClone() {
     "earthquake" | "global" | null
   >(null);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
+  const [isAboutDialogOpen, setIsAboutDialogOpen] = React.useState(false);
   const {
     appSettings,
     setAppSettings,
@@ -421,6 +423,7 @@ export default function GoogleMapsClone() {
           userLocation={resolvedLocation}
           isLocating={isLocating}
           onSettingsSelect={() => setIsSettingsDialogOpen(true)}
+          onAboutSelect={() => setIsAboutDialogOpen(true)}
           temperatureUnit={appSettings.temperatureUnit}
           earthquakeMagnitude={appSettings.earthquakeMagnitude}
           layerVisibility={layerVisibility}
@@ -666,6 +669,7 @@ export default function GoogleMapsClone() {
                   onEonetSelect={handleEonetSelect}
                   onAirQualitySelect={handleAirQualitySelect}
                   onTsunamiSelect={handleTsunamiSelect}
+                  onAboutSelect={() => setIsAboutDialogOpen(true)}
                   appSettings={appSettings}
                   onAppSettingsChange={setAppSettings}
                   onResetDefaults={resetDefaults}
@@ -688,6 +692,10 @@ export default function GoogleMapsClone() {
         onSettingsChange={setAppSettings}
         layerVisibility={layerVisibility}
         onLayerVisibilityChange={setLayerVisibility}
+      />
+      <HazrAboutDialog
+        open={isAboutDialogOpen}
+        onOpenChange={setIsAboutDialogOpen}
       />
     </SidebarProvider>
   );
