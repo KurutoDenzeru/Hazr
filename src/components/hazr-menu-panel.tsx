@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Settings2 } from "lucide-react";
+import { Info, Settings2 } from "lucide-react";
 
 import { WeatherDock } from "@/components/map/weather-dock";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,8 @@ export type HazrMenuFocusTarget =
   | "global-tsunami";
 
 type HazrMenuPanelProps = {
-  onSelect?: () => void;
+  onSettingsSelect?: () => void;
+  onAboutSelect?: () => void;
   collapsed?: boolean;
   focusTarget?: HazrMenuFocusTarget | null;
   onFocusTargetHandled?: () => void;
@@ -72,7 +73,8 @@ import { SeismicActivity } from "@/components/seismic-activity";
 import { GlobalActivity } from "@/components/global-activity";
 
 function HazrMenuPanel({
-  onSelect,
+  onSettingsSelect,
+  onAboutSelect,
   collapsed = false,
   focusTarget = null,
   onFocusTargetHandled,
@@ -149,7 +151,8 @@ function HazrMenuPanel({
     }
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const handleSettingsClick = () => onSelect?.();
+  const handleSettingsClick = () => onSettingsSelect?.();
+  const handleAboutClick = () => onAboutSelect?.();
 
   const shouldShowSeismic = layerVisibility.earthquakes;
   const shouldShowGlobalSignals =
@@ -290,6 +293,35 @@ function HazrMenuPanel({
           >
             <Settings2 className="size-4" />
             <span className="truncate">Settings</span>
+          </Button>
+        )}
+
+        {/* About */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="mt-1 size-12 justify-center rounded-md px-0 text-muted-foreground hover:bg-muted/70"
+                onClick={handleAboutClick}
+                aria-label="About Hazr"
+              >
+                <Info className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">About Hazr</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            variant="ghost"
+            size="default"
+            className="mt-1 w-full justify-start gap-3 rounded-md text-foreground/90 hover:bg-muted/70 hover:text-foreground"
+            onClick={handleAboutClick}
+            aria-label="About Hazr"
+          >
+            <Info className="size-4" />
+            <span className="truncate">About</span>
           </Button>
         )}
       </div>

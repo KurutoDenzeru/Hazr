@@ -38,6 +38,7 @@ import {
   FlaskConical,
   Building2,
   Ruler,
+  Info,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -1629,6 +1630,7 @@ export function MapOverlayUI({
   onEonetSelect,
   onAirQualitySelect,
   onTsunamiSelect,
+  onAboutSelect,
   appSettings,
   onAppSettingsChange,
   onResetDefaults,
@@ -1646,6 +1648,7 @@ export function MapOverlayUI({
   onEonetSelect: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
+  onAboutSelect: () => void;
   appSettings: AppSettings;
   onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
   onResetDefaults: () => void;
@@ -1781,6 +1784,18 @@ export function MapOverlayUI({
                       showInlineReset
                     />
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 w-full justify-start gap-2"
+                    onClick={() => {
+                      closeDrawer();
+                      onAboutSelect();
+                    }}
+                  >
+                    <Info className="size-4" />
+                    About Hazr
+                  </Button>
                 </div>
               </>
             ) : null}

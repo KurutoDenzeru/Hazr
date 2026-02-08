@@ -46,6 +46,7 @@ type HazrSidebarProps = {
   onAirQualitySelect?: (site: ProcessedAirQualitySite) => void
   onTsunamiSelect?: (alert: ProcessedTsunamiAlert) => void
   onSettingsSelect?: () => void
+  onAboutSelect?: () => void
   temperatureUnit?: TemperatureUnit
   earthquakeMagnitude?: EarthquakeMagnitude
   layerVisibility?: DataLayerVisibility
@@ -80,6 +81,7 @@ function HazrSidebar({
   onAirQualitySelect,
   onTsunamiSelect,
   onSettingsSelect,
+  onAboutSelect,
   temperatureUnit,
   earthquakeMagnitude,
   layerVisibility,
@@ -185,7 +187,8 @@ function HazrSidebar({
 
       <SidebarContent className="overflow-y-auto scrollbar-hide">
         <HazrMenuPanel
-          onSelect={onSettingsSelect}
+          onSettingsSelect={onSettingsSelect}
+          onAboutSelect={onAboutSelect}
           collapsed={!isOpen}
           focusTarget={focusTarget}
           onFocusTargetHandled={handleFocusTargetHandled}
