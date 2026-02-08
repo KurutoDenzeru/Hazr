@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mountain, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { History, Mountain, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,12 +17,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
-import type { ProcessedEarthquake } from "@/types/api";
+import type { EarthquakeMagnitude, ProcessedEarthquake } from "@/types/api";
 
 type SeismicActivityProps = {
   collapsed: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   onOpenSection?: () => void;
+  magnitude?: EarthquakeMagnitude;
 };
 
 // Format time for display
@@ -54,12 +55,13 @@ export const SeismicActivity = ({
   collapsed,
   onEarthquakeSelect,
   onOpenSection,
+  magnitude = "2.5",
 }: SeismicActivityProps) => {
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 7;
   const { earthquakes, isLoading, error, lastUpdated, refetch, metadata } =
     useEarthquakes({
-      magnitude: "2.5",
+      magnitude,
       range: "day",
     });
   const totalPages = Math.max(1, Math.ceil(earthquakes.length / pageSize));
@@ -136,14 +138,16 @@ export const SeismicActivity = ({
     <TooltipProvider delayDuration={0}>
       <div className="overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-0 my-2">
+        <div className="my-2 flex items-center justify-between px-0">
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-red-500/20 p-2.5 dark:bg-red-500/30">
-              <Mountain className="size-5 text-red-700 dark:text-red-200" />
+            <div className="rounded-md border border-orange-500/35 bg-orange-500/10 p-2.5 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300">
+              <Mountain className="size-5" />
             </div>
             <div>
-              <h3 className="text-sm font-medium">USGS Earthquakes</h3>
-              <p className="text-sm text-muted-foreground">{metadata?.count ?? 0} in the last 24h</p>
+              <h3 className="text-sm font-semibold">USGS Earthquakes</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                {metadata?.count ?? 0} in the last 24h
+              </p>
             </div>
           </div>
 
@@ -152,7 +156,7 @@ export const SeismicActivity = ({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
+                className="rounded-md border border-border/60 text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
                 type="button"
                 onClick={handleRefresh}
                 aria-label="Refresh earthquakes"
@@ -191,11 +195,12 @@ export const SeismicActivity = ({
             </div>
           ) : (
             <>
-              <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+              <p className="my-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
+                <History className="size-3.5 text-muted-foreground/90" />
                 History
               </p>
-              <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
-                <div className="flex flex-col gap-1">
+              <ScrollArea className="h-[30rem] rounded-md border border-border/60 bg-muted/15 pr-3">
+                <div className="flex flex-col gap-1.5 p-1">
                   {currentPageEarthquakes.map((eq) => (
                     <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />
                   ))}

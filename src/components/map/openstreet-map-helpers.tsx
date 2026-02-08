@@ -7,7 +7,6 @@ import {
   Plus,
   Minus,
   Locate,
-  Map as MapIcon,
   Activity,
   Cloud,
   CloudLightning,
@@ -54,11 +53,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { GlobalActivity } from "@/components/global-activity";
+import { HazrSettingsPanel } from "@/components/hazr-settings-panel";
 import type {
   ProcessedAirQualitySite,
   ProcessedEarthquake,
@@ -66,7 +66,6 @@ import type {
   ProcessedTsunamiAlert,
 } from "@/types/api";
 import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,18 +76,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import type { AppSettings, DataLayerVisibility } from "@/types/settings";
 
 export type MapViewState = {
   center: [number, number];
   zoom: number;
 };
 
-export type LayerVisibility = {
-  earthquakes: boolean;
-  eonet: boolean;
-  airQuality: boolean;
-  tsunami: boolean;
-};
+export type LayerVisibility = DataLayerVisibility;
 
 export const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -155,6 +159,22 @@ const formatAirQualityConcentration = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`;
 };
 
+const getPaginationRange = (totalPages: number, currentPage: number) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis", totalPages] as const;
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis", totalPages - 2, totalPages - 1, totalPages] as const;
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages] as const;
+};
+
 type EventToneKey =
   | "wildfire"
   | "storm"
@@ -213,11 +233,17 @@ type OverlayAction = {
 
 const isDefined = <T,>(value: T | null | undefined): value is T => value !== null && value !== undefined;
 
-const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
+const OverlayDetailGrid = ({
+  details,
+  className,
+}: {
+  details: OverlayDetailItem[];
+  className?: string;
+}) => {
   if (details.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", className)}>
       {details.map((detail) => (
         <div
           key={detail.label}
@@ -312,6 +338,7 @@ const UnifiedSignalPopover = ({
   onClose,
   badges,
   details,
+  detailsClassName,
   footerAction,
   children,
 }: {
@@ -321,6 +348,7 @@ const UnifiedSignalPopover = ({
   onClose: () => void;
   badges?: OverlayBadge[];
   details?: OverlayDetailItem[];
+  detailsClassName?: string;
   footerAction?: OverlayAction | null;
   children?: React.ReactNode;
 }) => {
@@ -356,7 +384,7 @@ const UnifiedSignalPopover = ({
         </div>
       </div>
 
-      {details ? <OverlayDetailGrid details={details} /> : null}
+      {details ? <OverlayDetailGrid details={details} className={detailsClassName} /> : null}
       {children}
 
       {footerAction ? (
@@ -1304,6 +1332,7 @@ export function SignalOverlay({
           onClose={onCloseEarthquake}
           badges={earthquakeBadges}
           details={detailItems}
+          detailsClassName="grid-cols-2 sm:grid-cols-2"
           footerAction={{
             label: "View on USGS",
             url: activeEarthquake.url,
@@ -1413,33 +1442,146 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MobileDrawerHeader({
+  icon: Icon,
+  title,
+  description,
+  iconToneClassName,
+  onClose,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  iconToneClassName: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="border-b border-border/60 px-4 pb-3 pt-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div
+            className={cn(
+              "flex size-8 shrink-0 items-center justify-center rounded-md border border-white/20",
+              iconToneClassName,
+            )}
+          >
+            <Icon className="size-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">{title}</h3>
+            <p className="truncate text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="shrink-0 rounded-md border border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          onClick={onClose}
+          aria-label={`Close ${title} drawer`}
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
   resolvedLocation,
-  isLocating,
   earthquakes,
   onEarthquakeSelect,
+  onEonetSelect,
+  onAirQualitySelect,
+  onTsunamiSelect,
+  appSettings,
+  onAppSettingsChange,
+  onResetDefaults,
+  eonetState,
+  airQualityState,
+  tsunamiState,
   layerVisibility,
   onLayerVisibilityChange,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
   resolvedLocation: [number, number] | null;
-  isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
+  onEonetSelect: (event: ProcessedEonetEvent) => void;
+  onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
+  onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
+  appSettings: AppSettings;
+  onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
+  onResetDefaults: () => void;
+  eonetState: {
+    events: ProcessedEonetEvent[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
+  airQualityState: {
+    sites: ProcessedAirQualitySite[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
+  tsunamiState: {
+    alerts: ProcessedTsunamiAlert[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
   layerVisibility: LayerVisibility;
   onLayerVisibilityChange: React.Dispatch<React.SetStateAction<LayerVisibility>>;
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
-  const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
-  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
+  const [activeMobileDrawer, setActiveMobileDrawer] = React.useState<"menu" | "quakes" | "weather" | "global" | null>(null);
+  const isMobile = useIsMobile();
+  const [quakePage, setQuakePage] = React.useState(1);
+  const quakePageSize = 8;
+  const totalQuakePages = Math.max(1, Math.ceil(earthquakes.length / quakePageSize));
+  const paginatedEarthquakes = React.useMemo(() => {
+    const startIndex = (quakePage - 1) * quakePageSize;
+    return earthquakes.slice(startIndex, startIndex + quakePageSize);
+  }, [earthquakes, quakePage]);
+  const quakePaginationRange = React.useMemo(
+    () => getPaginationRange(totalQuakePages, quakePage),
+    [quakePage, totalQuakePages]
+  );
+
+  React.useEffect(() => {
+    setQuakePage(1);
+  }, [earthquakes]);
+
+  React.useEffect(() => {
+    if (isMobile) return;
+    setActiveMobileDrawer(null);
+  }, [isMobile]);
+
+  const activateDrawer = React.useCallback((drawer: "menu" | "quakes" | "weather" | "global") => {
+    setActiveMobileDrawer(drawer);
+  }, []);
+
+  const closeDrawer = React.useCallback(() => {
+    setActiveMobileDrawer(null);
+  }, []);
 
   const handleQuakeClick = (eq: ProcessedEarthquake) => {
-    setIsQuakesDrawerOpen(false);
+    closeDrawer();
     onEarthquakeSelect(eq);
+  };
+
+  const handlePreviousQuakePage = () => {
+    setQuakePage((page) => Math.max(1, page - 1));
+  };
+
+  const handleNextQuakePage = () => {
+    setQuakePage((page) => Math.min(totalQuakePages, page + 1));
   };
 
   return (
@@ -1455,74 +1597,242 @@ export function MapOverlayUI({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
-        <div className="pointer-events-auto">
-          <HourlyForecastDock
-            latitude={resolvedLocation?.[1] ?? null}
-            longitude={resolvedLocation?.[0] ?? null}
-          />
-        </div>
-      </div>
-
-      <Drawer open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <div className="flex-1 overflow-auto">
-              <HazrMenuPanel
-                onSelect={handleCloseMobileMenu}
-                userLocation={resolvedLocation}
-                isLocating={isLocating}
-              />
-            </div>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      <Drawer open={isQuakesDrawerOpen} onOpenChange={setIsQuakesDrawerOpen}>
-        <DrawerContent className="max-h-[80vh]">
-          <div className="overflow-y-auto max-h-[80vh] p-4">
-            {earthquakes.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No recent earthquakes
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
-                    <Activity className="size-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Live Earthquakes</h3>
-                    <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
-                  </div>
-                </div>
-                <Separator className="my-2" />
-                {earthquakes.map((eq) => (
-                  <EarthquakeItem
-                    key={eq.id}
-                    earthquake={eq}
-                    onClick={() => handleQuakeClick(eq)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      <Drawer open={isWeatherDrawerOpen} onOpenChange={setIsWeatherDrawerOpen}>
-        <DrawerContent className="max-h-[85vh]">
-          <div className="p-4 overflow-y-auto max-h-[85vh]">
-            <WeatherDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-              unstyled
-            />
+      {appSettings.showDesktopForecastDock ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
+          <div className="pointer-events-auto">
             <HourlyForecastDock
               latitude={resolvedLocation?.[1] ?? null}
               longitude={resolvedLocation?.[0] ?? null}
-              className="mt-4 md:hidden"
+              temperatureUnit={appSettings.temperatureUnit}
             />
+          </div>
+        </div>
+      ) : null}
+
+      <Drawer
+        open={activeMobileDrawer !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDrawer();
+          }
+        }}
+      >
+        <DrawerContent className="h-[88dvh] max-h-[88dvh] min-h-0 rounded-t-2xl border-t border-border/70 p-0">
+          <div className="flex h-full min-h-0 flex-col">
+            {activeMobileDrawer === "menu" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={SlidersHorizontal}
+                  iconToneClassName="bg-slate-500"
+                  title="Menu"
+                  description="Settings and layer controls"
+                  onClose={closeDrawer}
+                />
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="rounded-md border border-border/60 bg-muted/15 p-3">
+                    <HazrSettingsPanel
+                      settings={appSettings}
+                      onSettingsChange={onAppSettingsChange}
+                      layerVisibility={layerVisibility}
+                      onLayerVisibilityChange={onLayerVisibilityChange}
+                      onResetDefaults={onResetDefaults}
+                      showInlineReset
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {activeMobileDrawer === "quakes" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Activity}
+                  iconToneClassName="bg-red-500"
+                  title="Live Earthquakes"
+                  description={`${earthquakes.length} in the last 24h`}
+                  onClose={closeDrawer}
+                />
+                <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+                  {!layerVisibility.earthquakes ? (
+                    <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/60 bg-muted/15 px-3 py-6 text-center text-sm text-muted-foreground">
+                      USGS earthquakes are hidden in settings.
+                    </div>
+                  ) : earthquakes.length === 0 ? (
+                    <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/60 bg-muted/15 px-3 py-6 text-center text-sm text-muted-foreground">
+                      No recent earthquakes
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        data-vaul-no-drag
+                        className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border border-border/60 bg-muted/15 p-1.5"
+                      >
+                        <div className="flex flex-col gap-1">
+                          {paginatedEarthquakes.map((eq) => (
+                            <EarthquakeItem
+                              key={eq.id}
+                              earthquake={eq}
+                              onClick={() => handleQuakeClick(eq)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {totalQuakePages > 1 ? (
+                        <Pagination className="mt-2">
+                          <PaginationContent className="hidden sm:flex">
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={handlePreviousQuakePage}
+                                disabled={quakePage === 1}
+                                aria-disabled={quakePage === 1}
+                              />
+                            </PaginationItem>
+                            {quakePaginationRange.map((entry, index) => (
+                              <PaginationItem key={`mobile-quake-page-${entry}-${index}`}>
+                                {entry === "ellipsis" ? (
+                                  <PaginationEllipsis />
+                                ) : (
+                                  <PaginationButton
+                                    onClick={() => setQuakePage(entry)}
+                                    isActive={entry === quakePage}
+                                    aria-label={`Go to quake page ${entry}`}
+                                  >
+                                    {entry}
+                                  </PaginationButton>
+                                )}
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={handleNextQuakePage}
+                                disabled={quakePage === totalQuakePages}
+                                aria-disabled={quakePage === totalQuakePages}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                          <PaginationContent className="flex w-full items-center justify-between gap-2 px-1 sm:hidden">
+                            <PaginationItem>
+                              <PaginationButton
+                                size="sm"
+                                className="px-2.5"
+                                onClick={handlePreviousQuakePage}
+                                disabled={quakePage === 1}
+                                aria-disabled={quakePage === 1}
+                                aria-label="Go to previous quake page"
+                              >
+                                Prev
+                              </PaginationButton>
+                            </PaginationItem>
+                            <PaginationItem className="min-w-0 flex-1 text-center">
+                              <span className="text-xs text-muted-foreground">
+                                {quakePage}/{totalQuakePages}
+                              </span>
+                            </PaginationItem>
+                            <PaginationItem>
+                              <PaginationButton
+                                size="sm"
+                                className="px-2.5"
+                                onClick={handleNextQuakePage}
+                                disabled={quakePage === totalQuakePages}
+                                aria-disabled={quakePage === totalQuakePages}
+                                aria-label="Go to next quake page"
+                              >
+                                Next
+                              </PaginationButton>
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {activeMobileDrawer === "global" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Globe2}
+                  iconToneClassName="bg-amber-500"
+                  title="Global Signals"
+                  description="NASA EONET, OpenAQ, and NWS Tsunami alerts"
+                  onClose={closeDrawer}
+                />
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="min-w-0 rounded-md border border-border/60 bg-muted/15 p-2">
+                    {!layerVisibility.eonet &&
+                    !layerVisibility.airQuality &&
+                    !layerVisibility.tsunami ? (
+                      <div className="rounded-md border border-border/60 bg-background/70 px-3 py-6 text-center text-sm text-muted-foreground">
+                        Global sources are hidden in settings.
+                      </div>
+                    ) : (
+                      <GlobalActivity
+                        collapsed={false}
+                        visibility={{
+                          eonet: layerVisibility.eonet,
+                          airQuality: layerVisibility.airQuality,
+                          tsunami: layerVisibility.tsunami,
+                        }}
+                        eonetState={eonetState}
+                        airQualityState={airQualityState}
+                        tsunamiState={tsunamiState}
+                        onEonetSelect={(event) => {
+                          closeDrawer();
+                          onEonetSelect(event);
+                        }}
+                        onAirQualitySelect={(site) => {
+                          closeDrawer();
+                          onAirQualitySelect(site);
+                        }}
+                        onTsunamiSelect={(alert) => {
+                          closeDrawer();
+                          onTsunamiSelect(alert);
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {activeMobileDrawer === "weather" ? (
+              <>
+                <MobileDrawerHeader
+                  icon={Cloud}
+                  iconToneClassName="bg-sky-500"
+                  title="Weather"
+                  description="Local conditions and hourly outlook"
+                  onClose={closeDrawer}
+                />
+                <div
+                  data-vaul-no-drag
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                >
+                  <div className="min-w-0 space-y-3 rounded-md border border-border/60 bg-muted/15 p-2">
+                    <WeatherDock
+                      latitude={resolvedLocation?.[1] ?? null}
+                      longitude={resolvedLocation?.[0] ?? null}
+                      temperatureUnit={appSettings.temperatureUnit}
+                      unstyled
+                    />
+                    <HourlyForecastDock
+                      latitude={resolvedLocation?.[1] ?? null}
+                      longitude={resolvedLocation?.[0] ?? null}
+                      temperatureUnit={appSettings.temperatureUnit}
+                      className="md:hidden"
+                      compact
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </DrawerContent>
       </Drawer>
@@ -1530,24 +1840,28 @@ export function MapOverlayUI({
       <MobileBottomNav
         items={[
           {
-            icon: MapIcon,
-            label: "Explore",
-            active: true,
-          },
-          {
             icon: Activity,
             label: "Quakes",
-            onClick: () => setIsQuakesDrawerOpen(true),
+            active: activeMobileDrawer === "quakes",
+            onClick: () => activateDrawer("quakes"),
           },
           {
             icon: Cloud,
-            label: "Open Meteo",
-            onClick: () => setIsWeatherDrawerOpen(true),
+            label: "Weather",
+            active: activeMobileDrawer === "weather",
+            onClick: () => activateDrawer("weather"),
+          },
+          {
+            icon: Globe2,
+            label: "Global Meteo",
+            active: activeMobileDrawer === "global",
+            onClick: () => activateDrawer("global"),
           },
           {
             icon: Menu,
             label: "Menu",
-            onClick: () => setIsMobileMenuOpen(true),
+            active: activeMobileDrawer === "menu",
+            onClick: () => activateDrawer("menu"),
           },
         ]}
       />

@@ -1,17 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 
 import { WeatherIcon } from "@/components/hazr-weather-icon";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
+import type { TemperatureUnit } from "@/types/settings";
 
 type HourlyForecastDockProps = {
   latitude: number | null;
   longitude: number | null;
   className?: string;
+  temperatureUnit?: TemperatureUnit;
+  compact?: boolean;
+};
+
+const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
+  if (unit === "fahrenheit") {
+    return (value * 9) / 5 + 32;
+  }
+  if (unit === "kelvin") {
+    return value + 273.15;
+  }
+  return value;
 };
 
 const formatHour = (date: Date): string =>
@@ -32,6 +45,8 @@ const HourlyForecastDock = ({
   latitude,
   longitude,
   className,
+  temperatureUnit = "celsius",
+  compact = false,
 }: HourlyForecastDockProps) => {
   const {
     hourly,
@@ -88,18 +103,6 @@ const HourlyForecastDock = ({
     return () => window.clearInterval(intervalId);
   }, [isPlaying, maxIndex, setSelectedHourIndex, visibleHours.length]);
 
-  const handlePrev = () => {
-    if (safeIndex <= 0) return;
-    setIsPlaying(false);
-    setSelectedHourIndex(safeIndex - 1);
-  };
-
-  const handleNext = () => {
-    if (safeIndex >= maxIndex) return;
-    setIsPlaying(false);
-    setSelectedHourIndex(safeIndex + 1);
-  };
-
   const handleSliderChange = (value: number[]) => {
     const nextIndex = value[0] ?? 0;
     setIsPlaying(false);
@@ -116,13 +119,20 @@ const HourlyForecastDock = ({
   return (
     <div
       className={cn(
-        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform",
+        compact
+          ? "w-full rounded-md border border-border/60 bg-background px-3 py-3 transition-all duration-200 ease-out"
+          : "w-full max-w-3xl rounded-xl border border-border/60 bg-[linear-gradient(135deg,theme(colors.background/96%),theme(colors.background/88%))] px-3 py-3 shadow-sm shadow-black/25 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform sm:px-6 sm:py-5",
         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div
+        className={cn(
+          "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+          compact && "gap-3 sm:flex-col sm:items-stretch",
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             aria-label={isPlaying ? "Pause forecast playback" : "Play forecast playback"}
@@ -133,72 +143,73 @@ const HourlyForecastDock = ({
               handleTogglePlay();
             }}
             tabIndex={0}
-            className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+            className={cn(
+              "flex items-center justify-center border border-border/60 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground",
+              compact ? "size-8 rounded-md bg-background" : "size-9 rounded-full bg-background/80",
+            )}
           >
             {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
           </button>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-muted/70">
+          <div
+            className={cn(
+              "flex items-center justify-center bg-muted/70",
+              compact ? "size-8 rounded-md" : "size-10 rounded-lg",
+            )}
+          >
             <WeatherIcon
               code={selectedHour.weatherCode}
               isDay={selectedHour.isDay}
-              className="size-5 text-foreground"
+              className={cn("text-foreground", compact ? "size-4" : "size-5")}
             />
           </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-semibold">
-                {Math.round(selectedHour.temperature)}°
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2.5">
+              <span className={cn(compact ? "text-sm font-semibold" : "text-3xl font-semibold tracking-tight")}>
+                {Math.round(toDisplayTemperature(selectedHour.temperature, temperatureUnit))}
+                {temperatureUnit === "fahrenheit"
+                  ? "°F"
+                  : temperatureUnit === "kelvin"
+                    ? "K"
+                    : "°C"}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className={cn(compact ? "text-xs text-muted-foreground" : "text-sm text-muted-foreground")}>
                 {formatHour(selectedHour.time)}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p
+              className={cn(
+                "truncate text-muted-foreground",
+                compact ? "max-w-[12rem] text-xs" : "max-w-[14rem] text-sm sm:max-w-[18rem]",
+              )}
+            >
               {locationInfo?.displayName || "Current location"}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 text-center">
-          <p className="text-sm font-semibold">12-Hour Forecast</p>
-          <p className="text-xs text-muted-foreground">
-            {formatDockDate(selectedHour.time)}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Previous hour"
-            onClick={handlePrev}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              handlePrev();
-            }}
-            tabIndex={0}
-            className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next hour"
-            onClick={handleNext}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              handleNext();
-            }}
-            tabIndex={0}
-            className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            <ChevronRight className="size-4" />
-          </button>
+        <div
+          className={cn(
+            "flex items-end justify-between gap-4 sm:flex-col sm:items-end sm:gap-3 sm:text-right",
+            compact && "items-start gap-2 sm:items-start sm:text-left",
+          )}
+        >
+          <div className={cn("flex flex-col items-start gap-2 text-left sm:items-end", compact && "sm:items-start")}>
+            <p
+              className={cn(
+                "inline-flex w-fit items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground",
+                compact && "px-2.5 py-1 text-xs",
+              )}
+            >
+              12-Hour Forecast
+            </p>
+            <p className={cn("leading-none text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+              {formatDockDate(selectedHour.time)}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2 sm:mt-4">
         <Slider
           aria-label="Forecast hour"
           min={0}
@@ -208,7 +219,7 @@ const HourlyForecastDock = ({
           onValueChange={handleSliderChange}
           className="**:data-[slot=slider-range]:transition-[width] **:data-[slot=slider-range]:duration-250 **:data-[slot=slider-range]:ease-out **:data-[slot=slider-thumb]:transition-transform **:data-[slot=slider-thumb]:duration-250 **:data-[slot=slider-thumb]:ease-out"
         />
-        <div className="mt-3 grid grid-cols-6 gap-2 text-[10px] text-muted-foreground sm:grid-cols-12">
+        <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-muted-foreground sm:grid-cols-6 sm:gap-2.5 lg:grid-cols-12">
           {visibleHours.map((hour, index) => (
             <button
               key={hour.time.toISOString()}
@@ -224,7 +235,7 @@ const HourlyForecastDock = ({
               tabIndex={0}
               className={cn(
                 "rounded-md px-1.5 py-1 text-center transition-colors",
-                index === safeIndex && "bg-muted/70 text-foreground",
+                index === safeIndex && "bg-muted/70 font-medium text-foreground",
                 index !== safeIndex && "hover:bg-muted/50",
               )}
             >

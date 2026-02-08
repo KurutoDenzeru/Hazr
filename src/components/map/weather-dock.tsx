@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   Cloud,
   Droplets,
   Eye,
@@ -14,7 +15,6 @@ import {
 } from "lucide-react";
 
 import { WeatherIcon } from "@/components/hazr-weather-icon";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
 import { getUVRiskLevel, UV_RISK_INFO, getWindDirection } from "@/types/api";
+import type { TemperatureUnit } from "@/types/settings";
 
 type WeatherDockProps = {
   latitude: number | null;
@@ -34,6 +35,24 @@ type WeatherDockProps = {
   isLocating?: boolean;
   onOpenSection?: () => void;
   unstyled?: boolean;
+  temperatureUnit?: TemperatureUnit;
+};
+
+const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
+  if (unit === "fahrenheit") {
+    return (value * 9) / 5 + 32;
+  }
+  if (unit === "kelvin") {
+    return value + 273.15;
+  }
+  return value;
+};
+
+const formatTemperature = (value: number, unit: TemperatureUnit) => {
+  const roundedValue = Math.round(toDisplayTemperature(value, unit));
+  const suffix =
+    unit === "fahrenheit" ? "°F" : unit === "kelvin" ? "K" : "°C";
+  return `${roundedValue}${suffix}`;
 };
 
 // Format time for display
@@ -45,62 +64,6 @@ const formatTime = (date: Date): string => {
   });
 };
 
-// UV Index Badge with tooltip
-const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
-  const riskLevel = getUVRiskLevel(uvIndex);
-  const info = UV_RISK_INFO[riskLevel];
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge
-          className="flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-white cursor-pointer border-none"
-          style={{ backgroundColor: info.color }}
-        >
-          <Sun className="size-3" />
-          <span>UV {uvIndex.toFixed(0)}</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-50">
-        <p className="font-semibold">{info.label} UV Index</p>
-        <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
-// Precipitation Badge with tooltip
-const PrecipBadge = ({ probability, amount }: { probability: number; amount: number }) => {
-  const hasRain = probability > 0 || amount > 0;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge
-          variant="secondary"
-          className={cn(
-            "flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium cursor-pointer border-none",
-            hasRain
-              ? "bg-blue-500/25 text-blue-700 dark:bg-blue-500/30 dark:text-blue-300"
-              : "bg-muted/70 text-foreground/70 dark:bg-muted/35 dark:text-foreground/80"
-          )}
-        >
-          <Droplets className="size-3" />
-          <span>{probability}%</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent side="top">
-        <p className="font-semibold">{probability}% chance of precipitation</p>
-        {amount > 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Expected: {amount.toFixed(1)}mm
-          </p>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
 export const WeatherDock = ({
   latitude,
   longitude,
@@ -109,6 +72,7 @@ export const WeatherDock = ({
   isLocating = false,
   onOpenSection,
   unstyled = false,
+  temperatureUnit = "celsius",
 }: WeatherDockProps) => {
   const {
     current,
@@ -200,7 +164,7 @@ export const WeatherDock = ({
           <p className="font-medium">Open Meteo Weather</p>
           <p className="text-sm text-muted-foreground">{current.description}</p>
           <p className="text-sm text-muted-foreground">
-            {Math.round(current.temperature)}°C
+            {formatTemperature(current.temperature, temperatureUnit)}
           </p>
           <p className="text-sm text-muted-foreground">
             {locationInfo?.displayName || "Current location"}
@@ -253,18 +217,25 @@ export const WeatherDock = ({
         "overflow-hidden rounded-md border border-border/50 bg-background/80 backdrop-blur-xl",
         className,
       );
+  const uvInfo = UV_RISK_INFO[getUVRiskLevel(current.uvIndex)];
+  const precipitationChance = Math.round(
+    daily[0]?.precipitationProbability ?? 0,
+  );
+  const hasRainChance = precipitationChance > 0 || current.precipitation > 0;
 
   return (
     <TooltipProvider delayDuration={0}>
       <div className={containerClasses}>
         {/* Header with location */}
         <div className={cn(
-          "flex items-center justify-between gap-2 border-b border-border/30 px-4",
+          "flex items-center justify-between gap-2 border-b border-border/40 px-1 pb-2",
           unstyled && "border-none px-0",
         )}>
           <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="size-4 shrink-0 text-muted-foreground" />
-            <span className="text-sm font-medium truncate">
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-sky-500/30 bg-sky-500/10 text-sky-500">
+              <MapPin className="size-3.5" />
+            </span>
+            <span className="truncate text-sm font-semibold">
               {locationInfo?.displayName || "Loading location..."}
             </span>
           </div>
@@ -273,7 +244,7 @@ export const WeatherDock = ({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="shrink-0 rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
+                className="shrink-0 rounded-md border border-border/60 text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
                 type="button"
                 onClick={handleRefresh}
                 disabled={isLoading}
@@ -293,49 +264,49 @@ export const WeatherDock = ({
         </div>
 
         {/* Current weather display */}
-        <div className={cn("p-4", unstyled && "p-0 my-2!")}> 
-          <div className="flex items-start justify-between gap-4!">
-            <div className="flex items-center gap-3">
-              <div className="rounded-md bg-sky-500 p-2.5">
-                <WeatherIcon
-                  code={current.weatherCode}
-                  isDay={current.isDay}
-                  className="size-5 text-white"
-                />
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-light tracking-tight">
-                    {Math.round(current.temperature)}
-                  </span>
-                  <span className="text-lg text-muted-foreground">°C</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {current.description}
-                </p>
-              </div>
-            </div>
-
-            {/* UV and Precip badges */}
-            <div className="flex flex-col gap-1.5">
-              <UVBadge uvIndex={current.uvIndex} />
-              <PrecipBadge
-                probability={0}
-                amount={current.precipitation}
+        <div className={cn("pt-1", unstyled && "p-0")}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="rounded-md border border-sky-500/30 bg-sky-500/10 p-2.5 dark:bg-sky-500/20">
+              <WeatherIcon
+                code={current.weatherCode}
+                isDay={current.isDay}
+                className="size-5 dark:text-white text-blue-400"
               />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-semibold">
+                  {Math.round(toDisplayTemperature(current.temperature, temperatureUnit))}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {temperatureUnit === "fahrenheit"
+                    ? "°F"
+                    : temperatureUnit === "kelvin"
+                      ? "K"
+                      : "°C"}
+                </span>
+              </div>
+              <p className="truncate text-sm text-muted-foreground">
+                {current.description}
+              </p>
             </div>
           </div>
 
-          {/* Weather stats grid */}
-          <div className="grid grid-cols-4 gap-2 mt-2">
+          {/* Weather stats strip */}
+          <div
+            data-vaul-no-drag
+            className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+          >
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Thermometer className="size-4 text-orange-500" />
-                  <span className="text-sm font-medium">
-                    {Math.round(current.feelsLike)}°
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Feels
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Feels</span>
+                  <Thermometer className="size-5 text-orange-500" />
+                  <span className="text-sm font-semibold">
+                    {formatTemperature(current.feelsLike, temperatureUnit)}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>Feels like temperature</TooltipContent>
@@ -343,12 +314,14 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Wind className="size-4 text-cyan-500" />
-                  <span className="text-sm font-medium">
-                    {Math.round(current.windSpeed)}
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Wind
                   </span>
-                  <span className="text-[10px] text-muted-foreground">km/h</span>
+                  <Wind className="size-5 text-cyan-500" />
+                  <span className="text-sm font-semibold">
+                    {Math.round(current.windSpeed)} km/h
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -361,12 +334,14 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Droplets className="size-4 text-blue-500" />
-                  <span className="text-sm font-medium">
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Humid
+                  </span>
+                  <Droplets className="size-5 text-blue-500" />
+                  <span className="text-sm font-semibold">
                     {current.humidity}%
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Humid</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>Relative humidity</TooltipContent>
@@ -374,24 +349,20 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {current.visibility !== undefined ? "Visibility" : "Cloud"}
+                  </span>
                   {current.visibility !== undefined ? (
-                    <>
-                      <Eye className="size-4 text-violet-500" />
-                      <span className="text-sm font-medium">
-                        {(current.visibility / 1000).toFixed(0)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">km</span>
-                    </>
+                    <Eye className="size-5 text-violet-500" />
                   ) : (
-                    <>
-                      <Gauge className="size-4 text-violet-500" />
-                      <span className="text-sm font-medium">
-                        {current.cloudCover}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">Cloud</span>
-                    </>
+                    <Gauge className="size-5 text-violet-500" />
                   )}
+                  <span className="text-sm font-semibold">
+                    {current.visibility !== undefined
+                      ? `${(current.visibility / 1000).toFixed(0)} km`
+                      : `${current.cloudCover}%`}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -400,21 +371,76 @@ export const WeatherDock = ({
                   : `Cloud cover: ${current.cloudCover}%`}
               </TooltipContent>
             </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    UV
+                  </span>
+                  <Sun
+                    className="size-5"
+                    style={{ color: uvInfo.color }}
+                  />
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    {current.uvIndex.toFixed(0)}
+                    {" "}
+                    {uvInfo.label} UV
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-50">
+                <p className="font-semibold">{uvInfo.label} UV Index</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {uvInfo.description}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Chance
+                  </span>
+                  <Droplets
+                    className={cn(
+                      "size-5",
+                      hasRainChance ? "text-blue-500" : "text-muted-foreground",
+                    )}
+                  />
+                  <span className="text-sm font-semibold">
+                    {precipitationChance}%
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="font-semibold">
+                  {precipitationChance}% chance of precipitation
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Current rate: {current.precipitation.toFixed(1)}mm
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
         {/* 7-day forecast */}
         {daily.length > 0 && (
-          <div className="border-t border-border/30 py-2">
-            <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className="mt-3 border-t border-border/40 py-2">
+            <p className="flex items-center gap-1.5 px-1 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/85">
+              <CalendarDays className="size-3.5 text-muted-foreground/85" />
               7-Day Forecast
             </p>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <div
+              data-vaul-no-drag
+              className="flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+            >
               {daily.slice(0, 7).map((day) => (
                 <Tooltip key={day.date.toISOString()}>
                   <TooltipTrigger asChild>
-                    <div className="flex min-w-14 flex-col items-center gap-1 rounded-md bg-muted/40 dark:bg-muted/15 px-2 py-2 hover:bg-muted/70 dark:hover:bg-muted/35 cursor-pointer transition-colors">
-                      <span className="text-[10px] font-medium text-muted-foreground">
+                    <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                      <span className="text-xs font-semibold text-muted-foreground">
                         {day.date.toDateString() === new Date().toDateString()
                           ? "Today"
                           : day.date.toLocaleDateString("en-US", { weekday: "short" })}
@@ -424,9 +450,13 @@ export const WeatherDock = ({
                         isDay={true}
                         className="size-5 text-muted-foreground"
                       />
-                      <div className="flex gap-1 text-[10px]">
-                        <span className="font-medium">{Math.round(day.tempMax)}°</span>
-                        <span className="text-muted-foreground">{Math.round(day.tempMin)}°</span>
+                      <div className="flex gap-1 text-xs">
+                        <span className="font-semibold">
+                          {Math.round(toDisplayTemperature(day.tempMax, temperatureUnit))}°
+                        </span>
+                        <span className="font-medium text-muted-foreground">
+                          {Math.round(toDisplayTemperature(day.tempMin, temperatureUnit))}°
+                        </span>
                       </div>
                     </div>
                   </TooltipTrigger>
@@ -435,7 +465,10 @@ export const WeatherDock = ({
                       {day.date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                     </p>
                     <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
-                      <p>High: {Math.round(day.tempMax)}°C / Low: {Math.round(day.tempMin)}°C</p>
+                      <p>
+                        High: {formatTemperature(day.tempMax, temperatureUnit)} / Low:{" "}
+                        {formatTemperature(day.tempMin, temperatureUnit)}
+                      </p>
                       <p>Precipitation: {day.precipitationProbability}% ({day.precipitationSum.toFixed(1)}mm)</p>
                       <p>UV Index Max: {day.uvIndexMax.toFixed(0)}</p>
                       <p>Wind: {Math.round(day.windSpeedMax)} km/h</p>

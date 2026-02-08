@@ -30,11 +30,13 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type {
+  EarthquakeMagnitude,
   ProcessedAirQualitySite,
   ProcessedEarthquake,
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
 } from "@/types/api"
+import type { DataLayerVisibility, TemperatureUnit } from "@/types/settings"
 
 type HazrSidebarProps = {
   userLocation?: [number, number] | null
@@ -42,6 +44,11 @@ type HazrSidebarProps = {
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void
   onEonetSelect?: (event: ProcessedEonetEvent) => void
   onAirQualitySelect?: (site: ProcessedAirQualitySite) => void
+  onTsunamiSelect?: (alert: ProcessedTsunamiAlert) => void
+  onSettingsSelect?: () => void
+  temperatureUnit?: TemperatureUnit
+  earthquakeMagnitude?: EarthquakeMagnitude
+  layerVisibility?: DataLayerVisibility
   eonetState?: {
     events: ProcessedEonetEvent[]
     isLoading: boolean
@@ -71,6 +78,11 @@ function HazrSidebar({
   onEarthquakeSelect,
   onEonetSelect,
   onAirQualitySelect,
+  onTsunamiSelect,
+  onSettingsSelect,
+  temperatureUnit,
+  earthquakeMagnitude,
+  layerVisibility,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -95,7 +107,7 @@ function HazrSidebar({
   }, [])
 
   return (
-    <Sidebar widthClassName="w-auto" collapsedWidthClassName="w-16" resizable>
+    <Sidebar widthClassName="w-[28rem]" collapsedWidthClassName="w-16">
       <SidebarHeader className="group-data-[state=collapsed]/sidebar:pb-2">
         <TooltipProvider delayDuration={0}>
           <div
@@ -173,15 +185,20 @@ function HazrSidebar({
 
       <SidebarContent className="overflow-y-auto scrollbar-hide">
         <HazrMenuPanel
+          onSelect={onSettingsSelect}
           collapsed={!isOpen}
           focusTarget={focusTarget}
           onFocusTargetHandled={handleFocusTargetHandled}
           onRequestExpandAndFocus={handleRequestExpandAndFocus}
           userLocation={userLocation}
           isLocating={isLocating}
+          temperatureUnit={temperatureUnit}
+          earthquakeMagnitude={earthquakeMagnitude}
+          layerVisibility={layerVisibility}
           onEarthquakeSelect={onEarthquakeSelect}
           onEonetSelect={onEonetSelect}
           onAirQualitySelect={onAirQualitySelect}
+          onTsunamiSelect={onTsunamiSelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}

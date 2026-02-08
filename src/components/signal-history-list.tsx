@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ChevronRight, History, MapPin } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Pagination,
@@ -94,12 +93,18 @@ const SignalHistoryList = ({
   };
 
   return (
-    <div className={cn("pb-1", className)}>
-      <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+    <div className={cn("min-w-0 pb-1", className)}>
+      <p className="my-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
+        <History className="size-3.5 text-muted-foreground/90" />
         History
       </p>
-      <ScrollArea className={cn(heightClassName, "rounded-md bg-muted/30 dark:bg-muted/15 pr-3")}>
-        <div className="flex flex-col gap-1">
+      <ScrollArea
+        className={cn(
+          heightClassName,
+          "rounded-md border border-border/60 bg-muted/15 pr-2",
+        )}
+      >
+        <div className="flex flex-col gap-1.5 p-1">
           {currentPageItems.map((item) => {
             const ItemIconComponent = item.itemIcon ?? DefaultItemIcon;
             const itemToneClass = item.itemToneClassName ?? defaultItemToneClassName;
@@ -117,13 +122,13 @@ const SignalHistoryList = ({
                 key={item.id}
                 type="button"
                 onClick={handleItemClick}
-                className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
+                className="group flex w-full flex-col gap-2 overflow-hidden rounded-md border border-border/60 bg-background/35 px-2.5 py-2.5 text-left transition-all hover:bg-muted/40 dark:bg-background/20 dark:hover:bg-muted/20"
                 aria-label={item.title}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span
                     className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-105",
+                      "flex size-10 shrink-0 items-center justify-center rounded-md border border-white/15 transition-transform group-hover:scale-105",
                       itemToneClass,
                     )}
                   >
@@ -131,30 +136,30 @@ const SignalHistoryList = ({
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground">
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                         {item.title}
                       </span>
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
                     </span>
                     {item.subtitle ? (
-                      <span className="mt-1 block truncate text-[10px] text-muted-foreground">
+                      <span className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                        <MapPin className="size-3.5 shrink-0" />
                         {item.subtitle}
                       </span>
                     ) : null}
-                    <span className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                       {item.badges.map((badge, index) => (
-                        <Badge
+                        <span
                           key={`${item.id}-${badge.label}-${index}`}
-                          variant="secondary"
                           className={cn(
-                            "h-auto border-none rounded-md px-2 py-1 text-[10px] font-medium",
+                            "inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs font-semibold",
                             badge.className,
                           )}
                         >
-                          <badge.icon className="size-3" />
-                          <span>{badge.label}</span>
-                        </Badge>
+                          <badge.icon className="size-3 shrink-0" />
+                          <span className="min-w-0 truncate">{badge.label}</span>
+                        </span>
                       ))}
                     </span>
                   </span>
@@ -197,11 +202,11 @@ const SignalHistoryList = ({
               />
             </PaginationItem>
           </PaginationContent>
-          <PaginationContent className="flex w-full items-center justify-between gap-2 sm:hidden">
+          <PaginationContent className="flex w-full items-center justify-between gap-2 px-1 sm:hidden">
             <PaginationItem>
               <PaginationButton
                 size="sm"
-                className="px-2.5"
+                className="h-8 shrink-0 px-2 text-xs whitespace-nowrap"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
                 aria-disabled={currentPage === 1}
@@ -210,15 +215,16 @@ const SignalHistoryList = ({
                 Prev
               </PaginationButton>
             </PaginationItem>
-            <PaginationItem>
-              <span className="text-xs text-muted-foreground">
-                Page {currentPage} of {totalPages}
+            <PaginationItem className="min-w-0 flex-1 px-1 text-center">
+              <span className="block truncate text-xs text-muted-foreground">
+                <span className="sr-only">Page </span>
+                {currentPage}/{totalPages}
               </span>
             </PaginationItem>
             <PaginationItem>
               <PaginationButton
                 size="sm"
-                className="px-2.5"
+                className="h-8 shrink-0 px-2 text-xs whitespace-nowrap"
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
                 aria-disabled={currentPage === totalPages}

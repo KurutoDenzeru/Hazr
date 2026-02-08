@@ -15,6 +15,8 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveIpLocation } from "@/lib/ip-location";
 import { HazrSidebar } from "@/components/hazr-sidebar";
+import { HazrSettingsDialog } from "@/components/hazr-settings-panel";
+import { useAppSettings } from "@/hooks/use-app-settings";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import { useAirQuality } from "@/hooks/use-air-quality";
 import { useEonetEvents } from "@/hooks/use-eonet-events";
@@ -94,21 +96,27 @@ export default function GoogleMapsClone() {
   const [activeSignalType, setActiveSignalType] = React.useState<
     "earthquake" | "global" | null
   >(null);
-  const [layerVisibility, setLayerVisibility] = React.useState(() => ({
-    earthquakes: true,
-    eonet: true,
-    airQuality: true,
-    tsunami: true,
-  }));
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
+  const {
+    appSettings,
+    setAppSettings,
+    layerVisibility,
+    setLayerVisibility,
+    resetDefaults,
+  } = useAppSettings();
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
-    magnitude: "all",
+    magnitude: appSettings.earthquakeMagnitude,
     range: "day",
   });
 
-  const eonetState = useEonetEvents();
-  const airQualityState = useAirQuality();
+  const eonetState = useEonetEvents({
+    limit: appSettings.eonetLimit,
+  });
+  const airQualityState = useAirQuality({
+    limit: appSettings.openAqLimit,
+  });
   const tsunamiState = useTsunamiAlerts();
 
 
@@ -341,7 +349,7 @@ export default function GoogleMapsClone() {
     [handleUserInteraction, clearEarthquakeSelection]
   );
 
-  const globalClusterMaxZoom = 6;
+  const globalClusterMaxZoom = appSettings.globalClusterMaxZoom;
   const globalCompactNodeZoom = .2;
   const seismicCompactNodeZoom = 3.2;
   const seismicDetailMinZoom = 6.8;
@@ -412,9 +420,14 @@ export default function GoogleMapsClone() {
         <HazrSidebar
           userLocation={resolvedLocation}
           isLocating={isLocating}
+          onSettingsSelect={() => setIsSettingsDialogOpen(true)}
+          temperatureUnit={appSettings.temperatureUnit}
+          earthquakeMagnitude={appSettings.earthquakeMagnitude}
+          layerVisibility={layerVisibility}
           onEarthquakeSelect={handleEarthquakeSelect}
           onEonetSelect={handleEonetSelect}
           onAirQualitySelect={handleAirQualitySelect}
+          onTsunamiSelect={handleTsunamiSelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}
@@ -564,7 +577,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = eonetState.events.find((event) => event.id === id);
@@ -584,7 +597,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = airQualityState.sites.find((site) => site.id === id);
@@ -604,7 +617,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = tsunamiState.alerts.find((alert) => alert.id === id);
@@ -648,9 +661,17 @@ export default function GoogleMapsClone() {
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
                   resolvedLocation={resolvedLocation}
-                  isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
+                  onEonetSelect={handleEonetSelect}
+                  onAirQualitySelect={handleAirQualitySelect}
+                  onTsunamiSelect={handleTsunamiSelect}
+                  appSettings={appSettings}
+                  onAppSettingsChange={setAppSettings}
+                  onResetDefaults={resetDefaults}
+                  eonetState={eonetState}
+                  airQualityState={airQualityState}
+                  tsunamiState={tsunamiState}
                   layerVisibility={layerVisibility}
                   onLayerVisibilityChange={setLayerVisibility}
                 />
@@ -659,6 +680,15 @@ export default function GoogleMapsClone() {
           </main>
         </SidebarInset>
       </div>
+      <HazrSettingsDialog
+        open={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+        onResetDefaults={resetDefaults}
+        settings={appSettings}
+        onSettingsChange={setAppSettings}
+        layerVisibility={layerVisibility}
+        onLayerVisibilityChange={setLayerVisibility}
+      />
     </SidebarProvider>
   );
 }
