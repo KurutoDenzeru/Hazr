@@ -107,7 +107,7 @@ function HazrSidebar({
   }, [])
 
   return (
-    <Sidebar widthClassName="w-auto" collapsedWidthClassName="w-16" resizable>
+    <Sidebar widthClassName="w-[28rem]" collapsedWidthClassName="w-16">
       <SidebarHeader className="group-data-[state=collapsed]/sidebar:pb-2">
         <TooltipProvider delayDuration={0}>
           <div

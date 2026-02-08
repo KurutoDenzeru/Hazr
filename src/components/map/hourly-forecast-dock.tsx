@@ -20,6 +20,9 @@ const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
   if (unit === "fahrenheit") {
     return (value * 9) / 5 + 32;
   }
+  if (unit === "kelvin") {
+    return value + 273.15;
+  }
   return value;
 };
 
@@ -126,13 +129,13 @@ const HourlyForecastDock = ({
   return (
     <div
       className={cn(
-        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform",
+        "w-full max-w-3xl rounded-2xl border border-border/60 bg-background/90 px-3 py-3 shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform sm:px-5 sm:py-4",
         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             aria-label={isPlaying ? "Pause forecast playback" : "Play forecast playback"}
@@ -154,62 +157,67 @@ const HourlyForecastDock = ({
               className="size-5 text-foreground"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-semibold">
                 {Math.round(toDisplayTemperature(selectedHour.temperature, temperatureUnit))}
-                {temperatureUnit === "fahrenheit" ? "°F" : "°C"}
+                {temperatureUnit === "fahrenheit"
+                  ? "°F"
+                  : temperatureUnit === "kelvin"
+                    ? "K"
+                    : "°C"}
               </span>
               <span className="text-xs text-muted-foreground">
                 {formatHour(selectedHour.time)}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="max-w-[13rem] truncate text-xs text-muted-foreground sm:max-w-[16rem]">
               {locationInfo?.displayName || "Current location"}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 text-center">
-          <p className="text-sm font-semibold">12-Hour Forecast</p>
-          <p className="text-xs text-muted-foreground">
-            {formatDockDate(selectedHour.time)}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Previous hour"
-            onClick={handlePrev}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              handlePrev();
-            }}
-            tabIndex={0}
-            className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next hour"
-            onClick={handleNext}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              handleNext();
-            }}
-            tabIndex={0}
-            className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          >
-            <ChevronRight className="size-4" />
-          </button>
+        <div className="flex items-end justify-between gap-3 sm:flex-col sm:items-center sm:text-center">
+          <div className="flex flex-col items-start gap-1 text-left sm:items-center">
+            <p className="text-sm font-semibold">12-Hour Forecast</p>
+            <p className="text-xs text-muted-foreground">
+              {formatDockDate(selectedHour.time)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous hour"
+              onClick={handlePrev}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                handlePrev();
+              }}
+              tabIndex={0}
+              className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next hour"
+              onClick={handleNext}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                handleNext();
+              }}
+              tabIndex={0}
+              className="flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2 sm:mt-4">
         <Slider
           aria-label="Forecast hour"
           min={0}
@@ -219,7 +227,7 @@ const HourlyForecastDock = ({
           onValueChange={handleSliderChange}
           className="**:data-[slot=slider-range]:transition-[width] **:data-[slot=slider-range]:duration-250 **:data-[slot=slider-range]:ease-out **:data-[slot=slider-thumb]:transition-transform **:data-[slot=slider-thumb]:duration-250 **:data-[slot=slider-thumb]:ease-out"
         />
-        <div className="mt-3 grid grid-cols-6 gap-2 text-[10px] text-muted-foreground sm:grid-cols-12">
+        <div className="mt-3 grid grid-cols-4 gap-2 text-[10px] text-muted-foreground sm:grid-cols-6 lg:grid-cols-12">
           {visibleHours.map((hour, index) => (
             <button
               key={hour.time.toISOString()}

@@ -1444,6 +1444,35 @@ function ControlGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MobileDrawerHeader({
+  icon: Icon,
+  title,
+  description,
+  iconToneClassName,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  iconToneClassName: string;
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-3 px-1">
+      <div
+        className={cn(
+          "flex size-9 items-center justify-center rounded-xl shadow-lg",
+          iconToneClassName,
+        )}
+      >
+        <Icon className="size-5 text-white" />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 export function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
@@ -1455,6 +1484,7 @@ export function MapOverlayUI({
   onTsunamiSelect,
   appSettings,
   onAppSettingsChange,
+  onResetDefaults,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -1471,6 +1501,7 @@ export function MapOverlayUI({
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
   appSettings: AppSettings;
   onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
+  onResetDefaults: () => void;
   eonetState: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -1499,6 +1530,7 @@ export function MapOverlayUI({
   const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
   const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
   const [isGlobalSignalsDrawerOpen, setIsGlobalSignalsDrawerOpen] = React.useState(false);
+  const isMobile = useIsMobile();
   const [quakePage, setQuakePage] = React.useState(1);
   const quakePageSize = 8;
   const totalQuakePages = Math.max(1, Math.ceil(earthquakes.length / quakePageSize));
@@ -1514,6 +1546,14 @@ export function MapOverlayUI({
   React.useEffect(() => {
     setQuakePage(1);
   }, [earthquakes]);
+
+  React.useEffect(() => {
+    if (isMobile) return;
+    setIsMobileMenuOpen(false);
+    setIsQuakesDrawerOpen(false);
+    setIsWeatherDrawerOpen(false);
+    setIsGlobalSignalsDrawerOpen(false);
+  }, [isMobile]);
 
   const activateDrawer = React.useCallback(
     (drawer: "menu" | "quakes" | "weather" | "global") => {
@@ -1575,46 +1615,22 @@ export function MapOverlayUI({
       >
         <DrawerContent className="max-h-[85vh]">
           <div className="flex h-full flex-col p-4">
-            <div className="mb-3">
-              <h3 className="text-lg font-semibold">Menu</h3>
-              <p className="text-xs text-muted-foreground">
-                Settings are embedded here on mobile for quick, in-context control.
-              </p>
-            </div>
+            <MobileDrawerHeader
+              icon={SlidersHorizontal}
+              iconToneClassName="bg-slate-500 shadow-slate-500/20"
+              title="Menu"
+              description="Settings are embedded here on mobile for quick control."
+            />
             <ScrollArea className="h-[62vh] rounded-md border border-border/60 bg-muted/20 p-3">
               <div className="space-y-3 pr-3">
-                <div className="rounded-md border border-border/60 bg-background/80 p-3">
-                  <HazrSettingsPanel
-                    settings={appSettings}
-                    onSettingsChange={onAppSettingsChange}
-                    layerVisibility={layerVisibility}
-                    onLayerVisibilityChange={onLayerVisibilityChange}
-                  />
-                </div>
-                <div className="rounded-md border border-border/60 bg-background/80 p-3">
-                  <p className="text-sm font-medium">Overview</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus feugiat, arcu
-                    at volutpat rutrum, augue felis porttitor justo, id porttitor odio justo nec
-                    mauris.
-                  </p>
-                </div>
-                <div className="rounded-md border border-border/60 bg-background/80 p-3">
-                  <p className="text-sm font-medium">Shortcuts</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
-                    Integer cursus, augue nec sollicitudin tempor, est eros hendrerit justo, vitae
-                    congue lacus dolor id dui.
-                  </p>
-                </div>
-                <div className="rounded-md border border-border/60 bg-background/80 p-3">
-                  <p className="text-sm font-medium">Notes</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam condimentum sem
-                    sit amet fermentum vulputate. Nunc vel nisl congue, varius nulla quis, commodo
-                    velit.
-                  </p>
-                </div>
+                <HazrSettingsPanel
+                  settings={appSettings}
+                  onSettingsChange={onAppSettingsChange}
+                  layerVisibility={layerVisibility}
+                  onLayerVisibilityChange={onLayerVisibilityChange}
+                  onResetDefaults={onResetDefaults}
+                  showInlineReset
+                />
               </div>
             </ScrollArea>
           </div>
@@ -1633,17 +1649,12 @@ export function MapOverlayUI({
       >
         <DrawerContent className="max-h-[85vh]">
           <div className="flex h-full flex-col p-4">
-            <div className="flex items-center gap-3 px-1 pb-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
-                <Activity className="size-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Live Earthquakes</h3>
-                <p className="text-xs text-muted-foreground">
-                  {earthquakes.length} in the last 24h
-                </p>
-              </div>
-            </div>
+            <MobileDrawerHeader
+              icon={Activity}
+              iconToneClassName="bg-red-500 shadow-red-500/20"
+              title="Live Earthquakes"
+              description={`${earthquakes.length} in the last 24h`}
+            />
             <Separator className="mb-2" />
             {!layerVisibility.earthquakes ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
@@ -1749,45 +1760,47 @@ export function MapOverlayUI({
         }}
       >
         <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <div className="mb-3">
-              <h3 className="text-lg font-semibold">Global Signals</h3>
-              <p className="text-xs text-muted-foreground">
-                NASA EONET Live Signals, OpenAQ, and NWS Tsunami alerts.
-              </p>
-            </div>
-            <ScrollArea className="h-[62vh] pr-3">
-              {!layerVisibility.eonet &&
-              !layerVisibility.airQuality &&
-              !layerVisibility.tsunami ? (
-                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
-                  Global sources are hidden in settings.
-                </div>
-              ) : (
-                <GlobalActivity
-                  collapsed={false}
-                  visibility={{
-                    eonet: layerVisibility.eonet,
-                    airQuality: layerVisibility.airQuality,
-                    tsunami: layerVisibility.tsunami,
-                  }}
-                  eonetState={eonetState}
-                  airQualityState={airQualityState}
-                  tsunamiState={tsunamiState}
-                  onEonetSelect={(event) => {
-                    setIsGlobalSignalsDrawerOpen(false);
-                    onEonetSelect(event);
-                  }}
-                  onAirQualitySelect={(site) => {
-                    setIsGlobalSignalsDrawerOpen(false);
-                    onAirQualitySelect(site);
-                  }}
-                  onTsunamiSelect={(alert) => {
-                    setIsGlobalSignalsDrawerOpen(false);
-                    onTsunamiSelect(alert);
-                  }}
-                />
-              )}
+          <div className="flex h-full min-h-0 flex-col p-3 sm:p-4">
+            <MobileDrawerHeader
+              icon={Globe2}
+              iconToneClassName="bg-amber-500 shadow-amber-500/20"
+              title="Global Signals"
+              description="NASA EONET Live Signals, OpenAQ, and NWS Tsunami alerts."
+            />
+            <ScrollArea className="h-[62vh] pr-1">
+              <div className="min-w-0 pr-1">
+                {!layerVisibility.eonet &&
+                !layerVisibility.airQuality &&
+                !layerVisibility.tsunami ? (
+                  <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
+                    Global sources are hidden in settings.
+                  </div>
+                ) : (
+                  <GlobalActivity
+                    collapsed={false}
+                    visibility={{
+                      eonet: layerVisibility.eonet,
+                      airQuality: layerVisibility.airQuality,
+                      tsunami: layerVisibility.tsunami,
+                    }}
+                    eonetState={eonetState}
+                    airQualityState={airQualityState}
+                    tsunamiState={tsunamiState}
+                    onEonetSelect={(event) => {
+                      setIsGlobalSignalsDrawerOpen(false);
+                      onEonetSelect(event);
+                    }}
+                    onAirQualitySelect={(site) => {
+                      setIsGlobalSignalsDrawerOpen(false);
+                      onAirQualitySelect(site);
+                    }}
+                    onTsunamiSelect={(alert) => {
+                      setIsGlobalSignalsDrawerOpen(false);
+                      onTsunamiSelect(alert);
+                    }}
+                  />
+                )}
+              </div>
             </ScrollArea>
           </div>
         </DrawerContent>
@@ -1803,27 +1816,32 @@ export function MapOverlayUI({
           setIsWeatherDrawerOpen(false);
         }}
       >
-        <DrawerContent className="max-h-[85vh]">
-          <div className="flex h-full flex-col p-4">
-            <div className="mb-3">
-              <h3 className="text-lg font-semibold">Weather</h3>
-              <p className="text-xs text-muted-foreground">
-                Local conditions and hourly outlook from Open-Meteo data.
-              </p>
-            </div>
-            <ScrollArea className="h-[62vh] pr-3">
-              <WeatherDock
-                latitude={resolvedLocation?.[1] ?? null}
-                longitude={resolvedLocation?.[0] ?? null}
-                temperatureUnit={appSettings.temperatureUnit}
-                unstyled
-              />
-              <HourlyForecastDock
-                latitude={resolvedLocation?.[1] ?? null}
-                longitude={resolvedLocation?.[0] ?? null}
-                temperatureUnit={appSettings.temperatureUnit}
-                className="mt-4 md:hidden"
-              />
+        <DrawerContent className="max-h-[78dvh]">
+          <div className="flex min-h-0 flex-col p-3 sm:p-4">
+            <MobileDrawerHeader
+              icon={Cloud}
+              iconToneClassName="bg-sky-500 shadow-sky-500/20"
+              title="Weather"
+              description="Local conditions and hourly outlook from Open-Meteo data."
+            />
+            <ScrollArea
+              data-vaul-no-drag
+              className="max-h-[calc(78dvh-7.5rem)] overflow-y-auto overscroll-contain pr-1"
+            >
+              <div className="min-w-0 space-y-4 pr-1 pb-2">
+                <WeatherDock
+                  latitude={resolvedLocation?.[1] ?? null}
+                  longitude={resolvedLocation?.[0] ?? null}
+                  temperatureUnit={appSettings.temperatureUnit}
+                  unstyled
+                />
+                <HourlyForecastDock
+                  latitude={resolvedLocation?.[1] ?? null}
+                  longitude={resolvedLocation?.[0] ?? null}
+                  temperatureUnit={appSettings.temperatureUnit}
+                  className="md:hidden"
+                />
+              </div>
             </ScrollArea>
           </div>
         </DrawerContent>

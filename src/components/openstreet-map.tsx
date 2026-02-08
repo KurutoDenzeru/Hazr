@@ -668,6 +668,7 @@ export default function GoogleMapsClone() {
                   onTsunamiSelect={handleTsunamiSelect}
                   appSettings={appSettings}
                   onAppSettingsChange={setAppSettings}
+                  onResetDefaults={resetDefaults}
                   eonetState={eonetState}
                   airQualityState={airQualityState}
                   tsunamiState={tsunamiState}

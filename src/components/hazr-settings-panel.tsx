@@ -33,7 +33,11 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { EarthquakeMagnitude } from "@/types/api";
-import type { AppSettings, DataLayerVisibility } from "@/types/settings";
+import type {
+  AppSettings,
+  DataLayerVisibility,
+  TemperatureUnit,
+} from "@/types/settings";
 
 type HazrSettingsPanelProps = {
   settings: AppSettings;
@@ -42,6 +46,8 @@ type HazrSettingsPanelProps = {
   onLayerVisibilityChange: React.Dispatch<
     React.SetStateAction<DataLayerVisibility>
   >;
+  onResetDefaults?: () => void;
+  showInlineReset?: boolean;
   className?: string;
 };
 
@@ -85,6 +91,8 @@ function HazrSettingsPanel({
   onSettingsChange,
   layerVisibility,
   onLayerVisibilityChange,
+  onResetDefaults,
+  showInlineReset = false,
   className,
 }: HazrSettingsPanelProps) {
   const settingsId = React.useId();
@@ -130,8 +138,8 @@ function HazrSettingsPanel({
               <Label htmlFor={`${settingsId}-temperature-unit`}>Temperature Unit</Label>
               <Select
                 value={settings.temperatureUnit}
-                onValueChange={(value: "celsius" | "fahrenheit") =>
-                  updateSettings({ temperatureUnit: value })
+                onValueChange={(value: TemperatureUnit) =>
+                  updateSettings({ temperatureUnit: value as TemperatureUnit })
                 }
               >
                 <SelectTrigger id={`${settingsId}-temperature-unit`} className="w-36">
@@ -140,6 +148,7 @@ function HazrSettingsPanel({
                 <SelectContent align="end">
                   <SelectItem value="celsius">Celsius (°C)</SelectItem>
                   <SelectItem value="fahrenheit">Fahrenheit (°F)</SelectItem>
+                  <SelectItem value="kelvin">Kelvin (K)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -304,6 +313,13 @@ function HazrSettingsPanel({
           />
         </TabsContent>
       </Tabs>
+      {showInlineReset && onResetDefaults ? (
+        <div className="pt-2">
+          <Button variant="outline" className="w-full" onClick={onResetDefaults}>
+            Reset Defaults
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

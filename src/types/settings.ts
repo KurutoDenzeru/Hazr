@@ -1,6 +1,6 @@
 import type { EarthquakeMagnitude } from "@/types/api";
 
-export type TemperatureUnit = "celsius" | "fahrenheit";
+export type TemperatureUnit = "celsius" | "fahrenheit" | "kelvin";
 
 export type DataLayerVisibility = {
   earthquakes: boolean;

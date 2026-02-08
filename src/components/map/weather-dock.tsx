@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import { WeatherIcon } from "@/components/hazr-weather-icon";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -42,12 +41,16 @@ const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
   if (unit === "fahrenheit") {
     return (value * 9) / 5 + 32;
   }
+  if (unit === "kelvin") {
+    return value + 273.15;
+  }
   return value;
 };
 
 const formatTemperature = (value: number, unit: TemperatureUnit) => {
   const roundedValue = Math.round(toDisplayTemperature(value, unit));
-  const suffix = unit === "fahrenheit" ? "°F" : "°C";
+  const suffix =
+    unit === "fahrenheit" ? "°F" : unit === "kelvin" ? "K" : "°C";
   return `${roundedValue}${suffix}`;
 };
 
@@ -58,62 +61,6 @@ const formatTime = (date: Date): string => {
     minute: "2-digit",
     hour12: true,
   });
-};
-
-// UV Index Badge with tooltip
-const UVBadge = ({ uvIndex }: { uvIndex: number }) => {
-  const riskLevel = getUVRiskLevel(uvIndex);
-  const info = UV_RISK_INFO[riskLevel];
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge
-          className="flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-white cursor-pointer border-none"
-          style={{ backgroundColor: info.color }}
-        >
-          <Sun className="size-3" />
-          <span>UV {uvIndex.toFixed(0)}</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-50">
-        <p className="font-semibold">{info.label} UV Index</p>
-        <p className="text-sm text-muted-foreground mt-1">{info.description}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
-// Precipitation Badge with tooltip
-const PrecipBadge = ({ probability, amount }: { probability: number; amount: number }) => {
-  const hasRain = probability > 0 || amount > 0;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Badge
-          variant="secondary"
-          className={cn(
-            "flex h-auto items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium cursor-pointer border-none",
-            hasRain
-              ? "bg-blue-500/25 text-blue-700 dark:bg-blue-500/30 dark:text-blue-300"
-              : "bg-muted/70 text-foreground/70 dark:bg-muted/35 dark:text-foreground/80"
-          )}
-        >
-          <Droplets className="size-3" />
-          <span>{probability}%</span>
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent side="top">
-        <p className="font-semibold">{probability}% chance of precipitation</p>
-        {amount > 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Expected: {amount.toFixed(1)}mm
-          </p>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
 };
 
 export const WeatherDock = ({
@@ -269,6 +216,11 @@ export const WeatherDock = ({
         "overflow-hidden rounded-md border border-border/50 bg-background/80 backdrop-blur-xl",
         className,
       );
+  const uvInfo = UV_RISK_INFO[getUVRiskLevel(current.uvIndex)];
+  const precipitationChance = Math.round(
+    daily[0]?.precipitationProbability ?? 0,
+  );
+  const hasRainChance = precipitationChance > 0 || current.precipitation > 0;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -309,51 +261,49 @@ export const WeatherDock = ({
         </div>
 
         {/* Current weather display */}
-        <div className={cn("p-4", unstyled && "p-0 my-2!")}> 
-          <div className="flex items-start justify-between gap-4!">
-            <div className="flex items-center gap-3">
-              <div className="rounded-md bg-sky-500/20 dark:bg-sky-500/30 p-2.5">
-                <WeatherIcon
-                  code={current.weatherCode}
-                  isDay={current.isDay}
-                  className="size-5 text-white"
-                />
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-light tracking-tight">
-                    {Math.round(toDisplayTemperature(current.temperature, temperatureUnit))}
-                  </span>
-                  <span className="text-lg text-muted-foreground">
-                    {temperatureUnit === "fahrenheit" ? "°F" : "°C"}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {current.description}
-                </p>
-              </div>
-            </div>
-
-            {/* UV and Precip badges */}
-            <div className="flex flex-col gap-1.5">
-              <UVBadge uvIndex={current.uvIndex} />
-              <PrecipBadge
-                probability={0}
-                amount={current.precipitation}
+        <div className={cn("p-4", unstyled && "p-0")}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="rounded-md bg-sky-500/20 p-2.5 dark:bg-sky-500/30">
+              <WeatherIcon
+                code={current.weatherCode}
+                isDay={current.isDay}
+                className="size-5 text-white"
               />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-light tracking-tight">
+                  {Math.round(toDisplayTemperature(current.temperature, temperatureUnit))}
+                </span>
+                <span className="text-lg text-muted-foreground">
+                  {temperatureUnit === "fahrenheit"
+                    ? "°F"
+                    : temperatureUnit === "kelvin"
+                      ? "K"
+                      : "°C"}
+                </span>
+              </div>
+              <p className="truncate text-sm text-muted-foreground">
+                {current.description}
+              </p>
             </div>
           </div>
 
-          {/* Weather stats grid */}
-          <div className="grid grid-cols-4 gap-2 mt-2">
+          {/* Weather stats strip */}
+          <div
+            data-vaul-no-drag
+            className="mt-2 flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+          >
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Thermometer className="size-4 text-orange-500" />
-                  <span className="text-sm font-medium">
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Feels
+                  </span>
+                  <Thermometer className="size-5 text-orange-500" />
+                  <span className="text-xs font-medium">
                     {formatTemperature(current.feelsLike, temperatureUnit)}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Feels</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>Feels like temperature</TooltipContent>
@@ -361,12 +311,14 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Wind className="size-4 text-cyan-500" />
-                  <span className="text-sm font-medium">
-                    {Math.round(current.windSpeed)}
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Wind
                   </span>
-                  <span className="text-[10px] text-muted-foreground">km/h</span>
+                  <Wind className="size-5 text-cyan-500" />
+                  <span className="text-xs font-medium">
+                    {Math.round(current.windSpeed)} km/h
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -379,12 +331,14 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
-                  <Droplets className="size-4 text-blue-500" />
-                  <span className="text-sm font-medium">
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Humid
+                  </span>
+                  <Droplets className="size-5 text-blue-500" />
+                  <span className="text-xs font-medium">
                     {current.humidity}%
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Humid</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>Relative humidity</TooltipContent>
@@ -392,30 +346,77 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {current.visibility !== undefined ? "Visibility" : "Cloud"}
+                  </span>
                   {current.visibility !== undefined ? (
-                    <>
-                      <Eye className="size-4 text-violet-500" />
-                      <span className="text-sm font-medium">
-                        {(current.visibility / 1000).toFixed(0)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">km</span>
-                    </>
+                    <Eye className="size-5 text-violet-500" />
                   ) : (
-                    <>
-                      <Gauge className="size-4 text-violet-500" />
-                      <span className="text-sm font-medium">
-                        {current.cloudCover}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">Cloud</span>
-                    </>
+                    <Gauge className="size-5 text-violet-500" />
                   )}
+                  <span className="text-xs font-medium">
+                    {current.visibility !== undefined
+                      ? `${(current.visibility / 1000).toFixed(0)} km`
+                      : `${current.cloudCover}%`}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
                 {current.visibility !== undefined
                   ? `Visibility: ${(current.visibility / 1000).toFixed(1)} km`
                   : `Cloud cover: ${current.cloudCover}%`}
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    UV
+                  </span>
+                  <Sun
+                    className="size-5"
+                    style={{ color: uvInfo.color }}
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {current.uvIndex.toFixed(0)}
+                    {" "}
+                    {uvInfo.label} UV
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-50">
+                <p className="font-semibold">{uvInfo.label} UV Index</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {uvInfo.description}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex min-w-[4.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Chance
+                  </span>
+                  <Droplets
+                    className={cn(
+                      "size-5",
+                      hasRainChance ? "text-blue-500" : "text-muted-foreground",
+                    )}
+                  />
+                  <span className="text-xs font-medium">
+                    {precipitationChance}%
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="font-semibold">
+                  {precipitationChance}% chance of precipitation
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Current rate: {current.precipitation.toFixed(1)}mm
+                </p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -427,12 +428,15 @@ export const WeatherDock = ({
             <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               7-Day Forecast
             </p>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <div
+              data-vaul-no-drag
+              className="flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+            >
               {daily.slice(0, 7).map((day) => (
                 <Tooltip key={day.date.toISOString()}>
                   <TooltipTrigger asChild>
-                    <div className="flex min-w-14 flex-col items-center gap-1 rounded-md bg-muted/40 dark:bg-muted/15 px-2 py-2 hover:bg-muted/70 dark:hover:bg-muted/35 cursor-pointer transition-colors">
-                      <span className="text-[10px] font-medium text-muted-foreground">
+                    <div className="flex min-w-[4.5rem] flex-none snap-start flex-col items-center gap-1 rounded-md bg-muted/40 px-2 py-2 transition-colors hover:bg-muted/70 dark:bg-muted/15 dark:hover:bg-muted/35 cursor-pointer">
+                      <span className="text-xs font-medium text-muted-foreground">
                         {day.date.toDateString() === new Date().toDateString()
                           ? "Today"
                           : day.date.toLocaleDateString("en-US", { weekday: "short" })}
@@ -442,7 +446,7 @@ export const WeatherDock = ({
                         isDay={true}
                         className="size-5 text-muted-foreground"
                       />
-                      <div className="flex gap-1 text-[10px]">
+                      <div className="flex gap-1 text-xs">
                         <span className="font-medium">
                           {Math.round(toDisplayTemperature(day.tempMax, temperatureUnit))}°
                         </span>
