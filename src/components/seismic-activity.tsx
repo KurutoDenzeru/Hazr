@@ -1,8 +1,18 @@
 "use client";
 
+import React from "react";
 import { Mountain, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -24,18 +34,58 @@ const formatTime = (date: Date): string => {
   });
 };
 
+const getPaginationRange = (totalPages: number, currentPage: number) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis", totalPages] as const;
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis", totalPages - 2, totalPages - 1, totalPages] as const;
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages] as const;
+};
+
 export const SeismicActivity = ({
   collapsed,
   onEarthquakeSelect,
   onOpenSection,
 }: SeismicActivityProps) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const pageSize = 7;
   const { earthquakes, isLoading, error, lastUpdated, refetch, metadata } =
     useEarthquakes({
       magnitude: "2.5",
       range: "day",
     });
+  const totalPages = Math.max(1, Math.ceil(earthquakes.length / pageSize));
+  const currentPageEarthquakes = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return earthquakes.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, earthquakes]);
+  const paginationRange = React.useMemo(
+    () => getPaginationRange(totalPages, currentPage),
+    [currentPage, totalPages],
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [earthquakes]);
+
   const handleRefresh = () => {
     void refetch();
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage((page) => Math.max(1, page - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1));
   };
 
   const strongestMagnitude = earthquakes.reduce<number>(
@@ -146,11 +196,77 @@ export const SeismicActivity = ({
               </p>
               <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
                 <div className="flex flex-col gap-1">
-                  {earthquakes.slice(0, 7).map((eq) => (
+                  {currentPageEarthquakes.map((eq) => (
                     <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />
                   ))}
                 </div>
               </ScrollArea>
+              {totalPages > 1 ? (
+                <Pagination className="mt-3">
+                  <PaginationContent className="hidden sm:flex">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={handlePreviousPage}
+                        disabled={currentPage === 1}
+                        aria-disabled={currentPage === 1}
+                      />
+                    </PaginationItem>
+                    {paginationRange.map((entry, index) => (
+                      <PaginationItem key={`quake-page-${entry}-${index}`}>
+                        {entry === "ellipsis" ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationButton
+                            onClick={() => setCurrentPage(entry)}
+                            isActive={entry === currentPage}
+                            aria-label={`Go to page ${entry}`}
+                          >
+                            {entry}
+                          </PaginationButton>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        aria-disabled={currentPage === totalPages}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                  <PaginationContent className="flex w-full items-center justify-between gap-2 sm:hidden">
+                    <PaginationItem>
+                      <PaginationButton
+                        size="sm"
+                        className="px-2.5"
+                        onClick={handlePreviousPage}
+                        disabled={currentPage === 1}
+                        aria-disabled={currentPage === 1}
+                        aria-label="Go to previous page"
+                      >
+                        Prev
+                      </PaginationButton>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <span className="text-xs text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationButton
+                        size="sm"
+                        className="px-2.5"
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        aria-disabled={currentPage === totalPages}
+                        aria-label="Go to next page"
+                      >
+                        Next
+                      </PaginationButton>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              ) : null}
             </>
           )}
         </div>

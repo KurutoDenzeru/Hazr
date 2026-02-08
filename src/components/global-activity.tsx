@@ -256,7 +256,7 @@ const GlobalActivity = ({
     onFocusTargetHandled?.();
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const eventItems: SignalHistoryItem[] = eonetState.events.slice(0, 7).map((event) => {
+  const eventItems: SignalHistoryItem[] = eonetState.events.map((event) => {
     const categoryLabel = formatEonetCategory(event.category);
     const categoryVisual = getEonetCategoryVisual(categoryLabel);
 
@@ -289,7 +289,7 @@ const GlobalActivity = ({
     };
   });
 
-  const airItems: SignalHistoryItem[] = airQualityState.sites.slice(0, 7).map((site) => {
+  const airItems: SignalHistoryItem[] = airQualityState.sites.map((site) => {
     const value = Number.isFinite(site.value) ? site.value.toFixed(1) : `${site.value}`;
     const locationHint = [site.city, site.country].filter(Boolean).join(", ");
     const coordinateLabel = `${formatCoordinate(site.coordinates[1], "N", "S")} ${formatCoordinate(site.coordinates[0], "E", "W")}`;
@@ -336,7 +336,7 @@ const GlobalActivity = ({
     };
   });
 
-  const tsunamiItems: SignalHistoryItem[] = tsunamiState.alerts.slice(0, 7).map((alert) => ({
+  const tsunamiItems: SignalHistoryItem[] = tsunamiState.alerts.map((alert) => ({
     id: alert.id,
     title: alert.headline,
     subtitle: "NWS tsunami bulletin",
