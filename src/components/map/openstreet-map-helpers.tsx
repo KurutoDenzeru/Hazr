@@ -23,6 +23,7 @@ import {
   Clock,
   ExternalLink,
   Gauge,
+  Compass,
   MapPin,
   Radio,
   Signal,
@@ -1487,6 +1488,138 @@ function MobileDrawerHeader({
   );
 }
 
+const formatNormalizedDegrees = (value: number) => {
+  const normalized = ((value % 360) + 360) % 360;
+  return `${Math.round(normalized)}°`;
+};
+
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const getHaversineDistanceMeters = (
+  start: { lng: number; lat: number },
+  end: { lng: number; lat: number },
+) => {
+  const earthRadius = 6371008.8;
+  const latDelta = toRadians(end.lat - start.lat);
+  const lngDelta = toRadians(end.lng - start.lng);
+  const startLat = toRadians(start.lat);
+  const endLat = toRadians(end.lat);
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadius * c;
+};
+
+const getNiceUnitValue = (rawValue: number) => {
+  if (!Number.isFinite(rawValue) || rawValue <= 0) return 0;
+  const magnitude = 10 ** Math.floor(Math.log10(rawValue));
+  const normalized = rawValue / magnitude;
+  if (normalized >= 5) return 5 * magnitude;
+  if (normalized >= 2) return 2 * magnitude;
+  return 1 * magnitude;
+};
+
+const formatScaleValue = (value: number) => {
+  if (value >= 10) return `${Math.round(value)}`;
+  return `${Math.round(value * 10) / 10}`;
+};
+
+function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
+  const { map } = useMap();
+  const [camera, setCamera] = React.useState({
+    pitch: 0,
+    bearing: 0,
+    scaleKilometers: 0,
+    scaleMiles: 0,
+  });
+
+  React.useEffect(() => {
+    if (!map) return;
+
+    const syncCamera = () => {
+      const viewportWidth = map.getContainer().clientWidth;
+      const viewportHeight = map.getContainer().clientHeight;
+      const targetPixels = Math.max(80, Math.min(140, Math.floor(viewportWidth * 0.16)));
+      const centerX = viewportWidth / 2;
+      const centerY = viewportHeight / 2;
+      const startLngLat = map.unproject([centerX - targetPixels / 2, centerY]);
+      const endLngLat = map.unproject([centerX + targetPixels / 2, centerY]);
+      const sampledMeters = getHaversineDistanceMeters(startLngLat, endLngLat);
+      const sampledKilometers = sampledMeters / 1000;
+      const sampledMiles = sampledMeters / 1609.344;
+
+      setCamera({
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
+        scaleKilometers: getNiceUnitValue(sampledKilometers),
+        scaleMiles: getNiceUnitValue(sampledMiles),
+      });
+    };
+
+    syncCamera();
+    map.on("zoom", syncCamera);
+    map.on("rotate", syncCamera);
+    map.on("pitch", syncCamera);
+
+    return () => {
+      map.off("zoom", syncCamera);
+      map.off("rotate", syncCamera);
+      map.off("pitch", syncCamera);
+    };
+  }, [map]);
+
+  return (
+    <div className="pointer-events-auto hidden md:block">
+      <div className="rounded-xl border border-white/20 bg-background/45 px-3 py-2 backdrop-blur-xl supports-backdrop-filter:bg-background/35">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          View Metrics
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
+            <Ruler className="size-3.5" />
+          </span>
+          <p className="text-xs text-muted-foreground">Scale (km)</p>
+          <p className="ml-auto text-sm font-semibold">
+            {formatScaleValue(camera.scaleKilometers)} km
+          </p>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
+            <Ruler className="size-3.5" />
+          </span>
+          <p className="text-xs text-muted-foreground">Scale (mi)</p>
+          <p className="ml-auto text-sm font-semibold">
+            {formatScaleValue(camera.scaleMiles)} mi
+          </p>
+        </div>
+        {is3DModeEnabled ? (
+          <>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
+                <Box className="size-3.5" />
+              </span>
+              <p className="text-xs text-muted-foreground">Pitch</p>
+              <p className="ml-auto text-sm font-semibold">
+                {Math.round(Math.max(0, camera.pitch))}°
+              </p>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
+                <Compass className="size-3.5" />
+              </span>
+              <p className="text-xs text-muted-foreground">Bearing</p>
+              <p className="ml-auto text-sm font-semibold">
+                {formatNormalizedDegrees(camera.bearing)}
+              </p>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
@@ -1541,6 +1674,7 @@ export function MapOverlayUI({
   onLayerVisibilityChange: React.Dispatch<React.SetStateAction<LayerVisibility>>;
 }) {
   const [activeMobileDrawer, setActiveMobileDrawer] = React.useState<"menu" | "quakes" | "weather" | "global" | null>(null);
+  const [isMap3DMode, setIsMap3DMode] = React.useState(false);
   const isMobile = useIsMobile();
   const [quakePage, setQuakePage] = React.useState(1);
   const quakePageSize = 8;
@@ -1586,6 +1720,10 @@ export function MapOverlayUI({
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
+      <div className="pointer-events-none absolute left-4 top-4">
+        <MapCameraDock is3DModeEnabled={isMap3DMode} />
+      </div>
+
       <div className="pointer-events-none p-4 flex flex-col gap-4 items-end sm:flex-row sm:justify-end sm:items-end w-full mt-auto">
         <div className="pointer-events-auto flex flex-col gap-4 items-end w-auto">
           <CustomMapControls
@@ -1593,6 +1731,7 @@ export function MapOverlayUI({
             onLocateAnimation={onLocateAnimation}
             layerVisibility={layerVisibility}
             onLayerVisibilityChange={onLayerVisibilityChange}
+            on3DModeChange={setIsMap3DMode}
           />
         </div>
       </div>
@@ -1874,11 +2013,13 @@ function CustomMapControls({
   onLocateAnimation,
   layerVisibility,
   onLayerVisibilityChange,
+  on3DModeChange,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
   layerVisibility: LayerVisibility;
   onLayerVisibilityChange: React.Dispatch<React.SetStateAction<LayerVisibility>>;
+  on3DModeChange?: (enabled: boolean) => void;
 }) {
   const { map } = useMap();
   const { resolvedTheme, setTheme } = useTheme();
@@ -1892,7 +2033,8 @@ function CustomMapControls({
 
   React.useEffect(() => {
     is3DEnabledRef.current = is3D;
-  }, [is3D]);
+    on3DModeChange?.(is3D);
+  }, [is3D, on3DModeChange]);
 
   React.useEffect(() => {
     if (!map) return;
@@ -2159,6 +2301,7 @@ function CustomMapControls({
     const new3D = !is3D;
     is3DEnabledRef.current = new3D;
     setIs3D(new3D);
+    on3DModeChange?.(new3D);
     if (!map) return;
 
     const globeMap = map as GlobeCapableMap;
