@@ -121,7 +121,7 @@ const HourlyForecastDock = ({
       className={cn(
         compact
           ? "w-full rounded-md border border-border/60 bg-background px-3 py-3 transition-all duration-200 ease-out"
-          : "w-full max-w-3xl rounded-xl border border-border/60 bg-[linear-gradient(135deg,theme(colors.background/96%),theme(colors.background/88%))] px-3 py-3 shadow-sm shadow-black/25 backdrop-blur-xl transition-all duration-240 ease-out will-change-transform sm:px-6 sm:py-5",
+          : "w-full max-w-3xl rounded-2xl border border-white/15 bg-background/45 px-3 py-3 backdrop-blur-2xl supports-backdrop-filter:bg-background/35 transition-all duration-240 ease-out will-change-transform sm:px-6 sm:py-5",
         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
@@ -145,7 +145,7 @@ const HourlyForecastDock = ({
             tabIndex={0}
             className={cn(
               "flex items-center justify-center border border-border/60 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground",
-              compact ? "size-8 rounded-md bg-background" : "size-9 rounded-full bg-background/80",
+              compact ? "size-8 rounded-md bg-background" : "size-9 rounded-full border-white/15 bg-background/35",
             )}
           >
             {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -153,7 +153,7 @@ const HourlyForecastDock = ({
           <div
             className={cn(
               "flex items-center justify-center bg-muted/70",
-              compact ? "size-8 rounded-md" : "size-10 rounded-lg",
+              compact ? "size-8 rounded-md" : "size-10 rounded-lg bg-background/35 border border-white/10",
             )}
           >
             <WeatherIcon
@@ -197,7 +197,7 @@ const HourlyForecastDock = ({
             <p
               className={cn(
                 "inline-flex w-fit items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground",
-                compact && "px-2.5 py-1 text-xs",
+                compact ? "px-2.5 py-1 text-xs" : "border-white/15 bg-background/35",
               )}
             >
               12-Hour Forecast
@@ -235,8 +235,11 @@ const HourlyForecastDock = ({
               tabIndex={0}
               className={cn(
                 "rounded-md px-1.5 py-1 text-center transition-colors",
-                index === safeIndex && "bg-muted/70 font-medium text-foreground",
-                index !== safeIndex && "hover:bg-muted/50",
+                index === safeIndex && "font-medium text-foreground",
+                index !== safeIndex && "hover:bg-background/30",
+                compact
+                  ? index === safeIndex && "bg-muted/70"
+                  : index === safeIndex && "bg-background/45 border border-white/15",
               )}
             >
               {index === 0 ? "Now" : formatHour(hour.time)}
