@@ -575,23 +575,23 @@ const SignalSection = ({
   };
 
   return (
-    <div className="overflow-hidden">
-      <div className="flex items-center justify-between px-0 my-2">
-        <div className="flex items-center gap-2">
-          <div className={cn("rounded-md p-2.5", toneClassName)}>
-            <Icon className="size-5" />
+      <div className="overflow-hidden">
+        <div className="my-2 flex items-center justify-between px-0">
+          <div className="flex items-center gap-2">
+            <div className={cn("rounded-md border border-border/60 p-2.5", toneClassName)}>
+              <Icon className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{title}</p>
+              <p className="text-sm font-medium text-muted-foreground">{description}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium">{title}</p>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon-sm"
-              className="rounded-md text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
+              className="rounded-md border border-border/60 text-muted-foreground hover:bg-muted/80 dark:hover:bg-muted/40"
               type="button"
               onClick={handleRefresh}
               aria-label={`Refresh ${title}`}

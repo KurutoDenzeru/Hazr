@@ -7,6 +7,7 @@ import {
   Gauge,
   Waves,
   AlertTriangle,
+  MapPin,
 } from "lucide-react";
 import type { ProcessedEarthquake } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
@@ -55,7 +56,7 @@ const EarthquakeItem = ({
             aria-label={earthquake.title}
           >
             <div
-              className="flex size-8 items-center justify-center rounded-md text-[10px] font-bold text-white"
+              className="flex size-8 items-center justify-center rounded-md text-xs font-bold text-white"
               style={{ backgroundColor: magColor }}
             >
               {earthquake.magnitude.toFixed(1)}
@@ -126,12 +127,12 @@ const EarthquakeItem = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-2 rounded-md bg-muted/30 px-2 py-2 text-left transition-all hover:bg-muted/60 dark:bg-muted/10 dark:hover:bg-muted/30"
+      className="group flex w-full flex-col gap-2 rounded-md border border-border/60 bg-background/35 px-2.5 py-2.5 text-left transition-all hover:bg-muted/40 dark:bg-background/20 dark:hover:bg-muted/20"
       aria-label={earthquake.title}
     >
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-md text-sm font-bold text-white transition-transform group-hover:scale-105"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-white/15 text-sm font-bold text-white transition-transform group-hover:scale-105"
             style={{
               backgroundColor: magColor,
             }}
@@ -148,12 +149,16 @@ const EarthquakeItem = ({
               </p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
             </div>
+          <div className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground/85">
+            <MapPin className="size-3.5" />
+            <span className="truncate">USGS event</span>
+          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {detailBadges.map((badge) => (
               <div
                 key={badge.label}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium",
+                  "flex items-center gap-1.5 rounded-md border border-border/50 px-2 py-1 text-xs font-semibold",
                   badge.className,
                 )}
               >
