@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveIpLocation } from "@/lib/ip-location";
 import { HazrSidebar } from "@/components/hazr-sidebar";
+import { HazrSettingsPanel } from "@/components/hazr-settings-panel";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
 import { useAirQuality } from "@/hooks/use-air-quality";
 import { useEonetEvents } from "@/hooks/use-eonet-events";
@@ -26,6 +27,13 @@ import type {
   ProcessedTsunamiAlert,
 } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  DATA_LAYER_VISIBILITY_STORAGE_KEY,
+  DEFAULT_APP_SETTINGS,
+  DEFAULT_LAYER_VISIBILITY,
+  type AppSettings,
+} from "@/types/settings";
 import {
   AirQualityFlyTo,
   EarthquakeFlyTo,
@@ -39,6 +47,15 @@ import {
   useIsTablet,
   type MapViewState,
 } from "@/components/map/openstreet-map-helpers";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
@@ -94,22 +111,70 @@ export default function GoogleMapsClone() {
   const [activeSignalType, setActiveSignalType] = React.useState<
     "earthquake" | "global" | null
   >(null);
-  const [layerVisibility, setLayerVisibility] = React.useState(() => ({
-    earthquakes: true,
-    eonet: true,
-    airQuality: true,
-    tsunami: true,
-  }));
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false);
+  const [appSettings, setAppSettings] = React.useState<AppSettings>(() => {
+    if (typeof window === "undefined") return DEFAULT_APP_SETTINGS;
+    try {
+      const raw = localStorage.getItem(APP_SETTINGS_STORAGE_KEY);
+      if (!raw) return DEFAULT_APP_SETTINGS;
+      const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      return {
+        ...DEFAULT_APP_SETTINGS,
+        ...parsed,
+      };
+    } catch {
+      return DEFAULT_APP_SETTINGS;
+    }
+  });
+  const [layerVisibility, setLayerVisibility] = React.useState(() => {
+    if (typeof window === "undefined") return DEFAULT_LAYER_VISIBILITY;
+    try {
+      const raw = localStorage.getItem(DATA_LAYER_VISIBILITY_STORAGE_KEY);
+      if (!raw) return DEFAULT_LAYER_VISIBILITY;
+      const parsed = JSON.parse(raw) as Partial<typeof DEFAULT_LAYER_VISIBILITY>;
+      return {
+        ...DEFAULT_LAYER_VISIBILITY,
+        ...parsed,
+      };
+    } catch {
+      return DEFAULT_LAYER_VISIBILITY;
+    }
+  });
 
   // Fetch earthquake data
   const { earthquakes } = useEarthquakes({
-    magnitude: "all",
+    magnitude: appSettings.earthquakeMagnitude,
     range: "day",
   });
 
-  const eonetState = useEonetEvents();
-  const airQualityState = useAirQuality();
+  const eonetState = useEonetEvents({
+    limit: appSettings.eonetLimit,
+  });
+  const airQualityState = useAirQuality({
+    limit: appSettings.openAqLimit,
+  });
   const tsunamiState = useTsunamiAlerts();
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
+    } catch {
+      // ignore
+    }
+  }, [appSettings]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        DATA_LAYER_VISIBILITY_STORAGE_KEY,
+        JSON.stringify(layerVisibility),
+      );
+    } catch {
+      // ignore
+    }
+  }, [layerVisibility]);
 
 
   const eonetGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
@@ -412,9 +477,14 @@ export default function GoogleMapsClone() {
         <HazrSidebar
           userLocation={resolvedLocation}
           isLocating={isLocating}
+          onSettingsSelect={() => setIsSettingsDialogOpen(true)}
+          temperatureUnit={appSettings.temperatureUnit}
+          earthquakeMagnitude={appSettings.earthquakeMagnitude}
+          layerVisibility={layerVisibility}
           onEarthquakeSelect={handleEarthquakeSelect}
           onEonetSelect={handleEonetSelect}
           onAirQualitySelect={handleAirQualitySelect}
+          onTsunamiSelect={handleTsunamiSelect}
           eonetState={eonetState}
           airQualityState={airQualityState}
           tsunamiState={tsunamiState}
@@ -564,7 +634,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = eonetState.events.find((event) => event.id === id);
@@ -584,7 +654,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = airQualityState.sites.find((site) => site.id === id);
@@ -604,7 +674,7 @@ export default function GoogleMapsClone() {
                   pointLabelVisible={false}
                   clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
-                  clusterRadius={45}
+                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = tsunamiState.alerts.find((alert) => alert.id === id);
@@ -653,6 +723,8 @@ export default function GoogleMapsClone() {
                   onEonetSelect={handleEonetSelect}
                   onAirQualitySelect={handleAirQualitySelect}
                   onTsunamiSelect={handleTsunamiSelect}
+                  appSettings={appSettings}
+                  onAppSettingsChange={setAppSettings}
                   eonetState={eonetState}
                   airQualityState={airQualityState}
                   tsunamiState={tsunamiState}
@@ -664,6 +736,26 @@ export default function GoogleMapsClone() {
           </main>
         </SidebarInset>
       </div>
+      <AlertDialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+        <AlertDialogContent className="max-w-3xl gap-4 p-5">
+          <AlertDialogHeader className="place-items-start text-left">
+            <AlertDialogTitle>Hazr Settings</AlertDialogTitle>
+            <AlertDialogDescription>
+              Configure weather units, source visibility, marker clustering, and
+              dataset depth across desktop and mobile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <HazrSettingsPanel
+            settings={appSettings}
+            onSettingsChange={setAppSettings}
+            layerVisibility={layerVisibility}
+            onLayerVisibilityChange={setLayerVisibility}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }

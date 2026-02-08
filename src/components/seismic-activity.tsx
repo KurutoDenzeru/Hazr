@@ -17,12 +17,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useEarthquakes } from "@/hooks/use-earthquakes";
-import type { ProcessedEarthquake } from "@/types/api";
+import type { EarthquakeMagnitude, ProcessedEarthquake } from "@/types/api";
 
 type SeismicActivityProps = {
   collapsed: boolean;
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   onOpenSection?: () => void;
+  magnitude?: EarthquakeMagnitude;
 };
 
 // Format time for display
@@ -54,12 +55,13 @@ export const SeismicActivity = ({
   collapsed,
   onEarthquakeSelect,
   onOpenSection,
+  magnitude = "2.5",
 }: SeismicActivityProps) => {
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 7;
   const { earthquakes, isLoading, error, lastUpdated, refetch, metadata } =
     useEarthquakes({
-      magnitude: "2.5",
+      magnitude,
       range: "day",
     });
   const totalPages = Math.max(1, Math.ceil(earthquakes.length / pageSize));

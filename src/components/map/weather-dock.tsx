@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
 import { getUVRiskLevel, UV_RISK_INFO, getWindDirection } from "@/types/api";
+import type { TemperatureUnit } from "@/types/settings";
 
 type WeatherDockProps = {
   latitude: number | null;
@@ -34,6 +35,20 @@ type WeatherDockProps = {
   isLocating?: boolean;
   onOpenSection?: () => void;
   unstyled?: boolean;
+  temperatureUnit?: TemperatureUnit;
+};
+
+const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
+  if (unit === "fahrenheit") {
+    return (value * 9) / 5 + 32;
+  }
+  return value;
+};
+
+const formatTemperature = (value: number, unit: TemperatureUnit) => {
+  const roundedValue = Math.round(toDisplayTemperature(value, unit));
+  const suffix = unit === "fahrenheit" ? "°F" : "°C";
+  return `${roundedValue}${suffix}`;
 };
 
 // Format time for display
@@ -109,6 +124,7 @@ export const WeatherDock = ({
   isLocating = false,
   onOpenSection,
   unstyled = false,
+  temperatureUnit = "celsius",
 }: WeatherDockProps) => {
   const {
     current,
@@ -200,7 +216,7 @@ export const WeatherDock = ({
           <p className="font-medium">Open Meteo Weather</p>
           <p className="text-sm text-muted-foreground">{current.description}</p>
           <p className="text-sm text-muted-foreground">
-            {Math.round(current.temperature)}°C
+            {formatTemperature(current.temperature, temperatureUnit)}
           </p>
           <p className="text-sm text-muted-foreground">
             {locationInfo?.displayName || "Current location"}
@@ -306,9 +322,11 @@ export const WeatherDock = ({
               <div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg font-light tracking-tight">
-                    {Math.round(current.temperature)}
+                    {Math.round(toDisplayTemperature(current.temperature, temperatureUnit))}
                   </span>
-                  <span className="text-lg text-muted-foreground">°C</span>
+                  <span className="text-lg text-muted-foreground">
+                    {temperatureUnit === "fahrenheit" ? "°F" : "°C"}
+                  </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {current.description}
@@ -333,7 +351,7 @@ export const WeatherDock = ({
                 <div className="flex flex-col items-center gap-1 rounded-md bg-muted/60 dark:bg-muted/25 px-2 py-2 cursor-pointer hover:bg-muted/80 dark:hover:bg-muted/35 transition-colors">
                   <Thermometer className="size-4 text-orange-500" />
                   <span className="text-sm font-medium">
-                    {Math.round(current.feelsLike)}°
+                    {formatTemperature(current.feelsLike, temperatureUnit)}
                   </span>
                   <span className="text-[10px] text-muted-foreground">Feels</span>
                 </div>
@@ -425,8 +443,12 @@ export const WeatherDock = ({
                         className="size-5 text-muted-foreground"
                       />
                       <div className="flex gap-1 text-[10px]">
-                        <span className="font-medium">{Math.round(day.tempMax)}°</span>
-                        <span className="text-muted-foreground">{Math.round(day.tempMin)}°</span>
+                        <span className="font-medium">
+                          {Math.round(toDisplayTemperature(day.tempMax, temperatureUnit))}°
+                        </span>
+                        <span className="text-muted-foreground">
+                          {Math.round(toDisplayTemperature(day.tempMin, temperatureUnit))}°
+                        </span>
                       </div>
                     </div>
                   </TooltipTrigger>
@@ -435,7 +457,10 @@ export const WeatherDock = ({
                       {day.date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                     </p>
                     <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
-                      <p>High: {Math.round(day.tempMax)}°C / Low: {Math.round(day.tempMin)}°C</p>
+                      <p>
+                        High: {formatTemperature(day.tempMax, temperatureUnit)} / Low:{" "}
+                        {formatTemperature(day.tempMin, temperatureUnit)}
+                      </p>
                       <p>Precipitation: {day.precipitationProbability}% ({day.precipitationSum.toFixed(1)}mm)</p>
                       <p>UV Index Max: {day.uvIndexMax.toFixed(0)}</p>
                       <p>Wind: {Math.round(day.windSpeedMax)} km/h</p>

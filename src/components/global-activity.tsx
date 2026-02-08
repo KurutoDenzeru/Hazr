@@ -69,6 +69,11 @@ type GlobalActivityProps = {
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
   onTsunamiSelect?: (alert: ProcessedTsunamiAlert) => void;
+  visibility?: {
+    eonet: boolean;
+    airQuality: boolean;
+    tsunami: boolean;
+  };
 };
 
 const formatEonetCategory = (category: string) => {
@@ -233,6 +238,11 @@ const GlobalActivity = ({
   onEonetSelect,
   onAirQualitySelect,
   onTsunamiSelect,
+  visibility = {
+    eonet: true,
+    airQuality: true,
+    tsunami: true,
+  },
 }: GlobalActivityProps) => {
   const liveEventsSectionRef = React.useRef<HTMLDivElement | null>(null);
   const openAqSectionRef = React.useRef<HTMLDivElement | null>(null);
@@ -248,7 +258,10 @@ const GlobalActivity = ({
           ? openAqSectionRef.current
           : tsunamiSectionRef.current;
 
-    if (!targetElement) return;
+    if (!targetElement) {
+      onFocusTargetHandled?.();
+      return;
+    }
 
     targetElement.scrollIntoView({
       behavior: "smooth",
@@ -387,58 +400,68 @@ const GlobalActivity = ({
     null,
   );
 
+  if (!visibility.eonet && !visibility.airQuality && !visibility.tsunami) {
+    return null;
+  }
+
   if (collapsed) {
     return (
       <TooltipProvider delayDuration={0}>
         <div className="flex flex-col items-center gap-2">
-          <MiniSignal
-            label="NASA EONET Live Signals"
-            icon={Globe2}
-            toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-            onClick={() => onOpenSection?.("global-live-events")}
-            isLoading={eonetState.isLoading}
-            detail={
-              eonetState.isLoading
-                ? "Updating EONET events..."
-                : activeEventCount === 0
-                  ? "No active events right now."
-                  : `${activeEventCount} active event${activeEventCount === 1 ? "" : "s"}`
-            }
-          />
-          <MiniSignal
-            label="OpenAQ"
-            icon={Wind}
-            toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-            onClick={() => onOpenSection?.("global-openaq")}
-            isLoading={airQualityState.isLoading}
-            detail={
-              airQualityState.isLoading
-                ? "Updating OpenAQ stations..."
-                : activeAirSiteCount === 0
-                  ? "No reporting stations right now."
-                  : `${activeAirSiteCount} site${activeAirSiteCount === 1 ? "" : "s"} reporting`
-            }
-            subDetail={airQualityState.isLoading ? undefined : primaryAirValue ?? undefined}
-          />
-          <MiniSignal
-            label="NWS Tsunami Alerts"
-            icon={Waves}
-            toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-            onClick={() => onOpenSection?.("global-tsunami")}
-            isLoading={tsunamiState.isLoading}
-            detail={
-              tsunamiState.isLoading
-                ? "Checking NWS tsunami alerts..."
-                : activeTsunamiCount === 0
-                  ? "No active alerts."
-                  : `${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`
-            }
-            subDetail={
-              tsunamiState.isLoading || !highestTsunamiSeverity
-                ? undefined
-                : `Highest severity: ${highestTsunamiSeverity}`
-            }
-          />
+          {visibility.eonet ? (
+            <MiniSignal
+              label="NASA EONET Live Signals"
+              icon={Globe2}
+              toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+              onClick={() => onOpenSection?.("global-live-events")}
+              isLoading={eonetState.isLoading}
+              detail={
+                eonetState.isLoading
+                  ? "Updating EONET events..."
+                  : activeEventCount === 0
+                    ? "No active events right now."
+                    : `${activeEventCount} active event${activeEventCount === 1 ? "" : "s"}`
+              }
+            />
+          ) : null}
+          {visibility.airQuality ? (
+            <MiniSignal
+              label="OpenAQ"
+              icon={Wind}
+              toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+              onClick={() => onOpenSection?.("global-openaq")}
+              isLoading={airQualityState.isLoading}
+              detail={
+                airQualityState.isLoading
+                  ? "Updating OpenAQ stations..."
+                  : activeAirSiteCount === 0
+                    ? "No reporting stations right now."
+                    : `${activeAirSiteCount} site${activeAirSiteCount === 1 ? "" : "s"} reporting`
+              }
+              subDetail={airQualityState.isLoading ? undefined : primaryAirValue ?? undefined}
+            />
+          ) : null}
+          {visibility.tsunami ? (
+            <MiniSignal
+              label="NWS Tsunami Alerts"
+              icon={Waves}
+              toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+              onClick={() => onOpenSection?.("global-tsunami")}
+              isLoading={tsunamiState.isLoading}
+              detail={
+                tsunamiState.isLoading
+                  ? "Checking NWS tsunami alerts..."
+                  : activeTsunamiCount === 0
+                    ? "No active alerts."
+                    : `${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`
+              }
+              subDetail={
+                tsunamiState.isLoading || !highestTsunamiSeverity
+                  ? undefined
+                  : `Highest severity: ${highestTsunamiSeverity}`
+              }
+            />
+          ) : null}
         </div>
       </TooltipProvider>
     );
@@ -448,62 +471,72 @@ const GlobalActivity = ({
     <TooltipProvider delayDuration={0}>
       <div className="overflow-hidden">
         <div className="flex flex-col gap-3">
-          <div ref={liveEventsSectionRef} id="sidebar-global-live-events" tabIndex={-1}>
-            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-              NASA EONET Live Signals
-            </p>
-            <SignalSection
-              title="NASA EONET Live Signals"
-              description={`${activeEventCount} active signal${activeEventCount === 1 ? "" : "s"}`}
-              icon={Globe2}
-              itemIcon={Globe2}
-              isLoading={eonetState.isLoading}
-              error={eonetState.error}
-              lastUpdated={eonetState.lastUpdated}
-              onRefresh={eonetState.refetch}
-              items={eventItems}
-              toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-              itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-            />
-          </div>
-          <Separator className="my-1" />
-          <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
-            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-              OpenAQ
-            </p>
-            <SignalSection
-              title="OpenAQ"
-              description={`${activeAirSiteCount} reporting site${activeAirSiteCount === 1 ? "" : "s"}`}
-              icon={Wind}
-              itemIcon={Wind}
-              isLoading={airQualityState.isLoading}
-              error={airQualityState.error}
-              lastUpdated={airQualityState.lastUpdated}
-              onRefresh={airQualityState.refetch}
-              items={airItems}
-              toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-              itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-            />
-          </div>
-          <Separator className="my-1" />
-          <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
-            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-              NWS Tsunami Alerts
-            </p>
-            <SignalSection
-              title="NWS Tsunami Alerts"
-              description={`${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`}
-              icon={Waves}
-              itemIcon={Waves}
-              isLoading={tsunamiState.isLoading}
-              error={tsunamiState.error}
-              lastUpdated={tsunamiState.lastUpdated}
-              onRefresh={tsunamiState.refetch}
-              items={tsunamiItems}
-              toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-              itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-            />
-          </div>
+          {visibility.eonet ? (
+            <div ref={liveEventsSectionRef} id="sidebar-global-live-events" tabIndex={-1}>
+              <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                NASA EONET Live Signals
+              </p>
+              <SignalSection
+                title="NASA EONET Live Signals"
+                description={`${activeEventCount} active signal${activeEventCount === 1 ? "" : "s"}`}
+                icon={Globe2}
+                itemIcon={Globe2}
+                isLoading={eonetState.isLoading}
+                error={eonetState.error}
+                lastUpdated={eonetState.lastUpdated}
+                onRefresh={eonetState.refetch}
+                items={eventItems}
+                toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+                itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+              />
+            </div>
+          ) : null}
+          {visibility.eonet && (visibility.airQuality || visibility.tsunami) ? (
+            <Separator className="my-1" />
+          ) : null}
+          {visibility.airQuality ? (
+            <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
+              <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                OpenAQ
+              </p>
+              <SignalSection
+                title="OpenAQ"
+                description={`${activeAirSiteCount} reporting site${activeAirSiteCount === 1 ? "" : "s"}`}
+                icon={Wind}
+                itemIcon={Wind}
+                isLoading={airQualityState.isLoading}
+                error={airQualityState.error}
+                lastUpdated={airQualityState.lastUpdated}
+                onRefresh={airQualityState.refetch}
+                items={airItems}
+                toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+                itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+              />
+            </div>
+          ) : null}
+          {visibility.airQuality && visibility.tsunami ? (
+            <Separator className="my-1" />
+          ) : null}
+          {visibility.tsunami ? (
+            <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
+              <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                NWS Tsunami Alerts
+              </p>
+              <SignalSection
+                title="NWS Tsunami Alerts"
+                description={`${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`}
+                icon={Waves}
+                itemIcon={Waves}
+                isLoading={tsunamiState.isLoading}
+                error={tsunamiState.error}
+                lastUpdated={tsunamiState.lastUpdated}
+                onRefresh={tsunamiState.refetch}
+                items={tsunamiItems}
+                toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+                itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </TooltipProvider>

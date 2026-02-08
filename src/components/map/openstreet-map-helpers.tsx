@@ -58,6 +58,7 @@ import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { GlobalActivity } from "@/components/global-activity";
+import { HazrSettingsPanel } from "@/components/hazr-settings-panel";
 import type {
   ProcessedAirQualitySite,
   ProcessedEarthquake,
@@ -86,18 +87,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import type { AppSettings, DataLayerVisibility } from "@/types/settings";
 
 export type MapViewState = {
   center: [number, number];
   zoom: number;
 };
 
-export type LayerVisibility = {
-  earthquakes: boolean;
-  eonet: boolean;
-  airQuality: boolean;
-  tsunami: boolean;
-};
+export type LayerVisibility = DataLayerVisibility;
 
 export const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -1456,6 +1453,8 @@ export function MapOverlayUI({
   onEonetSelect,
   onAirQualitySelect,
   onTsunamiSelect,
+  appSettings,
+  onAppSettingsChange,
   eonetState,
   airQualityState,
   tsunamiState,
@@ -1470,6 +1469,8 @@ export function MapOverlayUI({
   onEonetSelect: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
+  appSettings: AppSettings;
+  onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
   eonetState: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -1555,6 +1556,7 @@ export function MapOverlayUI({
           <HourlyForecastDock
             latitude={resolvedLocation?.[1] ?? null}
             longitude={resolvedLocation?.[0] ?? null}
+            temperatureUnit={appSettings.temperatureUnit}
           />
         </div>
       </div>
@@ -1574,11 +1576,19 @@ export function MapOverlayUI({
             <div className="mb-3">
               <h3 className="text-lg font-semibold">Menu</h3>
               <p className="text-xs text-muted-foreground">
-                Temporary placeholder copy while final menu sections are in progress.
+                Settings are embedded here on mobile for quick, in-context control.
               </p>
             </div>
             <ScrollArea className="h-[62vh] rounded-md border border-border/60 bg-muted/20 p-3">
               <div className="space-y-3 pr-3">
+                <div className="rounded-md border border-border/60 bg-background/80 p-3">
+                  <HazrSettingsPanel
+                    settings={appSettings}
+                    onSettingsChange={onAppSettingsChange}
+                    layerVisibility={layerVisibility}
+                    onLayerVisibilityChange={onLayerVisibilityChange}
+                  />
+                </div>
                 <div className="rounded-md border border-border/60 bg-background/80 p-3">
                   <p className="text-sm font-medium">Overview</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -1633,7 +1643,11 @@ export function MapOverlayUI({
               </div>
             </div>
             <Separator className="mb-2" />
-            {earthquakes.length === 0 ? (
+            {!layerVisibility.earthquakes ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                USGS earthquakes are hidden in settings.
+              </div>
+            ) : earthquakes.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No recent earthquakes
               </div>
@@ -1741,24 +1755,37 @@ export function MapOverlayUI({
               </p>
             </div>
             <ScrollArea className="h-[62vh] pr-3">
-              <GlobalActivity
-                collapsed={false}
-                eonetState={eonetState}
-                airQualityState={airQualityState}
-                tsunamiState={tsunamiState}
-                onEonetSelect={(event) => {
-                  setIsGlobalSignalsDrawerOpen(false);
-                  onEonetSelect(event);
-                }}
-                onAirQualitySelect={(site) => {
-                  setIsGlobalSignalsDrawerOpen(false);
-                  onAirQualitySelect(site);
-                }}
-                onTsunamiSelect={(alert) => {
-                  setIsGlobalSignalsDrawerOpen(false);
-                  onTsunamiSelect(alert);
-                }}
-              />
+              {!layerVisibility.eonet &&
+              !layerVisibility.airQuality &&
+              !layerVisibility.tsunami ? (
+                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
+                  Global sources are hidden in settings.
+                </div>
+              ) : (
+                <GlobalActivity
+                  collapsed={false}
+                  visibility={{
+                    eonet: layerVisibility.eonet,
+                    airQuality: layerVisibility.airQuality,
+                    tsunami: layerVisibility.tsunami,
+                  }}
+                  eonetState={eonetState}
+                  airQualityState={airQualityState}
+                  tsunamiState={tsunamiState}
+                  onEonetSelect={(event) => {
+                    setIsGlobalSignalsDrawerOpen(false);
+                    onEonetSelect(event);
+                  }}
+                  onAirQualitySelect={(site) => {
+                    setIsGlobalSignalsDrawerOpen(false);
+                    onAirQualitySelect(site);
+                  }}
+                  onTsunamiSelect={(alert) => {
+                    setIsGlobalSignalsDrawerOpen(false);
+                    onTsunamiSelect(alert);
+                  }}
+                />
+              )}
             </ScrollArea>
           </div>
         </DrawerContent>
@@ -1786,11 +1813,13 @@ export function MapOverlayUI({
               <WeatherDock
                 latitude={resolvedLocation?.[1] ?? null}
                 longitude={resolvedLocation?.[0] ?? null}
+                temperatureUnit={appSettings.temperatureUnit}
                 unstyled
               />
               <HourlyForecastDock
                 latitude={resolvedLocation?.[1] ?? null}
                 longitude={resolvedLocation?.[0] ?? null}
+                temperatureUnit={appSettings.temperatureUnit}
                 className="mt-4 md:hidden"
               />
             </ScrollArea>

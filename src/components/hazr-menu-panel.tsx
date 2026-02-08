@@ -15,11 +15,13 @@ import {
 import { cn } from "@/lib/utils";
 
 import type {
+  EarthquakeMagnitude,
   ProcessedAirQualitySite,
   ProcessedEarthquake,
   ProcessedEonetEvent,
   ProcessedTsunamiAlert,
 } from "@/types/api";
+import type { DataLayerVisibility, TemperatureUnit } from "@/types/settings";
 
 export type HazrMenuFocusTarget =
   | "weather"
@@ -39,6 +41,10 @@ type HazrMenuPanelProps = {
   onEarthquakeSelect?: (earthquake: ProcessedEarthquake) => void;
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
+  onTsunamiSelect?: (alert: ProcessedTsunamiAlert) => void;
+  temperatureUnit?: TemperatureUnit;
+  earthquakeMagnitude?: EarthquakeMagnitude;
+  layerVisibility?: DataLayerVisibility;
   eonetState?: {
     events: ProcessedEonetEvent[];
     isLoading: boolean;
@@ -76,6 +82,15 @@ function HazrMenuPanel({
   onEarthquakeSelect,
   onEonetSelect,
   onAirQualitySelect,
+  onTsunamiSelect,
+  temperatureUnit = "celsius",
+  earthquakeMagnitude = "all",
+  layerVisibility = {
+    earthquakes: true,
+    eonet: true,
+    airQuality: true,
+    tsunami: true,
+  },
   eonetState,
   airQualityState,
   tsunamiState,
@@ -118,7 +133,10 @@ function HazrMenuPanel({
           ? globalSectionRef.current
           : null;
 
-    if (!targetElement) return;
+    if (!targetElement) {
+      onFocusTargetHandled?.();
+      return;
+    }
 
     targetElement.scrollIntoView({
       behavior: "smooth",
@@ -132,6 +150,10 @@ function HazrMenuPanel({
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
   const handleSettingsClick = () => onSelect?.();
+
+  const shouldShowSeismic = layerVisibility.earthquakes;
+  const shouldShowGlobalSignals =
+    layerVisibility.eonet || layerVisibility.airQuality || layerVisibility.tsunami;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -154,35 +176,39 @@ function HazrMenuPanel({
             collapsed={collapsed}
             isLocating={isLocating}
             onOpenSection={handleOpenWeatherSection}
+            temperatureUnit={temperatureUnit}
             unstyled
           />
         </div>
 
-        <Separator className={cn(collapsed ? "my-2" : "my-2")} />
-
-        {/* Earthquakes Section */}
-        {!collapsed && (
-          <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-            USGS Earthquakes
-          </p>
-        )}
-        <div
-          ref={seismicSectionRef}
-          id="sidebar-seismic"
-          tabIndex={-1}
-          className={cn(collapsed && "flex flex-col items-center")}
-        >
-          <SeismicActivity
-            collapsed={collapsed}
-            onEarthquakeSelect={onEarthquakeSelect}
-            onOpenSection={handleOpenSeismicSection}
-          />
-        </div>
-
-        <Separator className={cn(collapsed ? "my-2" : "my-2")} />
-
-        {(eonetState || airQualityState || tsunamiState) && (
+        {shouldShowSeismic ? (
           <>
+            <Separator className={cn(collapsed ? "my-2" : "my-2")} />
+            {/* Earthquakes Section */}
+            {!collapsed && (
+              <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                USGS Earthquakes
+              </p>
+            )}
+            <div
+              ref={seismicSectionRef}
+              id="sidebar-seismic"
+              tabIndex={-1}
+              className={cn(collapsed && "flex flex-col items-center")}
+            >
+              <SeismicActivity
+                collapsed={collapsed}
+                magnitude={earthquakeMagnitude}
+                onEarthquakeSelect={onEarthquakeSelect}
+                onOpenSection={handleOpenSeismicSection}
+              />
+            </div>
+          </>
+        ) : null}
+
+        {shouldShowGlobalSignals && (eonetState || airQualityState || tsunamiState) ? (
+          <>
+            <Separator className={cn(collapsed ? "my-2" : "my-2")} />
             <div
               ref={globalSectionRef}
               id="sidebar-global-signals"
@@ -191,6 +217,11 @@ function HazrMenuPanel({
             >
               <GlobalActivity
                 collapsed={collapsed}
+                visibility={{
+                  eonet: layerVisibility.eonet,
+                  airQuality: layerVisibility.airQuality,
+                  tsunami: layerVisibility.tsunami,
+                }}
                 eonetState={
                   eonetState ?? {
                     events: [],
@@ -220,17 +251,19 @@ function HazrMenuPanel({
                 }
                 onEonetSelect={onEonetSelect}
                 onAirQualitySelect={onAirQualitySelect}
+                onTsunamiSelect={onTsunamiSelect}
                 focusTarget={globalFocusTarget}
                 onFocusTargetHandled={onFocusTargetHandled}
                 onOpenSection={handleOpenGlobalSection}
               />
             </div>
-
-            <Separator className={cn(collapsed ? "my-2" : "my-2")} />
           </>
-        )}
+        ) : null}
 
-
+        {shouldShowSeismic || shouldShowGlobalSignals ? (
+          <Separator className={cn(collapsed ? "my-2" : "my-2")} />
+        ) : null}
+        
         {/* Settings */}
         {collapsed ? (
           <Tooltip>

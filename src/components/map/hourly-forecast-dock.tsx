@@ -7,11 +7,20 @@ import { WeatherIcon } from "@/components/hazr-weather-icon";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
+import type { TemperatureUnit } from "@/types/settings";
 
 type HourlyForecastDockProps = {
   latitude: number | null;
   longitude: number | null;
   className?: string;
+  temperatureUnit?: TemperatureUnit;
+};
+
+const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
+  if (unit === "fahrenheit") {
+    return (value * 9) / 5 + 32;
+  }
+  return value;
 };
 
 const formatHour = (date: Date): string =>
@@ -32,6 +41,7 @@ const HourlyForecastDock = ({
   latitude,
   longitude,
   className,
+  temperatureUnit = "celsius",
 }: HourlyForecastDockProps) => {
   const {
     hourly,
@@ -147,7 +157,8 @@ const HourlyForecastDock = ({
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-semibold">
-                {Math.round(selectedHour.temperature)}°
+                {Math.round(toDisplayTemperature(selectedHour.temperature, temperatureUnit))}
+                {temperatureUnit === "fahrenheit" ? "°F" : "°C"}
               </span>
               <span className="text-xs text-muted-foreground">
                 {formatHour(selectedHour.time)}
