@@ -29,11 +29,11 @@
 
 ### Data APIs
 
-- [USGS Earthquake API](https://earthquake.usgs.gov/fdsnws/event/1/): Live earthquake feeds.
-- [Open-Meteo API](https://open-meteo.com/): Weather forecasts and current conditions.
-- [NASA EONET API](https://eonet.gsfc.nasa.gov/docs/v3): Global natural event signals.
-- [OpenAQ API](https://docs.openaq.org/): Air quality observations.
-- [NWS Alerts API](https://www.weather.gov/documentation/services-web-alerts): Active tsunami alerts.
+- [Open-Meteo - Weather](https://open-meteo.com/): Weather forecasts and current conditions.
+- [USGS Earthquake - Earthquakes](https://earthquake.usgs.gov/fdsnws/event/1/): Live earthquake feeds.
+- [NASA EONET - Events](https://eonet.gsfc.nasa.gov/docs/v3): Global natural event signals.
+- [OpenAQ - Air Quality](https://docs.openaq.org/): Air quality observations.
+- [NWS Alerts - Tsunamis](https://www.weather.gov/documentation/services-web-alerts): Active tsunami alerts.
 
 ## ⚡ Getting Started
 
@@ -46,7 +46,7 @@ bun install
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Open [http://localhost:5173](http://localhost:5173) to view the app.
 
 ## 📦 Build for Production
 

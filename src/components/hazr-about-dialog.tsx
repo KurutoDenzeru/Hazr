@@ -35,7 +35,7 @@ const DATA_APIS = [
   "USGS Earthquakes",
   "NASA EONET - Events",
   "OpenAQ - Air Quality",
-  "NWS Alerts (Tsunami)",
+  "NWS Alerts - Tsunami",
 ] as const;
 
 const SOCIAL_LINKS = [
