@@ -1674,8 +1674,15 @@ function CustomMapControls({
     };
 
     const handle3DBuildings = () => {
+      if (!globeMap.isStyleLoaded()) return;
+
       const is3DEnabled = is3DEnabledRef.current;
-      globeMap.setProjection({ name: is3DEnabled ? "globe" : "mercator" });
+      try {
+        globeMap.setProjection({ name: is3DEnabled ? "globe" : "mercator" });
+      } catch {
+        // Style can still be mid-transition during theme/style swaps.
+        return;
+      }
 
       if (is3DEnabled) {
         hideBuildingFillLayers();
@@ -1747,14 +1754,19 @@ function CustomMapControls({
       }
     };
 
+    const handleStyleData = () => {
+      if (!globeMap.isStyleLoaded()) return;
+      handle3DBuildings();
+    };
+
     sync3DBuildingsRef.current = handle3DBuildings;
-    globeMap.on("styledata", handle3DBuildings);
+    globeMap.on("styledata", handleStyleData);
     if (globeMap.isStyleLoaded()) {
       handle3DBuildings();
     }
 
     return () => {
-      globeMap.off("styledata", handle3DBuildings);
+      globeMap.off("styledata", handleStyleData);
       if (sync3DBuildingsRef.current === handle3DBuildings) {
         sync3DBuildingsRef.current = null;
       }
@@ -1763,6 +1775,7 @@ function CustomMapControls({
 
   React.useEffect(() => {
     if (!map) return;
+    if (!map.isStyleLoaded()) return;
     sync3DBuildingsRef.current?.();
   }, [map, is3D]);
 

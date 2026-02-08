@@ -144,9 +144,9 @@ export const SeismicActivity = ({
               <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
                 History
               </p>
-              <ScrollArea className="h-70 rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
+              <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
                 <div className="flex flex-col gap-1">
-                  {earthquakes.slice(0, 10).map((eq) => (
+                  {earthquakes.slice(0, 7).map((eq) => (
                     <EarthquakeItem key={eq.id} earthquake={eq} onClick={() => onEarthquakeSelect?.(eq)} />
                   ))}
                 </div>

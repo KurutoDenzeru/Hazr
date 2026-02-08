@@ -188,7 +188,7 @@ const GlobalActivity = ({
     onFocusTargetHandled?.();
   }, [collapsed, focusTarget, onFocusTargetHandled]);
 
-  const eventItems: SignalItem[] = eonetState.events.slice(0, 10).map((event) => ({
+  const eventItems: SignalItem[] = eonetState.events.slice(0, 7).map((event) => ({
     id: event.id,
     title: formatEonetTitle(event.title),
     subtitle: "NASA EONET live event",
@@ -216,7 +216,7 @@ const GlobalActivity = ({
     ]),
   }));
 
-  const airItems: SignalItem[] = airQualityState.sites.slice(0, 10).map((site) => {
+  const airItems: SignalItem[] = airQualityState.sites.slice(0, 7).map((site) => {
     const value = Number.isFinite(site.value) ? site.value.toFixed(1) : `${site.value}`;
     const locationHint = [site.city, site.country].filter(Boolean).join(", ");
 
@@ -250,7 +250,7 @@ const GlobalActivity = ({
     };
   });
 
-  const tsunamiItems: SignalItem[] = tsunamiState.alerts.slice(0, 10).map((alert) => ({
+  const tsunamiItems: SignalItem[] = tsunamiState.alerts.slice(0, 7).map((alert) => ({
     id: alert.id,
     title: alert.headline,
     subtitle: "NWS tsunami bulletin",
@@ -358,22 +358,14 @@ const GlobalActivity = ({
   return (
     <TooltipProvider delayDuration={0}>
       <div className="overflow-hidden">
-        <div className="flex items-center justify-between px-0 my-2">
-          <div className="flex items-center gap-2">
-            <div className="rounded-md bg-sky-500/15 p-2.5 dark:bg-sky-500/25">
-              <Globe2 className="size-5 text-sky-700 dark:text-sky-200" />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium">NASA EONET Live Signals</h3>
-              <p className="text-sm text-muted-foreground">Global events, OpenAQ air quality, NWS tsunamic alerts</p>
-            </div>
-          </div>
-        </div>
-
         <div className="flex flex-col gap-3">
           <div ref={liveEventsSectionRef} id="sidebar-global-live-events" tabIndex={-1}>
+            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              NASA EONET Live Signals
+            </p>
             <SignalSection
               title="NASA EONET Live Signals"
+              description={`${activeEventCount} active signal${activeEventCount === 1 ? "" : "s"}`}
               icon={Globe2}
               itemIcon={Globe2}
               isLoading={eonetState.isLoading}
@@ -386,8 +378,12 @@ const GlobalActivity = ({
             />
           </div>
           <div ref={openAqSectionRef} id="sidebar-global-openaq" tabIndex={-1}>
+            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              OpenAQ
+            </p>
             <SignalSection
               title="OpenAQ"
+              description={`${activeAirSiteCount} reporting site${activeAirSiteCount === 1 ? "" : "s"}`}
               icon={Wind}
               itemIcon={Wind}
               isLoading={airQualityState.isLoading}
@@ -400,8 +396,12 @@ const GlobalActivity = ({
             />
           </div>
           <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
+            <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              NWS Tsunamic Alerts
+            </p>
             <SignalSection
               title="NWS Tsunamic Alerts"
+              description={`${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`}
               icon={Waves}
               itemIcon={Waves}
               isLoading={tsunamiState.isLoading}
@@ -421,6 +421,7 @@ const GlobalActivity = ({
 
 type SignalSectionProps = {
   title: string;
+  description: string;
   icon: React.ComponentType<{ className?: string }>;
   itemIcon: React.ComponentType<{ className?: string }>;
   isLoading: boolean;
@@ -434,6 +435,7 @@ type SignalSectionProps = {
 
 const SignalSection = ({
   title,
+  description,
   icon: Icon,
   itemIcon: ItemIcon,
   isLoading,
@@ -449,15 +451,15 @@ const SignalSection = ({
   };
 
   return (
-    <div className="rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-      <div className="flex items-center justify-between">
+    <div className="overflow-hidden">
+      <div className="flex items-center justify-between px-0 my-2">
         <div className="flex items-center gap-2">
-          <div className={cn("rounded-md p-2", toneClassName)}>
-            <Icon className="size-4" />
+          <div className={cn("rounded-md p-2.5", toneClassName)}>
+            <Icon className="size-5" />
           </div>
           <div>
             <p className="text-sm font-medium">{title}</p>
-            <p className="text-xs text-muted-foreground">Live updates</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
         <Tooltip>
@@ -483,25 +485,27 @@ const SignalSection = ({
         </Tooltip>
       </div>
 
-      <div className="mt-2">
+      <div className="pb-1">
         {isLoading && items.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading
+          <div className="flex items-center justify-center gap-2 py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading...</span>
           </div>
         ) : error ? (
-          <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-            <AlertTriangle className="size-4 text-amber-500" />
-            Failed to load
+          <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
+            <AlertTriangle className="size-6 text-amber-500" />
+            <p className="text-sm text-muted-foreground">Failed to load data</p>
           </div>
         ) : items.length === 0 ? (
-          <div className="py-2 text-xs text-muted-foreground">No active signals</div>
+          <div className="py-4 text-center">
+            <p className="text-sm text-muted-foreground">No active signals</p>
+          </div>
         ) : (
           <>
             <p className="px-1 my-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
               History
             </p>
-            <ScrollArea className="h-52 rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
+            <ScrollArea className="h-[30rem] rounded-md bg-muted/30 dark:bg-muted/15 pr-3">
               <div className="flex flex-col gap-1">
                 {items.map((item) => {
                   const handleItemClick = () => {

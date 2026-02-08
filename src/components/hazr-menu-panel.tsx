@@ -181,11 +181,6 @@ function HazrMenuPanel({
 
         {(eonetState || airQualityState || tsunamiState) && (
           <>
-            {!collapsed && (
-              <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                NASA EONET Live Signals
-              </p>
-            )}
             <div
               ref={globalSectionRef}
               id="sidebar-global-signals"
