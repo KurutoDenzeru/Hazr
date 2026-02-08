@@ -648,9 +648,14 @@ export default function GoogleMapsClone() {
                   setUserLocation={setUserLocation}
                   onLocateAnimation={handleTriggerLocateAnimation}
                   resolvedLocation={resolvedLocation}
-                  isLocating={isLocating}
                   earthquakes={earthquakes}
                   onEarthquakeSelect={handleEarthquakeSelect}
+                  onEonetSelect={handleEonetSelect}
+                  onAirQualitySelect={handleAirQualitySelect}
+                  onTsunamiSelect={handleTsunamiSelect}
+                  eonetState={eonetState}
+                  airQualityState={airQualityState}
+                  tsunamiState={tsunamiState}
                   layerVisibility={layerVisibility}
                   onLayerVisibilityChange={setLayerVisibility}
                 />

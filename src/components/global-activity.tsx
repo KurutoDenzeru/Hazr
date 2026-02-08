@@ -68,6 +68,7 @@ type GlobalActivityProps = {
   };
   onEonetSelect?: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect?: (site: ProcessedAirQualitySite) => void;
+  onTsunamiSelect?: (alert: ProcessedTsunamiAlert) => void;
 };
 
 const formatEonetCategory = (category: string) => {
@@ -231,6 +232,7 @@ const GlobalActivity = ({
   tsunamiState,
   onEonetSelect,
   onAirQualitySelect,
+  onTsunamiSelect,
 }: GlobalActivityProps) => {
   const liveEventsSectionRef = React.useRef<HTMLDivElement | null>(null);
   const openAqSectionRef = React.useRef<HTMLDivElement | null>(null);
@@ -340,7 +342,8 @@ const GlobalActivity = ({
     id: alert.id,
     title: alert.headline,
     subtitle: "NWS tsunami bulletin",
-    url: alert.url,
+    url: onTsunamiSelect ? undefined : alert.url,
+    onClick: onTsunamiSelect ? () => onTsunamiSelect(alert) : undefined,
     badges: toSignalBadges([
       {
         label: alert.severity,
@@ -418,7 +421,7 @@ const GlobalActivity = ({
             subDetail={airQualityState.isLoading ? undefined : primaryAirValue ?? undefined}
           />
           <MiniSignal
-            label="NWS Tsunamic Alerts"
+            label="NWS Tsunami Alerts"
             icon={Waves}
             toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
             onClick={() => onOpenSection?.("global-tsunami")}
@@ -485,10 +488,10 @@ const GlobalActivity = ({
           <Separator className="my-1" />
           <div ref={tsunamiSectionRef} id="sidebar-global-tsunami" tabIndex={-1}>
             <p className="px-1 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-              NWS Tsunamic Alerts
+              NWS Tsunami Alerts
             </p>
             <SignalSection
-              title="NWS Tsunamic Alerts"
+              title="NWS Tsunami Alerts"
               description={`${activeTsunamiCount} active alert${activeTsunamiCount === 1 ? "" : "s"}`}
               icon={Waves}
               itemIcon={Waves}

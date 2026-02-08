@@ -7,7 +7,6 @@ import {
   Plus,
   Minus,
   Locate,
-  Map as MapIcon,
   Activity,
   Cloud,
   CloudLightning,
@@ -54,11 +53,11 @@ import {
 } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { HazrMenuPanel } from "@/components/hazr-menu-panel";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { GlobalActivity } from "@/components/global-activity";
 import type {
   ProcessedAirQualitySite,
   ProcessedEarthquake,
@@ -69,6 +68,7 @@ import { getMagnitudeColor, getMagnitudeLabel } from "@/types/api";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -77,6 +77,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export type MapViewState = {
   center: [number, number];
@@ -155,6 +164,22 @@ const formatAirQualityConcentration = (value: number, unit: string) => {
   return `${value.toFixed(1)} ${unit}`;
 };
 
+const getPaginationRange = (totalPages: number, currentPage: number) => {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis", totalPages] as const;
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis", totalPages - 2, totalPages - 1, totalPages] as const;
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages] as const;
+};
+
 type EventToneKey =
   | "wildfire"
   | "storm"
@@ -213,11 +238,17 @@ type OverlayAction = {
 
 const isDefined = <T,>(value: T | null | undefined): value is T => value !== null && value !== undefined;
 
-const OverlayDetailGrid = ({ details }: { details: OverlayDetailItem[] }) => {
+const OverlayDetailGrid = ({
+  details,
+  className,
+}: {
+  details: OverlayDetailItem[];
+  className?: string;
+}) => {
   if (details.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", className)}>
       {details.map((detail) => (
         <div
           key={detail.label}
@@ -312,6 +343,7 @@ const UnifiedSignalPopover = ({
   onClose,
   badges,
   details,
+  detailsClassName,
   footerAction,
   children,
 }: {
@@ -321,6 +353,7 @@ const UnifiedSignalPopover = ({
   onClose: () => void;
   badges?: OverlayBadge[];
   details?: OverlayDetailItem[];
+  detailsClassName?: string;
   footerAction?: OverlayAction | null;
   children?: React.ReactNode;
 }) => {
@@ -356,7 +389,7 @@ const UnifiedSignalPopover = ({
         </div>
       </div>
 
-      {details ? <OverlayDetailGrid details={details} /> : null}
+      {details ? <OverlayDetailGrid details={details} className={detailsClassName} /> : null}
       {children}
 
       {footerAction ? (
@@ -1304,6 +1337,7 @@ export function SignalOverlay({
           onClose={onCloseEarthquake}
           badges={earthquakeBadges}
           details={detailItems}
+          detailsClassName="grid-cols-2 sm:grid-cols-2"
           footerAction={{
             label: "View on USGS",
             url: activeEarthquake.url,
@@ -1417,29 +1451,90 @@ export function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
   resolvedLocation,
-  isLocating,
   earthquakes,
   onEarthquakeSelect,
+  onEonetSelect,
+  onAirQualitySelect,
+  onTsunamiSelect,
+  eonetState,
+  airQualityState,
+  tsunamiState,
   layerVisibility,
   onLayerVisibilityChange,
 }: {
   setUserLocation: (l: [number, number]) => void;
   onLocateAnimation: () => void;
   resolvedLocation: [number, number] | null;
-  isLocating: boolean;
   earthquakes: ProcessedEarthquake[];
   onEarthquakeSelect: (eq: ProcessedEarthquake) => void;
+  onEonetSelect: (event: ProcessedEonetEvent) => void;
+  onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
+  onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
+  eonetState: {
+    events: ProcessedEonetEvent[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
+  airQualityState: {
+    sites: ProcessedAirQualitySite[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
+  tsunamiState: {
+    alerts: ProcessedTsunamiAlert[];
+    isLoading: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refetch: () => Promise<void>;
+  };
   layerVisibility: LayerVisibility;
   onLayerVisibilityChange: React.Dispatch<React.SetStateAction<LayerVisibility>>;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isQuakesDrawerOpen, setIsQuakesDrawerOpen] = React.useState(false);
   const [isWeatherDrawerOpen, setIsWeatherDrawerOpen] = React.useState(false);
-  const handleCloseMobileMenu = () => setIsMobileMenuOpen(false);
+  const [isGlobalSignalsDrawerOpen, setIsGlobalSignalsDrawerOpen] = React.useState(false);
+  const [quakePage, setQuakePage] = React.useState(1);
+  const quakePageSize = 8;
+  const totalQuakePages = Math.max(1, Math.ceil(earthquakes.length / quakePageSize));
+  const paginatedEarthquakes = React.useMemo(() => {
+    const startIndex = (quakePage - 1) * quakePageSize;
+    return earthquakes.slice(startIndex, startIndex + quakePageSize);
+  }, [earthquakes, quakePage]);
+  const quakePaginationRange = React.useMemo(
+    () => getPaginationRange(totalQuakePages, quakePage),
+    [quakePage, totalQuakePages]
+  );
+
+  React.useEffect(() => {
+    setQuakePage(1);
+  }, [earthquakes]);
+
+  const activateDrawer = React.useCallback(
+    (drawer: "menu" | "quakes" | "weather" | "global") => {
+      setIsMobileMenuOpen(drawer === "menu");
+      setIsQuakesDrawerOpen(drawer === "quakes");
+      setIsWeatherDrawerOpen(drawer === "weather");
+      setIsGlobalSignalsDrawerOpen(drawer === "global");
+    },
+    []
+  );
 
   const handleQuakeClick = (eq: ProcessedEarthquake) => {
     setIsQuakesDrawerOpen(false);
     onEarthquakeSelect(eq);
+  };
+
+  const handlePreviousQuakePage = () => {
+    setQuakePage((page) => Math.max(1, page - 1));
+  };
+
+  const handleNextQuakePage = () => {
+    setQuakePage((page) => Math.min(totalQuakePages, page + 1));
   };
 
   return (
@@ -1464,65 +1559,241 @@ export function MapOverlayUI({
         </div>
       </div>
 
-      <Drawer open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+      <Drawer
+        open={isMobileMenuOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            activateDrawer("menu");
+            return;
+          }
+          setIsMobileMenuOpen(false);
+        }}
+      >
         <DrawerContent className="max-h-[85vh]">
           <div className="flex h-full flex-col p-4">
-            <div className="flex-1 overflow-auto">
-              <HazrMenuPanel
-                onSelect={handleCloseMobileMenu}
-                userLocation={resolvedLocation}
-                isLocating={isLocating}
-              />
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold">Menu</h3>
+              <p className="text-xs text-muted-foreground">
+                Temporary placeholder copy while final menu sections are in progress.
+              </p>
             </div>
+            <ScrollArea className="h-[62vh] rounded-md border border-border/60 bg-muted/20 p-3">
+              <div className="space-y-3 pr-3">
+                <div className="rounded-md border border-border/60 bg-background/80 p-3">
+                  <p className="text-sm font-medium">Overview</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus feugiat, arcu
+                    at volutpat rutrum, augue felis porttitor justo, id porttitor odio justo nec
+                    mauris.
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/60 bg-background/80 p-3">
+                  <p className="text-sm font-medium">Shortcuts</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
+                    Integer cursus, augue nec sollicitudin tempor, est eros hendrerit justo, vitae
+                    congue lacus dolor id dui.
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/60 bg-background/80 p-3">
+                  <p className="text-sm font-medium">Notes</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam condimentum sem
+                    sit amet fermentum vulputate. Nunc vel nisl congue, varius nulla quis, commodo
+                    velit.
+                  </p>
+                </div>
+              </div>
+            </ScrollArea>
           </div>
         </DrawerContent>
       </Drawer>
 
-      <Drawer open={isQuakesDrawerOpen} onOpenChange={setIsQuakesDrawerOpen}>
-        <DrawerContent className="max-h-[80vh]">
-          <div className="overflow-y-auto max-h-[80vh] p-4">
+      <Drawer
+        open={isQuakesDrawerOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            activateDrawer("quakes");
+            return;
+          }
+          setIsQuakesDrawerOpen(false);
+        }}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <div className="flex h-full flex-col p-4">
+            <div className="flex items-center gap-3 px-1 pb-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
+                <Activity className="size-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Live Earthquakes</h3>
+                <p className="text-xs text-muted-foreground">
+                  {earthquakes.length} in the last 24h
+                </p>
+              </div>
+            </div>
+            <Separator className="mb-2" />
             {earthquakes.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 No recent earthquakes
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
-                    <Activity className="size-5 text-white" />
+              <>
+                <ScrollArea className="h-[56vh] rounded-md bg-muted/20 pr-3">
+                  <div className="flex flex-col gap-1">
+                    {paginatedEarthquakes.map((eq) => (
+                      <EarthquakeItem
+                        key={eq.id}
+                        earthquake={eq}
+                        onClick={() => handleQuakeClick(eq)}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Live Earthquakes</h3>
-                    <p className="text-xs text-muted-foreground">{earthquakes.length} in the last 24h</p>
-                  </div>
-                </div>
-                <Separator className="my-2" />
-                {earthquakes.map((eq) => (
-                  <EarthquakeItem
-                    key={eq.id}
-                    earthquake={eq}
-                    onClick={() => handleQuakeClick(eq)}
-                  />
-                ))}
-              </div>
+                </ScrollArea>
+                {totalQuakePages > 1 ? (
+                  <Pagination className="mt-3">
+                    <PaginationContent className="hidden sm:flex">
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={handlePreviousQuakePage}
+                          disabled={quakePage === 1}
+                          aria-disabled={quakePage === 1}
+                        />
+                      </PaginationItem>
+                      {quakePaginationRange.map((entry, index) => (
+                        <PaginationItem key={`mobile-quake-page-${entry}-${index}`}>
+                          {entry === "ellipsis" ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationButton
+                              onClick={() => setQuakePage(entry)}
+                              isActive={entry === quakePage}
+                              aria-label={`Go to quake page ${entry}`}
+                            >
+                              {entry}
+                            </PaginationButton>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={handleNextQuakePage}
+                          disabled={quakePage === totalQuakePages}
+                          aria-disabled={quakePage === totalQuakePages}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                    <PaginationContent className="flex w-full items-center justify-between gap-2 sm:hidden">
+                      <PaginationItem>
+                        <PaginationButton
+                          size="sm"
+                          className="px-2.5"
+                          onClick={handlePreviousQuakePage}
+                          disabled={quakePage === 1}
+                          aria-disabled={quakePage === 1}
+                          aria-label="Go to previous quake page"
+                        >
+                          Prev
+                        </PaginationButton>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="text-xs text-muted-foreground">
+                          Page {quakePage} of {totalQuakePages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationButton
+                          size="sm"
+                          className="px-2.5"
+                          onClick={handleNextQuakePage}
+                          disabled={quakePage === totalQuakePages}
+                          aria-disabled={quakePage === totalQuakePages}
+                          aria-label="Go to next quake page"
+                        >
+                          Next
+                        </PaginationButton>
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                ) : null}
+              </>
             )}
           </div>
         </DrawerContent>
       </Drawer>
 
-      <Drawer open={isWeatherDrawerOpen} onOpenChange={setIsWeatherDrawerOpen}>
+      <Drawer
+        open={isGlobalSignalsDrawerOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            activateDrawer("global");
+            return;
+          }
+          setIsGlobalSignalsDrawerOpen(false);
+        }}
+      >
         <DrawerContent className="max-h-[85vh]">
-          <div className="p-4 overflow-y-auto max-h-[85vh]">
-            <WeatherDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-              unstyled
-            />
-            <HourlyForecastDock
-              latitude={resolvedLocation?.[1] ?? null}
-              longitude={resolvedLocation?.[0] ?? null}
-              className="mt-4 md:hidden"
-            />
+          <div className="flex h-full flex-col p-4">
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold">Global Signals</h3>
+              <p className="text-xs text-muted-foreground">
+                NASA EONET Live Signals, OpenAQ, and NWS Tsunami alerts.
+              </p>
+            </div>
+            <ScrollArea className="h-[62vh] pr-3">
+              <GlobalActivity
+                collapsed={false}
+                eonetState={eonetState}
+                airQualityState={airQualityState}
+                tsunamiState={tsunamiState}
+                onEonetSelect={(event) => {
+                  setIsGlobalSignalsDrawerOpen(false);
+                  onEonetSelect(event);
+                }}
+                onAirQualitySelect={(site) => {
+                  setIsGlobalSignalsDrawerOpen(false);
+                  onAirQualitySelect(site);
+                }}
+                onTsunamiSelect={(alert) => {
+                  setIsGlobalSignalsDrawerOpen(false);
+                  onTsunamiSelect(alert);
+                }}
+              />
+            </ScrollArea>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer
+        open={isWeatherDrawerOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            activateDrawer("weather");
+            return;
+          }
+          setIsWeatherDrawerOpen(false);
+        }}
+      >
+        <DrawerContent className="max-h-[85vh]">
+          <div className="flex h-full flex-col p-4">
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold">Weather</h3>
+              <p className="text-xs text-muted-foreground">
+                Local conditions and hourly outlook from Open-Meteo data.
+              </p>
+            </div>
+            <ScrollArea className="h-[62vh] pr-3">
+              <WeatherDock
+                latitude={resolvedLocation?.[1] ?? null}
+                longitude={resolvedLocation?.[0] ?? null}
+                unstyled
+              />
+              <HourlyForecastDock
+                latitude={resolvedLocation?.[1] ?? null}
+                longitude={resolvedLocation?.[0] ?? null}
+                className="mt-4 md:hidden"
+              />
+            </ScrollArea>
           </div>
         </DrawerContent>
       </Drawer>
@@ -1530,24 +1801,28 @@ export function MapOverlayUI({
       <MobileBottomNav
         items={[
           {
-            icon: MapIcon,
-            label: "Explore",
-            active: true,
-          },
-          {
             icon: Activity,
             label: "Quakes",
-            onClick: () => setIsQuakesDrawerOpen(true),
+            active: isQuakesDrawerOpen,
+            onClick: () => activateDrawer("quakes"),
           },
           {
             icon: Cloud,
-            label: "Open Meteo",
-            onClick: () => setIsWeatherDrawerOpen(true),
+            label: "Weather",
+            active: isWeatherDrawerOpen,
+            onClick: () => activateDrawer("weather"),
+          },
+          {
+            icon: Globe2,
+            label: "Global Meteo",
+            active: isGlobalSignalsDrawerOpen,
+            onClick: () => activateDrawer("global"),
           },
           {
             icon: Menu,
             label: "Menu",
-            onClick: () => setIsMobileMenuOpen(true),
+            active: isMobileMenuOpen,
+            onClick: () => activateDrawer("menu"),
           },
         ]}
       />
