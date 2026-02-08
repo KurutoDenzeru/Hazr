@@ -140,7 +140,7 @@ export const SeismicActivity = ({
         {/* Header */}
         <div className="flex items-center justify-between px-0 my-2">
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-red-500/20 p-2.5 dark:bg-red-500/30">
+            <div className="p-2.5 rounded-md bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200">
               <Mountain className="size-5 text-red-700 dark:text-red-200" />
             </div>
             <div>

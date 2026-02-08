@@ -312,7 +312,7 @@ export const WeatherDock = ({
         <div className={cn("p-4", unstyled && "p-0 my-2!")}> 
           <div className="flex items-start justify-between gap-4!">
             <div className="flex items-center gap-3">
-              <div className="rounded-md bg-sky-500 p-2.5">
+              <div className="rounded-md bg-sky-500/20 dark:bg-sky-500/30 p-2.5">
                 <WeatherIcon
                   code={current.weatherCode}
                   isDay={current.isDay}

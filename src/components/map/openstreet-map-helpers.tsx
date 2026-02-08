@@ -1551,15 +1551,17 @@ export function MapOverlayUI({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
-        <div className="pointer-events-auto">
-          <HourlyForecastDock
-            latitude={resolvedLocation?.[1] ?? null}
-            longitude={resolvedLocation?.[0] ?? null}
-            temperatureUnit={appSettings.temperatureUnit}
-          />
+      {appSettings.showDesktopForecastDock ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
+          <div className="pointer-events-auto">
+            <HourlyForecastDock
+              latitude={resolvedLocation?.[1] ?? null}
+              longitude={resolvedLocation?.[0] ?? null}
+              temperatureUnit={appSettings.temperatureUnit}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <Drawer
         open={isMobileMenuOpen}
