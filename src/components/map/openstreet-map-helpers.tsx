@@ -23,7 +23,6 @@ import {
   Clock,
   ExternalLink,
   Gauge,
-  Compass,
   MapPin,
   Radio,
   Signal,
@@ -1570,52 +1569,28 @@ function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
     };
   }, [map]);
 
+  const metrics: string[] = [
+    `${formatScaleValue(camera.scaleKilometers)} km`,
+    `${formatScaleValue(camera.scaleMiles)} mi`,
+  ];
+
+  if (is3DModeEnabled) {
+    metrics.push(`Pitch ${Math.round(Math.max(0, camera.pitch))}°`);
+    metrics.push(`Bearing ${formatNormalizedDegrees(camera.bearing)}`);
+  }
+
   return (
-    <div className="pointer-events-auto hidden md:block">
+    <div className="pointer-events-auto">
       <div className="rounded-xl border border-white/20 bg-background/45 px-3 py-2 backdrop-blur-xl supports-backdrop-filter:bg-background/35">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          View Metrics
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
-            <Ruler className="size-3.5" />
+        <div className="flex items-center gap-2">
+          <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10">
+            <span className="absolute size-4 rounded-full bg-emerald-300/20 animate-ping" />
+            <span className="relative size-2 rounded-full bg-emerald-300" />
           </span>
-          <p className="text-xs text-muted-foreground">Scale (km)</p>
-          <p className="ml-auto text-sm font-semibold">
-            {formatScaleValue(camera.scaleKilometers)} km
+          <p className="text-sm font-semibold leading-none">
+            {metrics.join(" • ")}
           </p>
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
-            <Ruler className="size-3.5" />
-          </span>
-          <p className="text-xs text-muted-foreground">Scale (mi)</p>
-          <p className="ml-auto text-sm font-semibold">
-            {formatScaleValue(camera.scaleMiles)} mi
-          </p>
-        </div>
-        {is3DModeEnabled ? (
-          <>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
-                <Box className="size-3.5" />
-              </span>
-              <p className="text-xs text-muted-foreground">Pitch</p>
-              <p className="ml-auto text-sm font-semibold">
-                {Math.round(Math.max(0, camera.pitch))}°
-              </p>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex size-6 items-center justify-center rounded-md border border-white/20 bg-background/30 text-muted-foreground">
-                <Compass className="size-3.5" />
-              </span>
-              <p className="text-xs text-muted-foreground">Bearing</p>
-              <p className="ml-auto text-sm font-semibold">
-                {formatNormalizedDegrees(camera.bearing)}
-              </p>
-            </div>
-          </>
-        ) : null}
       </div>
     </div>
   );
@@ -1723,7 +1698,7 @@ export function MapOverlayUI({
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
-      <div className="pointer-events-none absolute left-4 top-4">
+      <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 sm:left-4 sm:top-4 sm:bottom-auto">
         <MapCameraDock is3DModeEnabled={isMap3DMode} />
       </div>
 
