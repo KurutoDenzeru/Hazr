@@ -1511,18 +1511,19 @@ const getHaversineDistanceMeters = (
   return earthRadius * c;
 };
 
-const getNiceUnitValue = (rawValue: number) => {
-  if (!Number.isFinite(rawValue) || rawValue <= 0) return 0;
-  const magnitude = 10 ** Math.floor(Math.log10(rawValue));
-  const normalized = rawValue / magnitude;
-  if (normalized >= 5) return 5 * magnitude;
-  if (normalized >= 2) return 2 * magnitude;
-  return 1 * magnitude;
-};
 
-const formatScaleValue = (value: number) => {
-  if (value >= 10) return `${Math.round(value)}`;
-  return `${Math.round(value * 10) / 10}`;
+
+const formatScaleLabel = (value: number, unit: "km" | "mi") => {
+  if (!Number.isFinite(value) || value <= 0) return unit === "km" ? "0 km" : "0 mi";
+  if (unit === "km") {
+    if (value >= 1) return `${Math.round(value)} km`;
+    if (value >= 0.1) return `${Math.round(value * 10) / 10} km`;
+    return `${Math.round(value * 1000)} m`;
+  }
+  // miles
+  if (value >= 1) return `${Math.round(value)} mi`;
+  if (value >= 0.1) return `${Math.round(value * 10) / 10} mi`;
+  return `${Math.round(value * 5280)} ft`;
 };
 
 function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
@@ -1540,7 +1541,9 @@ function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
     const syncCamera = () => {
       const viewportWidth = map.getContainer().clientWidth;
       const viewportHeight = map.getContainer().clientHeight;
-      const targetPixels = Math.max(80, Math.min(140, Math.floor(viewportWidth * 0.16)));
+      // choose a representative sample length based on the smaller viewport side
+      const baseLength = Math.min(viewportWidth, viewportHeight);
+      const targetPixels = Math.max(64, Math.min(220, Math.floor(baseLength * 0.18)));
       const centerX = viewportWidth / 2;
       const centerY = viewportHeight / 2;
       const startLngLat = map.unproject([centerX - targetPixels / 2, centerY]);
@@ -1552,8 +1555,9 @@ function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
       setCamera({
         pitch: map.getPitch(),
         bearing: map.getBearing(),
-        scaleKilometers: getNiceUnitValue(sampledKilometers),
-        scaleMiles: getNiceUnitValue(sampledMiles),
+        // store raw measurements (not snapped) so formatting can be device/zoom-aware
+        scaleKilometers: sampledKilometers,
+        scaleMiles: sampledMiles,
       });
     };
 
@@ -1570,8 +1574,8 @@ function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
   }, [map]);
 
   const metrics: string[] = [
-    `${formatScaleValue(camera.scaleKilometers)} km`,
-    `${formatScaleValue(camera.scaleMiles)} mi`,
+    formatScaleLabel(camera.scaleKilometers, "km"),
+    formatScaleLabel(camera.scaleMiles, "mi"),
   ];
 
   if (is3DModeEnabled) {
