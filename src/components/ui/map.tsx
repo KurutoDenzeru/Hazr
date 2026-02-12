@@ -699,6 +699,8 @@ function MapControls({
   }, [map]);
 
   const handleLocate = useCallback(async () => {
+    if (waitingForLocation) return;
+
     setWaitingForLocation(true);
     setLocationFeedbackMessage(null);
 
@@ -724,7 +726,7 @@ function MapControls({
     } finally {
       setWaitingForLocation(false);
     }
-  }, [map, onLocate]);
+  }, [map, onLocate, waitingForLocation]);
 
   const handleFullscreen = useCallback(() => {
     const container = map?.getContainer();
@@ -780,6 +782,8 @@ function MapControls({
             <Tooltip>
               <TooltipTrigger asChild>
                 <ControlButton
+                  onPointerDown={() => handleLocate()}
+                  onTouchStart={() => handleLocate()}
                   onClick={handleLocate}
                   label="Find my location"
                   disabled={waitingForLocation}

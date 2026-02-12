@@ -2262,6 +2262,7 @@ function CustomMapControls({
   const handleZoomOut = () => animateZoom(-1);
 
   const handleLocate = async () => {
+    if (waitingForLocation) return;
     if (!map) return;
 
     setWaitingForLocation(true);
@@ -2453,6 +2454,8 @@ function CustomMapControls({
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton
+                onPointerDown={() => handleLocate()}
+                onTouchStart={() => handleLocate()}
                 onClick={handleLocate}
                 label="Find my location"
                 disabled={waitingForLocation}
