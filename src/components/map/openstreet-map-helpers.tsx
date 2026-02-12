@@ -54,6 +54,11 @@ import {
 } from "@/components/ui/tooltip";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  getLocationErrorMessage,
+  requestCurrentCoordinates,
+} from "@/lib/browser-geolocation";
 import { EarthquakeItem } from "@/components/hazr-earthquake-item";
 import { HourlyForecastDock } from "@/components/map/hourly-forecast-dock";
 import { WeatherDock } from "@/components/map/weather-dock";
@@ -2020,6 +2025,7 @@ function CustomMapControls({
   const isMobile = useIsMobile();
   const [is3D, setIs3D] = React.useState(false);
   const [waitingForLocation, setWaitingForLocation] = React.useState(false);
+  const [locationFeedbackMessage, setLocationFeedbackMessage] = React.useState<string | null>(null);
   const compassRef = React.useRef<SVGSVGElement>(null);
   const is3DEnabledRef = React.useRef(false);
   const sync3DBuildingsRef = React.useRef<(() => void) | null>(null);
@@ -2255,30 +2261,36 @@ function CustomMapControls({
   const handleZoomIn = () => animateZoom(1);
   const handleZoomOut = () => animateZoom(-1);
 
-  const handleLocate = () => {
-    if (navigator.geolocation && map) {
-      setWaitingForLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const coords: [number, number] = [
-            position.coords.longitude,
-            position.coords.latitude,
-          ];
-          setUserLocation(coords);
-          onLocateAnimation();
-          map.flyTo({
-            center: coords,
-            zoom: 17,
-            duration: 2500,
-            curve: 1.42,
-            speed: 0.6,
-            essential: true,
-            easing: (t) => 1 - Math.pow(1 - t, 3),
-          });
-          setWaitingForLocation(false);
-        },
-        () => setWaitingForLocation(false),
-      );
+  const handleLocate = async () => {
+    if (waitingForLocation) return;
+    if (!map) return;
+
+    setWaitingForLocation(true);
+    setLocationFeedbackMessage(null);
+
+    try {
+      const position = await requestCurrentCoordinates();
+      const coords: [number, number] = [position.longitude, position.latitude];
+      setUserLocation(coords);
+      onLocateAnimation();
+      map.flyTo({
+        center: coords,
+        zoom: 17,
+        duration: 2500,
+        curve: 1.42,
+        speed: 0.6,
+        essential: true,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
+      });
+    } catch (error) {
+      const message = getLocationErrorMessage(error);
+      setLocationFeedbackMessage(message);
+      if (typeof window !== "undefined") {
+        toast.error(message, { duration: 6000 });
+      }
+      console.error("Unable to retrieve location", error);
+    } finally {
+      setWaitingForLocation(false);
     }
   };
 
@@ -2442,6 +2454,8 @@ function CustomMapControls({
           <Tooltip>
             <TooltipTrigger asChild>
               <ControlButton
+                onPointerDown={() => handleLocate()}
+                onTouchStart={() => handleLocate()}
                 onClick={handleLocate}
                 label="Find my location"
                 disabled={waitingForLocation}
@@ -2453,7 +2467,9 @@ function CustomMapControls({
                 )}
               </ControlButton>
             </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
+            <TooltipContent side="left" sideOffset={8}>
+              {locationFeedbackMessage ?? "Your location"}
+            </TooltipContent>
           </Tooltip>
         </ControlGroup>
 
