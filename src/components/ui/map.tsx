@@ -26,6 +26,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+import {
+  getLocationErrorMessage,
+  requestCurrentCoordinates,
+} from "@/lib/browser-geolocation";
 import React from "react";
 
 type MapContextValue = {
@@ -677,6 +682,7 @@ function MapControls({
 }: MapControlsProps) {
   const { map, isLoaded } = useMap();
   const [waitingForLocation, setWaitingForLocation] = useState(false);
+  const [locationFeedbackMessage, setLocationFeedbackMessage] = useState<string | null>(null);
 
   const handleZoomIn = useCallback(() => {
     map?.zoomTo(map.getZoom() + 1, { duration: 300 });
@@ -692,32 +698,31 @@ function MapControls({
     map?.easeTo({ bearing: 0, pitch: 0, duration: 900, easing: ease, essential: true });
   }, [map]);
 
-  const handleLocate = useCallback(() => {
+  const handleLocate = useCallback(async () => {
     setWaitingForLocation(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords = {
-            longitude: pos.coords.longitude,
-            latitude: pos.coords.latitude,
-          };
-          map?.flyTo({
-            center: [coords.longitude, coords.latitude],
-            zoom: 17,
-            duration: 2500,
-            curve: 1.42,
-            speed: 0.6,
-            essential: true,
-            easing: (t) => 1 - Math.pow(1 - t, 3),
-          });
-          onLocate?.(coords);
-          setWaitingForLocation(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setWaitingForLocation(false);
-        }
-      );
+    setLocationFeedbackMessage(null);
+
+    try {
+      const coords = await requestCurrentCoordinates();
+      map?.flyTo({
+        center: [coords.longitude, coords.latitude],
+        zoom: 17,
+        duration: 2500,
+        curve: 1.42,
+        speed: 0.6,
+        essential: true,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
+      });
+      onLocate?.(coords);
+    } catch (error) {
+      const message = getLocationErrorMessage(error);
+      setLocationFeedbackMessage(message);
+      if (typeof window !== "undefined") {
+        toast.error(message, { duration: 6000 });
+      }
+      console.error("Error getting location:", error);
+    } finally {
+      setWaitingForLocation(false);
     }
   }, [map, onLocate]);
 
@@ -786,7 +791,9 @@ function MapControls({
                   )}
                 </ControlButton>
               </TooltipTrigger>
-              <TooltipContent side="left" sideOffset={8}>Your location</TooltipContent>
+              <TooltipContent side="left" sideOffset={8}>
+                {locationFeedbackMessage ?? "Your location"}
+              </TooltipContent>
             </Tooltip>
           </ControlGroup>
         )}
