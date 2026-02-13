@@ -23,6 +23,7 @@ import {
   Clock,
   ExternalLink,
   Gauge,
+  Map,
   MapPin,
   Radio,
   Signal,
@@ -37,7 +38,6 @@ import {
   FlaskConical,
   Building2,
   Ruler,
-  Info,
 } from "lucide-react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import {
@@ -65,6 +65,7 @@ import { WeatherDock } from "@/components/map/weather-dock";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { GlobalActivity } from "@/components/global-activity";
 import { HazrSettingsPanel } from "@/components/hazr-settings-panel";
+import { HazrAboutContent } from "@/components/hazr-about-dialog";
 import type {
   ProcessedAirQualitySite,
   ProcessedEarthquake,
@@ -1614,7 +1615,6 @@ export function MapOverlayUI({
   onEonetSelect,
   onAirQualitySelect,
   onTsunamiSelect,
-  onAboutSelect,
   appSettings,
   onAppSettingsChange,
   onResetDefaults,
@@ -1632,7 +1632,6 @@ export function MapOverlayUI({
   onEonetSelect: (event: ProcessedEonetEvent) => void;
   onAirQualitySelect: (site: ProcessedAirQualitySite) => void;
   onTsunamiSelect: (alert: ProcessedTsunamiAlert) => void;
-  onAboutSelect: () => void;
   appSettings: AppSettings;
   onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
   onResetDefaults: () => void;
@@ -1768,18 +1767,15 @@ export function MapOverlayUI({
                       showInlineReset
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 w-full justify-start gap-2"
-                    onClick={() => {
-                      closeDrawer();
-                      onAboutSelect();
-                    }}
-                  >
-                    <Info className="size-4" />
-                    About Hazr
-                  </Button>
+                  <div className="mt-3 rounded-md border border-border/60 bg-muted/15 p-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-flex items-center justify-center rounded-md bg-blue-500/15 text-white">
+                        <Map className="size-5" />
+                      </span>
+                      <h3 className="text-sm font-semibold">About Hazr</h3>
+                    </div>
+                    <HazrAboutContent />
+                  </div>
                 </div>
               </>
             ) : null}

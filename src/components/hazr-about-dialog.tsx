@@ -6,7 +6,6 @@ import {
   DialogClose,
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +55,67 @@ const SOCIAL_LINKS = [
   },
 ] as const;
 
+function HazrAboutContent() {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{PROJECT_DESCRIPTION}</p>
+
+      <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+          Tech Stack
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {TECH_STACK.map((item) => (
+            <span
+              key={item}
+              className="rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs font-medium text-foreground/90"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+          Data APIs
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DATA_APIS.map((item) => (
+            <span
+              key={item}
+              className="rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs font-medium text-foreground/90"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
+          Connect
+        </p>
+        <div className="flex items-center gap-2">
+          {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label={label}
+              title={label}
+              className="inline-flex size-10 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              <Icon className="size-4" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HazrAboutDialog({ open, onOpenChange }: HazrAboutDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -67,61 +127,9 @@ function HazrAboutDialog({ open, onOpenChange }: HazrAboutDialogProps) {
             </span>
             About Hazr
           </DialogTitle>
-          <DialogDescription>{PROJECT_DESCRIPTION}</DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
-            Tech Stack
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {TECH_STACK.map((item) => (
-              <span
-                key={item}
-                className="rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs font-medium text-foreground/90"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
-            Data APIs
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {DATA_APIS.map((item) => (
-              <span
-                key={item}
-                className="rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs font-medium text-foreground/90"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
-            Connect
-          </p>
-          <div className="flex items-center gap-2">
-            {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noreferrer noopener"
-                aria-label={label}
-                title={label}
-                className="inline-flex size-10 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              >
-                <Icon className="size-4" />
-              </a>
-            ))}
-          </div>
-        </div>
+        <HazrAboutContent />
 
         <DialogFooter className="w-full">
           <DialogClose asChild>
@@ -135,4 +143,4 @@ function HazrAboutDialog({ open, onOpenChange }: HazrAboutDialogProps) {
   );
 }
 
-export { HazrAboutDialog };
+export { HazrAboutDialog, HazrAboutContent };

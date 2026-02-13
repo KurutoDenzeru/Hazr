@@ -669,7 +669,6 @@ export default function GoogleMapsClone() {
                   onEonetSelect={handleEonetSelect}
                   onAirQualitySelect={handleAirQualitySelect}
                   onTsunamiSelect={handleTsunamiSelect}
-                  onAboutSelect={() => setIsAboutDialogOpen(true)}
                   appSettings={appSettings}
                   onAppSettingsChange={setAppSettings}
                   onResetDefaults={resetDefaults}
