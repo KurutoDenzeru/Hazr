@@ -6,7 +6,8 @@
 
 ## ☁️ Deploy your own
 
-[![Deploy with Vercel](_deploy_vercel.svg)](https://vercel.com/new/clone?repository-url=https://github.com/KurutoDenzeru/Hazr)  [![Deploy with Netlify](_deploy_netlify.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/KurutoDenzeru/Hazr)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/KurutoDenzeru/Hazr)
+[![Deploy with Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/KurutoDenzeru/Hazr)
 
 ## ✨ Features
 
@@ -27,7 +28,7 @@
 - [MapLibre / Mapcn](https://maplibre.org/): Map rendering and tile handling (Mapcn integration for MapLibre).
 - [shadcn/ui](https://ui.shadcn.com/): UI primitives, composition patterns, and design tokens.
 
-### Data APIs
+### 🔌 Data APIs
 
 - [Open-Meteo - Weather](https://open-meteo.com/): Weather forecasts and current conditions.
 - [USGS Earthquake - Earthquakes](https://earthquake.usgs.gov/fdsnws/event/1/): Live earthquake feeds.
@@ -91,13 +92,6 @@ src/
     utils.ts                      # Shared utility helpers (class names and common transforms)
   types/
     api.ts                        # Central API contracts, domain types, and enums
-```
-
-Quick dev commands:
-
-```bash
-bun install
-bun run dev
 ```
 
 ## 🤝🏻 Contributing
