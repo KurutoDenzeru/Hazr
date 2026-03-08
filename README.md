@@ -1,6 +1,6 @@
 ![Hazr](public/OpenGraph.webp)
 
-# Hazr - Live Hazard Signals
+# Hazr - Live Weather, Earthquakes, Air Quality, & Global Alerts
 
 🗺️ Real-time geospatial hazard dashboard built with Vite, React, TypeScript, & MapLibre, powered by USGS Earthquakes, Open-Meteo, NASA EONET, OpenAQ, & NWS Alerts.
 
