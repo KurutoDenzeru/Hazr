@@ -93,6 +93,11 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import type { AppSettings, DataLayerVisibility } from "@/types/settings";
+import {
+  containsViewportBounds,
+  useWebGpuVisibility,
+  type ViewportBounds,
+} from "@/hooks/use-webgpu-visibility";
 
 export type MapViewState = {
   center: [number, number];
@@ -529,7 +534,7 @@ export function GlobalSignalMarkers({
   const { map, isLoaded } = useMap();
   const [viewportState, setViewportState] = React.useState(() => ({
     zoom: 0,
-    bounds: null as maplibregl.LngLatBounds | null,
+    bounds: null as ViewportBounds | null,
   }));
   const [expandedMarkerKey, setExpandedMarkerKey] = React.useState<string | null>(null);
   const collapseTimeoutRef = React.useRef<number | null>(null);
@@ -584,9 +589,15 @@ export function GlobalSignalMarkers({
     if (!map || !isLoaded) return;
 
     const syncViewportState = () => {
+      const bounds = map.getBounds();
       setViewportState({
         zoom: map.getZoom(),
-        bounds: map.getBounds(),
+        bounds: {
+          west: bounds.getWest(),
+          east: bounds.getEast(),
+          south: bounds.getSouth(),
+          north: bounds.getNorth(),
+        },
       });
     };
 
@@ -604,7 +615,23 @@ export function GlobalSignalMarkers({
     (coordinates: [number, number]) => {
       const bounds = viewportState.bounds;
       if (!bounds) return false;
-      return bounds.contains([coordinates[0], coordinates[1]]);
+      return containsViewportBounds(bounds, coordinates);
+    },
+    [viewportState.bounds]
+  );
+
+  const getVisibleItems = React.useCallback(
+    <T extends { id: string; coordinates: [number, number] }>(
+      items: T[],
+      mask: Uint32Array | null | undefined,
+    ) => {
+      if (mask && mask.length === items.length) {
+        return items.filter((_, index) => mask[index] === 1);
+      }
+
+      const bounds = viewportState.bounds;
+      if (!bounds) return [];
+      return items.filter((item) => containsViewportBounds(bounds, item.coordinates));
     },
     [viewportState.bounds]
   );
@@ -613,6 +640,29 @@ export function GlobalSignalMarkers({
   const isDetailMode = viewportState.zoom >= GLOBAL_DETAIL_MIN_ZOOM;
   const shouldRenderGlobalMarkers = isCompactNodeMode || isDetailMode;
   const isBridgeZoomMode = !isCompactNodeMode && !isDetailMode;
+
+  const gpuVisibilityDatasets = React.useMemo(
+    () => ({
+      eonet: layerVisibility.eonet ? events : [],
+      tsunami: layerVisibility.tsunami ? tsunamiAlerts : [],
+      airQuality: layerVisibility.airQuality ? airQualitySites : [],
+    }),
+    [
+      airQualitySites,
+      events,
+      layerVisibility.airQuality,
+      layerVisibility.eonet,
+      layerVisibility.tsunami,
+      tsunamiAlerts,
+    ]
+  );
+
+  const gpuVisibility = useWebGpuVisibility({
+    bounds: viewportState.bounds,
+    datasets: gpuVisibilityDatasets,
+    enabled: shouldRenderGlobalMarkers && !isBridgeZoomMode,
+    threshold: 180,
+  });
 
   const withSelectedPriority = React.useCallback(
     <T extends { id: string; coordinates: [number, number] }>(
@@ -640,14 +690,15 @@ export function GlobalSignalMarkers({
       return [selectedEvent];
     }
     if (!shouldRenderGlobalMarkers) return [];
-    const base = events
-      .filter((event) => isPointVisible(event.coordinates))
+    const base = getVisibleItems(events, gpuVisibility.masks.eonet)
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
     return withSelectedPriority(base, layerVisibility.eonet ? selectedEvent : null);
   }, [
     events,
     isBridgeZoomMode,
     isPointVisible,
+    getVisibleItems,
+    gpuVisibility.masks.eonet,
     layerVisibility.eonet,
     selectedEvent,
     shouldRenderGlobalMarkers,
@@ -661,8 +712,7 @@ export function GlobalSignalMarkers({
       return [selectedTsunamiAlert];
     }
     if (!shouldRenderGlobalMarkers) return [];
-    const base = tsunamiAlerts
-      .filter((alert) => isPointVisible(alert.coordinates))
+    const base = getVisibleItems(tsunamiAlerts, gpuVisibility.masks.tsunami)
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
     return withSelectedPriority(
       base,
@@ -671,6 +721,8 @@ export function GlobalSignalMarkers({
   }, [
     isBridgeZoomMode,
     isPointVisible,
+    getVisibleItems,
+    gpuVisibility.masks.tsunami,
     layerVisibility.tsunami,
     selectedTsunamiAlert,
     shouldRenderGlobalMarkers,
@@ -685,8 +737,7 @@ export function GlobalSignalMarkers({
       return [selectedAirQualitySite];
     }
     if (!shouldRenderGlobalMarkers) return [];
-    const base = airQualitySites
-      .filter((site) => isPointVisible(site.coordinates))
+    const base = getVisibleItems(airQualitySites, gpuVisibility.masks.airQuality)
       .slice(0, MAX_VISIBLE_GLOBAL_MARKERS);
     return withSelectedPriority(
       base,
@@ -696,6 +747,8 @@ export function GlobalSignalMarkers({
     airQualitySites,
     isBridgeZoomMode,
     isPointVisible,
+    getVisibleItems,
+    gpuVisibility.masks.airQuality,
     layerVisibility.airQuality,
     selectedAirQualitySite,
     shouldRenderGlobalMarkers,
