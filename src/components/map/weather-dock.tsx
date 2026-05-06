@@ -104,7 +104,7 @@ export const WeatherDock = ({
               className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
               aria-label="Open Meteo weather"
             >
-              <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
+              <div className="flex size-9 items-center justify-center rounded-md bg-muted/50 text-foreground">
                 <Loader2 className="size-4 animate-spin" />
               </div>
             </button>
@@ -129,7 +129,7 @@ export const WeatherDock = ({
               className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
               aria-label="Open Meteo weather"
             >
-              <div className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 text-sky-600 dark:bg-sky-500/30 dark:text-sky-300">
+              <div className="flex size-9 items-center justify-center rounded-md bg-muted/50 text-foreground">
                 <Loader2 className="size-4 animate-spin" />
               </div>
             </button>
@@ -153,11 +153,11 @@ export const WeatherDock = ({
             className="flex size-12 items-center justify-center rounded-md text-center transition-colors hover:bg-muted/70"
             aria-label="Open Meteo weather"
           >
-            <span className="flex size-9 items-center justify-center rounded-md bg-sky-500/20 dark:bg-sky-500/30">
+            <span className="flex size-9 items-center justify-center rounded-md bg-muted/50">
               <WeatherIcon
                 code={current.weatherCode}
                 isDay={current.isDay}
-                className="size-5 text-sky-500"
+                className="size-5 text-foreground"
               />
             </span>
           </button>
@@ -234,7 +234,7 @@ export const WeatherDock = ({
           unstyled && "border-none px-0",
         )}>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-sky-500/30 bg-sky-500/10 text-sky-500">
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/20 text-foreground">
               <MapPin className="size-3.5" />
             </span>
             <span className="truncate text-sm font-semibold">
@@ -268,11 +268,11 @@ export const WeatherDock = ({
         {/* Current weather display */}
         <div className={cn("pt-1", unstyled && "p-0")}>
           <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-md border border-sky-500/30 bg-sky-500/10 p-2.5 dark:bg-sky-500/20">
+            <div className="rounded-md border border-border/60 bg-muted/20 p-2.5">
               <WeatherIcon
                 code={current.weatherCode}
                 isDay={current.isDay}
-                className="size-5 dark:text-white text-blue-400"
+                className="size-5 text-foreground"
               />
             </div>
             <div className="min-w-0">
@@ -305,7 +305,7 @@ export const WeatherDock = ({
                   <span className="text-xs font-semibold text-muted-foreground">
                     Feels
                   </span>
-                  <Thermometer className="size-5 text-orange-500" />
+                  <Thermometer className="size-5 text-foreground/80" />
                   <span className="text-sm font-semibold">
                     {formatTemperature(current.feelsLike, temperatureUnit)}
                   </span>
@@ -320,7 +320,7 @@ export const WeatherDock = ({
                   <span className="text-xs font-semibold text-muted-foreground">
                     Wind
                   </span>
-                  <Wind className="size-5 text-cyan-500" />
+                  <Wind className="size-5 text-foreground/80" />
                   <span className="text-sm font-semibold">
                     {Math.round(current.windSpeed)} km/h
                   </span>
@@ -340,7 +340,7 @@ export const WeatherDock = ({
                   <span className="text-xs font-semibold text-muted-foreground">
                     Humid
                   </span>
-                  <Droplets className="size-5 text-blue-500" />
+                  <Droplets className="size-5 text-foreground/80" />
                   <span className="text-sm font-semibold">
                     {current.humidity}%
                   </span>
@@ -356,9 +356,9 @@ export const WeatherDock = ({
                     {current.visibility !== undefined ? "Visibility" : "Cloud"}
                   </span>
                   {current.visibility !== undefined ? (
-                    <Eye className="size-5 text-violet-500" />
+                    <Eye className="size-5 text-foreground/80" />
                   ) : (
-                    <Gauge className="size-5 text-violet-500" />
+                    <Gauge className="size-5 text-foreground/80" />
                   )}
                   <span className="text-sm font-semibold">
                     {current.visibility !== undefined
@@ -407,7 +407,7 @@ export const WeatherDock = ({
                   <Droplets
                     className={cn(
                       "size-5",
-                      hasRainChance ? "text-blue-500" : "text-muted-foreground",
+                      hasRainChance ? "text-foreground/80" : "text-muted-foreground/50",
                     )}
                   />
                   <span className="text-sm font-semibold">
@@ -450,7 +450,7 @@ export const WeatherDock = ({
                       <WeatherIcon
                         code={day.weatherCode}
                         isDay={true}
-                        className="size-5 text-muted-foreground"
+                        className="size-5 text-foreground/80"
                       />
                       <div className="flex gap-1 text-xs">
                         <span className="font-semibold">

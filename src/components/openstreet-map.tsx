@@ -451,6 +451,20 @@ export default function GoogleMapsClone() {
                 center={viewState.center}
                 zoom={viewState.zoom}
                 scrollZoom={true}
+                styles={{
+                  light:
+                    appSettings.mapStyle === "voyager"
+                      ? "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                      : appSettings.mapStyle === "dark"
+                      ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                      : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                  dark:
+                    appSettings.mapStyle === "voyager"
+                      ? "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                      : appSettings.mapStyle === "light"
+                      ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+                      : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+                }}
               >
                 <MapViewController
                   viewState={viewState}
