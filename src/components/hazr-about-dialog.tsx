@@ -1,6 +1,6 @@
 "use client";
 
-import { Map } from "lucide-react";
+import { Globe, Map } from "lucide-react";
 
 import { getSocialIconSvg } from "@/lib/social-icons";
 
@@ -39,23 +39,39 @@ const DATA_APIS = [
   "NWS Alerts - Tsunami",
 ] as const;
 
-const SOCIAL_LINKS = [
+type SocialLink = {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+};
+
+const SOCIAL_LINKS: SocialLink[] = [
   {
-    label: "LinkedIn",
-    href: "https://www.linkedin.com/in/kurutodenzeru/",
-    slug: "linkedin" as const,
+    label: "Website",
+    href: "https://kurtcalacday.vercel.app/",
+    icon: <Globe className="size-4" />,
   },
   {
     label: "GitHub",
     href: "https://github.com/KurutoDenzeru/Hazr",
-    slug: "github" as const,
+    icon: (
+      <span
+        className="size-4"
+        dangerouslySetInnerHTML={{ __html: getSocialIconSvg("github") }}
+      />
+    ),
   },
   {
     label: "Instagram",
     href: "https://www.instagram.com/krtclcdy/",
-    slug: "instagram" as const,
+    icon: (
+      <span
+        className="size-4"
+        dangerouslySetInnerHTML={{ __html: getSocialIconSvg("instagram") }}
+      />
+    ),
   },
-] as const;
+];
 
 function HazrAboutContent() {
   return (
@@ -99,7 +115,7 @@ function HazrAboutContent() {
           Connect
         </p>
         <div className="flex items-center gap-2">
-          {SOCIAL_LINKS.map(({ label, href, slug }) => (
+          {SOCIAL_LINKS.map(({ label, href, icon }) => (
             <a
               key={label}
               href={href}
@@ -109,10 +125,7 @@ function HazrAboutContent() {
               title={label}
               className="inline-flex size-10 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
             >
-              <span
-                className="size-4"
-                dangerouslySetInnerHTML={{ __html: getSocialIconSvg(slug) }}
-              />
+              {icon}
             </a>
           ))}
         </div>
@@ -127,9 +140,7 @@ function HazrAboutDialog({ open, onOpenChange }: HazrAboutDialogProps) {
       <DialogContent className="max-w-lg gap-5 p-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center rounded-md bg-blue-500/15 text-white">
-              <Map className="size-5" />
-            </span>
+            <Map className="size-5 text-blue-500" />
             About Hazr
           </DialogTitle>
         </DialogHeader>

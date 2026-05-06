@@ -178,7 +178,7 @@ export const WeatherDock = ({
 
   if (isLoading && !current) {
     return (
-      <div className={cn("rounded-md border border-border/50 p-4 bg-background", className)}>
+      <div className={cn("rounded-md border border-border/50 bg-background p-4 shadow-sm", className)}>
         <div className="flex items-center justify-center gap-2 py-8">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Loading weather...</span>
@@ -189,7 +189,7 @@ export const WeatherDock = ({
 
   if (error || !current) {
     return (
-      <div className={cn(unstyled ? "p-0" : "rounded-md border border-border/50 p-4 bg-background", className)}>
+      <div className={cn(unstyled ? "p-0" : "rounded-md border border-border/50 bg-background p-4 shadow-sm", className)}>
         <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
           {error ? (
             <Cloud className="size-8 text-muted-foreground/50" />
@@ -216,7 +216,7 @@ export const WeatherDock = ({
   const containerClasses = unstyled
     ? cn("bg-transparent border-none shadow-none p-0", className)
     : cn(
-        "overflow-hidden rounded-md border border-border/50 bg-background/80 backdrop-blur-xl",
+        "overflow-hidden rounded-md border border-border/50 bg-background/80 backdrop-blur-xl shadow-sm",
         className,
       );
   const uvInfo = UV_RISK_INFO[getUVRiskLevel(current.uvIndex)];
