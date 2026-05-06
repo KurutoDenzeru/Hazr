@@ -25,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
 import { getUVRiskLevel, UV_RISK_INFO, getWindDirection } from "@/types/api";
-import type { TemperatureUnit } from "@/types/settings";
+import type { TemperatureUnit, TimeFormat } from "@/types/settings";
 
 type WeatherDockProps = {
   latitude: number | null;
@@ -36,6 +36,7 @@ type WeatherDockProps = {
   onOpenSection?: () => void;
   unstyled?: boolean;
   temperatureUnit?: TemperatureUnit;
+  timeFormat?: TimeFormat;
 };
 
 const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
@@ -56,11 +57,11 @@ const formatTemperature = (value: number, unit: TemperatureUnit) => {
 };
 
 // Format time for display
-const formatTime = (date: Date): string => {
+const formatTime = (date: Date, timeFormat: TimeFormat): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: timeFormat === "12h",
   });
 };
 
@@ -73,6 +74,7 @@ export const WeatherDock = ({
   onOpenSection,
   unstyled = false,
   temperatureUnit = "celsius",
+  timeFormat = "12h",
 }: WeatherDockProps) => {
   const {
     current,
@@ -257,7 +259,7 @@ export const WeatherDock = ({
               {isLoading
                 ? "Refreshing..."
                 : lastUpdated
-                  ? `Updated ${formatTime(lastUpdated)}`
+                  ? `Updated ${formatTime(lastUpdated, timeFormat)}`
                   : "Refresh Open Meteo weather"}
             </TooltipContent>
           </Tooltip>

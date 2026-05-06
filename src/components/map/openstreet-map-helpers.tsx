@@ -1270,6 +1270,7 @@ export function MapOverlayUI({
               latitude={resolvedLocation?.[1] ?? null}
               longitude={resolvedLocation?.[0] ?? null}
               temperatureUnit={appSettings.temperatureUnit}
+              timeFormat={appSettings.timeFormat}
             />
           </div>
         </div>
@@ -1491,19 +1492,21 @@ export function MapOverlayUI({
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
                 >
                   <div className="min-w-0 space-y-3 rounded-md border border-border/60 bg-muted/15 p-2">
-                    <WeatherDock
-                      latitude={resolvedLocation?.[1] ?? null}
-                      longitude={resolvedLocation?.[0] ?? null}
-                      temperatureUnit={appSettings.temperatureUnit}
-                      unstyled
-                    />
-                    <HourlyForecastDock
-                      latitude={resolvedLocation?.[1] ?? null}
-                      longitude={resolvedLocation?.[0] ?? null}
-                      temperatureUnit={appSettings.temperatureUnit}
-                      className="md:hidden"
-                      compact
-                    />
+                  <WeatherDock
+                    latitude={resolvedLocation?.[1] ?? null}
+                    longitude={resolvedLocation?.[0] ?? null}
+                    temperatureUnit={appSettings.temperatureUnit}
+                    timeFormat={appSettings.timeFormat}
+                    unstyled
+                  />
+                  <HourlyForecastDock
+                    latitude={resolvedLocation?.[1] ?? null}
+                    longitude={resolvedLocation?.[0] ?? null}
+                    temperatureUnit={appSettings.temperatureUnit}
+                    timeFormat={appSettings.timeFormat}
+                    className="md:hidden"
+                    compact
+                  />
                   </div>
                 </div>
               </>

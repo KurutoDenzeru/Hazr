@@ -7,7 +7,7 @@ import { WeatherIcon } from "@/components/hazr-weather-icon";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useWeather } from "@/hooks/use-weather";
-import type { TemperatureUnit } from "@/types/settings";
+import type { TemperatureUnit, TimeFormat } from "@/types/settings";
 
 type HourlyForecastDockProps = {
   latitude: number | null;
@@ -15,6 +15,7 @@ type HourlyForecastDockProps = {
   className?: string;
   temperatureUnit?: TemperatureUnit;
   compact?: boolean;
+  timeFormat?: TimeFormat;
 };
 
 const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
@@ -27,10 +28,10 @@ const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
   return value;
 };
 
-const formatHour = (date: Date): string =>
+const formatHour = (date: Date, timeFormat: TimeFormat): string =>
   date.toLocaleTimeString("en-US", {
     hour: "numeric",
-    hour12: true,
+    hour12: timeFormat === "12h",
   });
 
 const formatDockDate = (date: Date): string =>
@@ -47,6 +48,7 @@ const HourlyForecastDock = ({
   className,
   temperatureUnit = "celsius",
   compact = false,
+  timeFormat = "12h",
 }: HourlyForecastDockProps) => {
   const {
     hourly,
@@ -65,6 +67,7 @@ const HourlyForecastDock = ({
   const maxIndex = Math.max(0, visibleHours.length - 1);
   const safeIndex = Math.min(selectedHourIndex, maxIndex);
   const selectedHour = visibleHours[safeIndex];
+  const forecastLabel = timeFormat === "24h" ? "24-Hour Forecast" : "12-Hour Forecast";
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
   const selectedIndexRef = React.useRef(safeIndex);
@@ -173,7 +176,7 @@ const HourlyForecastDock = ({
                     : "°C"}
               </span>
               <span className={cn(compact ? "text-xs text-muted-foreground" : "text-sm text-muted-foreground")}>
-                {formatHour(selectedHour.time)}
+                {formatHour(selectedHour.time, timeFormat)}
               </span>
             </div>
             <p
@@ -200,7 +203,7 @@ const HourlyForecastDock = ({
                 compact ? "px-2.5 py-1 text-xs" : "border-white/15 bg-background/35",
               )}
             >
-              12-Hour Forecast
+              {forecastLabel}
             </p>
             <p className={cn("leading-none text-muted-foreground", compact ? "text-xs" : "text-sm")}>
               {formatDockDate(selectedHour.time)}
@@ -224,7 +227,7 @@ const HourlyForecastDock = ({
             <button
               key={hour.time.toISOString()}
               type="button"
-              aria-label={`Forecast for ${formatHour(hour.time)}`}
+              aria-label={`Forecast for ${formatHour(hour.time, timeFormat)}`}
               onClick={() => setSelectedHourIndex(index)}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
@@ -242,7 +245,7 @@ const HourlyForecastDock = ({
                   : index === safeIndex && "bg-background/45 border border-white/15",
               )}
             >
-              {index === 0 ? "Now" : formatHour(hour.time)}
+              {index === 0 ? "Now" : formatHour(hour.time, timeFormat)}
             </button>
           ))}
         </div>

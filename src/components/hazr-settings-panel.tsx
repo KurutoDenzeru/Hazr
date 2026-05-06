@@ -36,6 +36,7 @@ import type { EarthquakeMagnitude } from "@/types/api";
 import type {
   AppSettings,
   DataLayerVisibility,
+  TimeFormat,
   TemperatureUnit,
 } from "@/types/settings";
 
@@ -149,6 +150,24 @@ function HazrSettingsPanel({
                   <SelectItem value="celsius">Celsius (°C)</SelectItem>
                   <SelectItem value="fahrenheit">Fahrenheit (°F)</SelectItem>
                   <SelectItem value="kelvin">Kelvin (K)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor={`${settingsId}-time-format`}>Time Format</Label>
+              <Select
+                value={settings.timeFormat}
+                onValueChange={(value: TimeFormat) =>
+                  updateSettings({ timeFormat: value })
+                }
+              >
+                <SelectTrigger id={`${settingsId}-time-format`} className="w-36">
+                  <SelectValue placeholder="Time format" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="12h">12-hour</SelectItem>
+                  <SelectItem value="24h">24-hour</SelectItem>
                 </SelectContent>
               </Select>
             </div>
