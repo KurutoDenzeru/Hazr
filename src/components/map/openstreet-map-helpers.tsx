@@ -4,7 +4,6 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import {
   Menu,
-  Layers,
   Plus,
   Minus,
   Locate,
@@ -15,7 +14,6 @@ import {
   Maximize,
   Sun,
   Moon,
-  Box,
   Loader2,
   SlidersHorizontal,
   Globe2,
@@ -40,7 +38,6 @@ import {
   Building2,
   Ruler,
 } from "lucide-react";
-import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   useMap,
 } from "@/components/ui/map";
@@ -92,6 +89,10 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import type { AppSettings, DataLayerVisibility } from "@/types/settings";
+import { useMap3DMode } from "@/hooks/use-map-3d-mode";
+import { MapLayersControl } from "@/components/map/controls/map-layers-control";
+import { MapCameraDock } from "@/components/map/controls/map-camera-dock";
+
 
 export type MapViewState = {
   center: [number, number];
@@ -1036,418 +1037,6 @@ function MobileDrawerHeader({
   );
 }
 
-const formatNormalizedDegrees = (value: number) => {
-  const normalized = ((value % 360) + 360) % 360;
-  return `${Math.round(normalized)}°`;
-};
-
-const toRadians = (value: number) => (value * Math.PI) / 180;
-
-const getHaversineDistanceMeters = (
-  start: { lng: number; lat: number },
-  end: { lng: number; lat: number },
-) => {
-  const earthRadius = 6371008.8;
-  const latDelta = toRadians(end.lat - start.lat);
-  const lngDelta = toRadians(end.lng - start.lng);
-  const startLat = toRadians(start.lat);
-  const endLat = toRadians(end.lat);
-  const a =
-    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
-    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
-};
-
-
-
-const formatScaleLabel = (value: number, unit: "km" | "mi") => {
-  if (!Number.isFinite(value) || value <= 0) return unit === "km" ? "0 km" : "0 mi";
-  if (unit === "km") {
-    if (value >= 1) return `${Math.round(value)} km`;
-    if (value >= 0.1) return `${Math.round(value * 10) / 10} km`;
-    return `${Math.round(value * 1000)} m`;
-  }
-  // miles
-  if (value >= 1) return `${Math.round(value)} mi`;
-  if (value >= 0.1) return `${Math.round(value * 10) / 10} mi`;
-  return `${Math.round(value * 5280)} ft`;
-};
-
-function MapCameraDock({ is3DModeEnabled }: { is3DModeEnabled: boolean }) {
-  const { map } = useMap();
-  const [camera, setCamera] = React.useState({
-    pitch: 0,
-    bearing: 0,
-    scaleKilometers: 0,
-    scaleMiles: 0,
-  });
-
-  React.useEffect(() => {
-    if (!map) return;
-
-    const syncCamera = () => {
-      const viewportWidth = map.getContainer().clientWidth;
-      const viewportHeight = map.getContainer().clientHeight;
-      // choose a representative sample length based on the smaller viewport side
-      const baseLength = Math.min(viewportWidth, viewportHeight);
-      const targetPixels = Math.max(64, Math.min(220, Math.floor(baseLength * 0.18)));
-      const centerX = viewportWidth / 2;
-      const centerY = viewportHeight / 2;
-      const startLngLat = map.unproject([centerX - targetPixels / 2, centerY]);
-      const endLngLat = map.unproject([centerX + targetPixels / 2, centerY]);
-      const sampledMeters = getHaversineDistanceMeters(startLngLat, endLngLat);
-      const sampledKilometers = sampledMeters / 1000;
-      const sampledMiles = sampledMeters / 1609.344;
-
-      setCamera({
-        pitch: map.getPitch(),
-        bearing: map.getBearing(),
-        // store raw measurements (not snapped) so formatting can be device/zoom-aware
-        scaleKilometers: sampledKilometers,
-        scaleMiles: sampledMiles,
-      });
-    };
-
-    syncCamera();
-    map.on("zoom", syncCamera);
-    map.on("rotate", syncCamera);
-    map.on("pitch", syncCamera);
-
-    return () => {
-      map.off("zoom", syncCamera);
-      map.off("rotate", syncCamera);
-      map.off("pitch", syncCamera);
-    };
-  }, [map]);
-
-  const metrics: string[] = [
-    formatScaleLabel(camera.scaleKilometers, "km"),
-    formatScaleLabel(camera.scaleMiles, "mi"),
-  ];
-
-  if (is3DModeEnabled) {
-    metrics.push(`Pitch ${Math.round(Math.max(0, camera.pitch))}°`);
-    metrics.push(`Bearing ${formatNormalizedDegrees(camera.bearing)}`);
-  }
-
-  return (
-    <div className="pointer-events-auto">
-      <div className="rounded-xl border border-white/20 bg-background/45 px-3 py-2 backdrop-blur-xl supports-backdrop-filter:bg-background/35">
-        <div className="flex items-center gap-2">
-          <span className="relative inline-flex size-6 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10">
-            <span className="absolute size-4 rounded-full bg-emerald-300/20 animate-ping" />
-            <span className="relative size-2 rounded-full bg-emerald-300" />
-          </span>
-          <p className="text-sm font-semibold leading-none">
-            {metrics.join(" • ")}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-type GlobeCapableMap = MapLibreMap & {
-  setProjection: (projection: { type: "globe" | "mercator" }) => void;
-  setFog?: (fog?: {
-    color?: string;
-    "high-color"?: string;
-    "horizon-blend"?: number;
-    range?: [number, number];
-  }) => void;
-};
-
-export function useMap3DMode(
-  on3DModeChange?: (enabled: boolean) => void,
-  onGlobeModeChange?: (enabled: boolean) => void
-) {
-  const { map } = useMap();
-  const [is3D, setIs3D] = React.useState(false);
-  const [isGlobe, setIsGlobe] = React.useState(false);
-  
-  const is3DEnabledRef = React.useRef(false);
-  const isGlobeEnabledRef = React.useRef(false);
-  const sync3DBuildingsRef = React.useRef<(() => void) | null>(null);
-  const syncGlobeRef = React.useRef<(() => void) | null>(null);
-  const buildingLayerVisibilityRef = React.useRef<Record<string, "visible" | "none" | undefined>>({});
-
-  React.useEffect(() => {
-    is3DEnabledRef.current = is3D;
-    on3DModeChange?.(is3D);
-  }, [is3D, on3DModeChange]);
-
-  React.useEffect(() => {
-    isGlobeEnabledRef.current = isGlobe;
-    onGlobeModeChange?.(isGlobe);
-  }, [isGlobe, onGlobeModeChange]);
-
-  React.useEffect(() => {
-    if (!map) return;
-
-    const globeMap = map as GlobeCapableMap;
-    const layerId = "3d-buildings";
-    type StyleLayerLike = {
-      id: string;
-      type?: string;
-      source?: string;
-      "source-layer"?: string;
-      layout?: {
-        visibility?: "visible" | "none";
-      };
-      minzoom?: number;
-    };
-
-    const setLayerVisibilitySafe = (targetLayerId: string, visibility: "visible" | "none") => {
-      try {
-        globeMap.setLayoutProperty(targetLayerId, "visibility", visibility);
-      } catch {
-      }
-    };
-
-    const isBuildingSourceLayer = (sourceLayerName?: string) => {
-      return typeof sourceLayerName === "string" && sourceLayerName.toLowerCase().includes("building");
-    };
-
-    const getBuildingFillLayers = () => {
-      const styleLayers = (globeMap.getStyle().layers ?? []) as StyleLayerLike[];
-      return styleLayers.filter((layer) => {
-        if (layer.type !== "fill") return false;
-        if (typeof layer.source !== "string") return false;
-        return isBuildingSourceLayer(layer["source-layer"]);
-      });
-    };
-
-    const getBuildingExtrusionLayers = () => {
-      const styleLayers = (globeMap.getStyle().layers ?? []) as StyleLayerLike[];
-      return styleLayers.filter((layer) => {
-        if (layer.type !== "fill-extrusion") return false;
-        if (typeof layer.source !== "string") return false;
-        if (isBuildingSourceLayer(layer["source-layer"])) return true;
-        return layer.id.toLowerCase().includes("building");
-      });
-    };
-
-    const hideBuildingFillLayers = () => {
-      const buildingFillLayers = getBuildingFillLayers();
-      for (const layer of buildingFillLayers) {
-        if (!(layer.id in buildingLayerVisibilityRef.current)) {
-          buildingLayerVisibilityRef.current[layer.id] = layer.layout?.visibility;
-        }
-        setLayerVisibilitySafe(layer.id, "none");
-      }
-    };
-
-    const restoreBuildingFillLayers = () => {
-      const originalVisibility = buildingLayerVisibilityRef.current;
-      const layerIds = Object.keys(originalVisibility);
-      for (const layerIdToRestore of layerIds) {
-        setLayerVisibilitySafe(layerIdToRestore, originalVisibility[layerIdToRestore] ?? "visible");
-      }
-      buildingLayerVisibilityRef.current = {};
-    };
-
-    const hideBuildingExtrusions = () => {
-      const buildingExtrusionLayers = getBuildingExtrusionLayers();
-      for (const layer of buildingExtrusionLayers) {
-        if (layer.id === layerId) continue;
-        setLayerVisibilitySafe(layer.id, "none");
-      }
-    };
-
-    const handleGlobe = () => {
-      if (!globeMap.getStyle()) return;
-      const isGlobeEnabled = isGlobeEnabledRef.current;
-      try {
-        globeMap.setProjection({ type: isGlobeEnabled ? "globe" : "mercator" });
-      } catch {
-        // ignore
-      }
-      
-      if (isGlobeEnabled) {
-        globeMap.setFog?.({
-          color: "#dbeafe",
-          "high-color": "#0b172a",
-          "horizon-blend": 0.15,
-          range: [0.6, 10],
-        });
-      } else {
-        globeMap.setFog?.(undefined);
-      }
-    };
-
-    const handle3DBuildings = () => {
-      if (!globeMap.getStyle()) return;
-
-      const is3DEnabled = is3DEnabledRef.current;
-
-      if (is3DEnabled) {
-        hideBuildingFillLayers();
-        hideBuildingExtrusions();
-
-        const baseBuildingLayer = getBuildingFillLayers()[0] ?? getBuildingExtrusionLayers()[0];
-        if (!baseBuildingLayer?.source || !baseBuildingLayer["source-layer"]) return;
-
-        const styleLayers = globeMap.getStyle().layers ?? [];
-        const beforeLayerId = styleLayers.find((layer) => layer.type === "symbol")?.id;
-        const minZoom = baseBuildingLayer.minzoom ?? 14.5;
-
-        if (!globeMap.getLayer(layerId)) {
-          try {
-            globeMap.addLayer(
-              {
-                id: layerId,
-                source: baseBuildingLayer.source,
-                "source-layer": baseBuildingLayer["source-layer"],
-                type: "fill-extrusion",
-                minzoom: minZoom,
-                paint: {
-                  "fill-extrusion-color": [
-                    "interpolate",
-                    ["linear"],
-                    ["coalesce", ["get", "render_height"], ["get", "height"], 0],
-                    0,
-                    "#a3a3a3",
-                    180,
-                    "#737373",
-                  ],
-                  "fill-extrusion-height": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    minZoom,
-                    0,
-                    minZoom + 0.1,
-                    ["coalesce", ["get", "render_height"], ["get", "height"], 0],
-                  ],
-                  "fill-extrusion-base": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    minZoom,
-                    0,
-                    minZoom + 0.1,
-                    ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
-                  ],
-                  "fill-extrusion-opacity": 0.9,
-                },
-              },
-              beforeLayerId,
-            );
-          } catch {
-          }
-          return;
-        }
-
-        setLayerVisibilitySafe(layerId, "visible");
-        return;
-      }
-
-      restoreBuildingFillLayers();
-      hideBuildingExtrusions();
-      if (globeMap.getLayer(layerId)) {
-        setLayerVisibilitySafe(layerId, "none");
-      }
-    };
-
-    const handleStyleLoad = () => {
-      buildingLayerVisibilityRef.current = {}; // Clear old visibility state for the new style
-      handleGlobe();
-      handle3DBuildings();
-    };
-
-    const handleStyleData = () => {
-      if (!globeMap.getStyle()) return;
-      handleGlobe();
-      handle3DBuildings();
-    };
-
-    sync3DBuildingsRef.current = handle3DBuildings;
-    syncGlobeRef.current = handleGlobe;
-    globeMap.on("style.load", handleStyleLoad);
-    globeMap.on("styledata", handleStyleData);
-    
-    if (globeMap.isStyleLoaded()) {
-      handleGlobe();
-      handle3DBuildings();
-    }
-
-    return () => {
-      globeMap.off("style.load", handleStyleLoad);
-      globeMap.off("styledata", handleStyleData);
-      if (sync3DBuildingsRef.current === handle3DBuildings) {
-        sync3DBuildingsRef.current = null;
-      }
-      if (syncGlobeRef.current === handleGlobe) {
-        syncGlobeRef.current = null;
-      }
-    };
-  }, [map]);
-
-  React.useEffect(() => {
-    if (!map) return;
-    if (!map.isStyleLoaded()) return;
-    syncGlobeRef.current?.();
-  }, [map, isGlobe]);
-
-  React.useEffect(() => {
-    if (!map) return;
-    if (!map.isStyleLoaded()) return;
-    sync3DBuildingsRef.current?.();
-  }, [map, is3D]);
-
-  const toggleGlobe = React.useCallback(() => {
-    const newGlobe = !isGlobe;
-    isGlobeEnabledRef.current = newGlobe;
-    setIsGlobe(newGlobe);
-    onGlobeModeChange?.(newGlobe);
-    
-    if (!map) return;
-
-    if (newGlobe) {
-      map.easeTo({
-        pitch: 0,
-        center: [0, 0], // Center the globe!
-        zoom: 1, // Zoom out to show the globe
-        duration: 1000,
-        easing: (t) => 1 - Math.pow(1 - t, 3),
-        essential: true,
-      });
-    }
-
-    syncGlobeRef.current?.();
-  }, [isGlobe, map, onGlobeModeChange]);
-
-  const toggle3D = React.useCallback(() => {
-    const new3D = !is3D;
-    is3DEnabledRef.current = new3D;
-    setIs3D(new3D);
-    on3DModeChange?.(new3D);
-    if (!map) return;
-
-    if (new3D) {
-      if (!isGlobeEnabledRef.current && map.getZoom() >= 10) {
-        map.easeTo({
-          pitch: 55,
-          duration: 800,
-          easing: (t) => 1 - Math.pow(1 - t, 3),
-          essential: true,
-        });
-      }
-    } else {
-      if (!isGlobeEnabledRef.current && map.getZoom() >= 10) {
-        map.easeTo({ pitch: 0, duration: 600, easing: (t) => 1 - Math.pow(1 - t, 3), essential: true });
-      }
-    }
-
-    sync3DBuildingsRef.current?.();
-  }, [is3D, map, on3DModeChange]);
-
-  return { is3D, toggle3D, isGlobe, toggleGlobe };
-}
-
-
 export function MapOverlayUI({
   setUserLocation,
   onLocateAnimation,
@@ -1549,34 +1138,33 @@ export function MapOverlayUI({
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none flex flex-col justify-between">
-      <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 sm:left-4 sm:top-4 sm:bottom-auto">
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="pointer-events-auto absolute top-[calc(env(safe-area-inset-top)+1rem)] sm:top-4 left-3 sm:left-4 z-10">
         <MapCameraDock is3DModeEnabled={isMap3DMode || isMapGlobeMode} />
       </div>
 
-      <div className="pointer-events-none p-4 flex flex-col sm:flex-row justify-between items-end w-full mt-auto">
-        <div className="pointer-events-auto flex flex-col gap-4 items-start w-auto">
-          <MapLayersControl 
-            appSettings={appSettings} 
-            onAppSettingsChange={onAppSettingsChange} 
-            is3D={is3D} 
-            toggle3D={toggle3D} 
-            isGlobe={isGlobe}
-            toggleGlobe={toggleGlobe}
-          />
-        </div>
-        <div className="pointer-events-auto flex flex-col gap-4 items-end w-auto">
-          <CustomMapControls
-            setUserLocation={setUserLocation}
-            onLocateAnimation={onLocateAnimation}
-            layerVisibility={layerVisibility}
-            onLayerVisibilityChange={onLayerVisibilityChange}
-          />
-        </div>
+      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:bottom-4 left-3 sm:left-4 z-20">
+        <MapLayersControl 
+          appSettings={appSettings} 
+          onAppSettingsChange={onAppSettingsChange} 
+          is3D={is3D} 
+          toggle3D={toggle3D} 
+          isGlobe={isGlobe}
+          toggleGlobe={toggleGlobe}
+        />
+      </div>
+
+      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:bottom-4 right-3 sm:right-4 z-10">
+        <CustomMapControls
+          setUserLocation={setUserLocation}
+          onLocateAnimation={onLocateAnimation}
+          layerVisibility={layerVisibility}
+          onLayerVisibilityChange={onLayerVisibilityChange}
+        />
       </div>
 
       {appSettings.showDesktopForecastDock ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 hidden md:flex justify-center z-10">
           <div className="pointer-events-auto">
             <HourlyForecastDock
               latitude={resolvedLocation?.[1] ?? null}
@@ -1827,34 +1415,36 @@ export function MapOverlayUI({
         </DrawerContent>
       </Drawer>
 
-      <MobileBottomNav
-        items={[
-          {
-            icon: Activity,
-            label: "Quakes",
-            active: activeMobileDrawer === "quakes",
-            onClick: () => activateDrawer("quakes"),
-          },
-          {
-            icon: Cloud,
-            label: "Weather",
-            active: activeMobileDrawer === "weather",
-            onClick: () => activateDrawer("weather"),
-          },
-          {
-            icon: Globe2,
-            label: "Global Meteo",
-            active: activeMobileDrawer === "global",
-            onClick: () => activateDrawer("global"),
-          },
-          {
-            icon: Menu,
-            label: "Menu",
-            active: activeMobileDrawer === "menu",
-            onClick: () => activateDrawer("menu"),
-          },
-        ]}
-      />
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none z-50 flex flex-col justify-end pb-safe">
+        <MobileBottomNav
+          items={[
+            {
+              icon: Activity,
+              label: "Quakes",
+              active: activeMobileDrawer === "quakes",
+              onClick: () => activateDrawer("quakes"),
+            },
+            {
+              icon: Cloud,
+              label: "Weather",
+              active: activeMobileDrawer === "weather",
+              onClick: () => activateDrawer("weather"),
+            },
+            {
+              icon: Globe2,
+              label: "Global Meteo",
+              active: activeMobileDrawer === "global",
+              onClick: () => activateDrawer("global"),
+            },
+            {
+              icon: Menu,
+              label: "Menu",
+              active: activeMobileDrawer === "menu",
+              onClick: () => activateDrawer("menu"),
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }
@@ -2106,126 +1696,4 @@ function CustomMapControls({
     </TooltipProvider>
   );
 }
-
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Monitor, Compass } from "lucide-react";
-
-function MapLayersControl({
-  appSettings,
-  onAppSettingsChange,
-  is3D,
-  toggle3D,
-  isGlobe,
-  toggleGlobe,
-}: {
-  appSettings: AppSettings;
-  onAppSettingsChange: React.Dispatch<React.SetStateAction<AppSettings>>;
-  is3D: boolean;
-  toggle3D: () => void;
-  isGlobe: boolean;
-  toggleGlobe: () => void;
-}) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <button
-                className="group relative size-12 rounded-xl border border-border/50 bg-background/80 backdrop-blur-xl shadow-sm transition-all hover:bg-background/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 overflow-hidden"
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label="Map Layers"
-              >
-                <div className="absolute inset-0 transition-colors flex items-center justify-center">
-                  <Layers className="size-5 text-foreground/80 group-hover:text-foreground drop-shadow-sm" />
-                </div>
-              </button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>Map Layers</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <PopoverContent
-        side="right"
-        align="end"
-        sideOffset={12}
-        className="w-64 p-3 rounded-2xl border border-border/40 bg-background/60 backdrop-blur-3xl shadow-2xl z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none" />
-        <div className="space-y-4 relative z-10">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/85 mb-2 px-1">Map Type</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <LayerOption 
-                label="Auto" 
-                selected={appSettings.mapStyle === "auto"}
-                onClick={() => onAppSettingsChange(prev => ({...prev, mapStyle: "auto"}))}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Monitor className="size-4 text-foreground/80" />}
-              />
-              <LayerOption 
-                label="Light" 
-                selected={appSettings.mapStyle === "light"}
-                onClick={() => onAppSettingsChange(prev => ({...prev, mapStyle: "light"}))}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Sun className="size-4 text-amber-500/80" />}
-              />
-              <LayerOption 
-                label="Dark" 
-                selected={appSettings.mapStyle === "dark"}
-                onClick={() => onAppSettingsChange(prev => ({...prev, mapStyle: "dark"}))}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Moon className="size-4 text-sky-400/80" />}
-              />
-              <LayerOption 
-                label="Voyager" 
-                selected={appSettings.mapStyle === "voyager"}
-                onClick={() => onAppSettingsChange(prev => ({...prev, mapStyle: "voyager"}))}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Compass className="size-4 text-emerald-500/80" />}
-              />
-            </div>
-          </div>
-          <div className="h-px bg-border/40 mx-1" />
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/85 mb-2 px-1">Map Details</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <LayerOption 
-                label="3D Globe" 
-                selected={isGlobe}
-                onClick={toggleGlobe}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Globe2 className="size-4 text-blue-500/80" />}
-              />
-              <LayerOption 
-                label="3D Mode" 
-                selected={is3D}
-                onClick={toggle3D}
-                previewClass="bg-muted/20 border-border/60 flex items-center justify-center"
-                icon={<Box className="size-4 text-emerald-500/80" />}
-              />
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function LayerOption({ label, selected, onClick, previewClass, icon }: { label: string; selected: boolean; onClick: () => void; previewClass?: string; icon?: React.ReactNode }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={cn("flex flex-col items-center gap-2 p-2.5 rounded-xl transition-all duration-300 border backdrop-blur-md", selected ? "border-primary/50 bg-primary/15 shadow-[0_0_15px_rgba(var(--primary),0.2)]" : "border-border/30 bg-background/40 hover:bg-muted/50 hover:border-border/60 hover:shadow-sm")}
-    >
-      <div className={cn("size-10 rounded-lg border shadow-sm flex items-center justify-center transition-all duration-300", previewClass, selected ? "border-primary/40 bg-background/80 scale-105" : "border-border/40")}>
-        {icon}
-      </div>
-      <span className={cn("text-[11px] font-semibold tracking-wide transition-colors", selected ? "text-primary" : "text-muted-foreground")}>{label}</span>
-    </button>
-  );
-}
-
 
