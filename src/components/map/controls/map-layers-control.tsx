@@ -136,7 +136,7 @@ export function MapLayersControl({
       <PopoverContent
         side="top"
         align="start"
-        sideOffset={-48}
+        sideOffset={16}
         className="w-[320px] p-0 rounded-[20px] border border-border/40 bg-background/85 backdrop-blur-3xl shadow-2xl z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none" />

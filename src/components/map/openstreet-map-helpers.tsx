@@ -1143,7 +1143,7 @@ export function MapOverlayUI({
         <MapCameraDock is3DModeEnabled={isMap3DMode || isMapGlobeMode} />
       </div>
 
-      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:bottom-4 left-3 sm:left-4 z-20">
+      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:bottom-4 left-3 sm:left-4 z-20">
         <MapLayersControl 
           appSettings={appSettings} 
           onAppSettingsChange={onAppSettingsChange} 
@@ -1154,7 +1154,7 @@ export function MapOverlayUI({
         />
       </div>
 
-      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:bottom-4 right-3 sm:right-4 z-10">
+      <div className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:bottom-4 right-3 sm:right-4 z-10">
         <CustomMapControls
           setUserLocation={setUserLocation}
           onLocateAnimation={onLocateAnimation}
