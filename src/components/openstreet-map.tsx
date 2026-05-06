@@ -287,8 +287,8 @@ export default function GoogleMapsClone() {
   const [viewState, setViewState] = React.useState<MapViewState>(() => {
     if (typeof window === "undefined")
       return { center: DEFAULT_FALLBACK_CENTER, zoom: DEFAULT_COUNTRY_ZOOM };
-    let saved: string | null = null;
-    let source: string | null = null;
+    let saved: string | null;
+    let source: string | null;
     try {
       saved = localStorage.getItem(MAP_VIEW_STATE_KEY);
       source = localStorage.getItem(MAP_VIEW_STATE_SOURCE_KEY);
