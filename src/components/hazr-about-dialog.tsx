@@ -1,6 +1,8 @@
 "use client";
 
-import { Github, Map, Instagram, Linkedin } from "lucide-react";
+import { Map } from "lucide-react";
+
+import { getSocialIconSvg } from "@/lib/social-icons";
 
 import {
   DialogClose,
@@ -41,17 +43,17 @@ const SOCIAL_LINKS = [
   {
     label: "LinkedIn",
     href: "https://www.linkedin.com/in/kurutodenzeru/",
-    icon: Linkedin,
+    slug: "linkedin" as const,
   },
   {
     label: "GitHub",
     href: "https://github.com/KurutoDenzeru/Hazr",
-    icon: Github,
+    slug: "github" as const,
   },
   {
     label: "Instagram",
     href: "https://www.instagram.com/krtclcdy/",
-    icon: Instagram,
+    slug: "instagram" as const,
   },
 ] as const;
 
@@ -97,7 +99,7 @@ function HazrAboutContent() {
           Connect
         </p>
         <div className="flex items-center gap-2">
-          {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+          {SOCIAL_LINKS.map(({ label, href, slug }) => (
             <a
               key={label}
               href={href}
@@ -107,7 +109,10 @@ function HazrAboutContent() {
               title={label}
               className="inline-flex size-10 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
             >
-              <Icon className="size-4" />
+              <span
+                className="size-4"
+                dangerouslySetInnerHTML={{ __html: getSocialIconSvg(slug) }}
+              />
             </a>
           ))}
         </div>
