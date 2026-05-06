@@ -33,7 +33,6 @@ import {
   AirQualityFlyTo,
   EarthquakeFlyTo,
   EonetFlyTo,
-  GlobalSignalMarkers,
   MapOverlayUI,
   MapStateSync,
   MapViewController,
@@ -187,13 +186,28 @@ export default function GoogleMapsClone() {
     [tsunamiState.alerts],
   );
 
-  const getQuakeNodeSize = (magnitude: number) => {
-    if (magnitude >= 7) return 18;
-    if (magnitude >= 6) return 16;
-    if (magnitude >= 5) return 14;
-    if (magnitude >= 4) return 13;
-    return 12;
-  };
+  const earthquakeGeojson = React.useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: earthquakes.map((earthquake) => ({
+        type: "Feature",
+        properties: {
+          id: earthquake.id,
+          title: earthquake.title,
+          magnitude: earthquake.magnitude,
+          magType: earthquake.magType,
+          place: earthquake.place,
+          time: earthquake.time.toISOString(),
+          tsunami: earthquake.tsunami,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: earthquake.coordinates,
+        },
+      })),
+    }),
+    [earthquakes],
+  );
 
   const clearGlobalSelections = React.useCallback(() => {
     setSelectedEonetEvent(null);
@@ -352,12 +366,9 @@ export default function GoogleMapsClone() {
   );
 
   const globalCompactNodeZoom = 4.2;
-  const seismicCompactNodeZoom = 3.2;
-  const seismicDetailMinZoom = 6.8;
-  const isZoomedOutNodeMode = viewState.zoom <= seismicCompactNodeZoom;
+  const seismicDetailMinZoom = 8.4;
   const shouldRenderSeismicMarkers =
-    layerVisibility.earthquakes &&
-    (isZoomedOutNodeMode || viewState.zoom >= seismicDetailMinZoom);
+    layerVisibility.earthquakes && viewState.zoom >= seismicDetailMinZoom;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -488,40 +499,7 @@ export default function GoogleMapsClone() {
                 {shouldRenderSeismicMarkers &&
                   earthquakes.map((eq) => {
                     const magnitudeColor = getMagnitudeColor(eq.magnitude);
-                    const quakeNodeSize = getQuakeNodeSize(eq.magnitude);
                     const isActive = activeQuakePulseId === eq.id;
-
-                    if (isZoomedOutNodeMode) {
-                      return (
-                        <MapMarker
-                          key={eq.id}
-                          longitude={eq.coordinates[0]}
-                          latitude={eq.coordinates[1]}
-                        >
-                          <MarkerContent>
-                            <button
-                              type="button"
-                              onClick={() => handleEarthquakeSelect(eq)}
-                              className="group relative cursor-pointer rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.24),0_0_14px_rgba(0,0,0,0.3)] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-                              aria-label={`Earthquake: ${eq.title}`}
-                              title={`${eq.title} (${eq.magnitude.toFixed(1)})`}
-                              style={{
-                                width: `${quakeNodeSize}px`,
-                                height: `${quakeNodeSize}px`,
-                                minWidth: `${quakeNodeSize}px`,
-                                minHeight: `${quakeNodeSize}px`,
-                                backgroundColor: magnitudeColor,
-                              }}
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
-                              />
-                            </button>
-                          </MarkerContent>
-                        </MapMarker>
-                      );
-                    }
 
                     return (
                       <MapMarker
@@ -566,6 +544,30 @@ export default function GoogleMapsClone() {
                     );
                   })}
 
+                <MapClusterLayer
+                  data={earthquakeGeojson}
+                  visible={layerVisibility.earthquakes && viewState.zoom < seismicDetailMinZoom}
+                  labelPrefix="Q"
+                  clusterLabel="Quakes"
+                  compactAtOrBelowZoom={globalCompactNodeZoom}
+                  pointColor="#f59e0b"
+                  pointLabelVisible={false}
+                  heatmapColors={[
+                    "#f0fdf4",
+                    "#fde68a",
+                    "#fb923c",
+                    "#f97316",
+                    "#ef4444",
+                  ]}
+                  clusterColors={["#fde68a", "#fb923c", "#ef4444"]}
+                  onPointClick={(feature) => {
+                    const id = feature.properties?.id as string | undefined;
+                    const match = earthquakes.find((earthquake) => earthquake.id === id);
+                    if (match) {
+                      handleEarthquakeSelect(match);
+                    }
+                  }}
+                />
                 <MapClusterLayer
                   data={eonetGeojson}
                   visible={layerVisibility.eonet}
@@ -657,19 +659,6 @@ export default function GoogleMapsClone() {
                   airQualitySite={selectedAirQualitySite}
                   onCloseEarthquake={handleCloseEarthquakePopover}
                   onCloseEvent={handleCloseEonetEvent}
-                />
-
-                <GlobalSignalMarkers
-                  events={eonetState.events}
-                  tsunamiAlerts={tsunamiState.alerts}
-                  airQualitySites={airQualityState.sites}
-                  selectedEvent={selectedEonetEvent}
-                  selectedTsunamiAlert={selectedTsunamiAlert}
-                  selectedAirQualitySite={selectedAirQualitySite}
-                  layerVisibility={layerVisibility}
-                  onEventSelect={handleEonetSelect}
-                  onTsunamiSelect={handleTsunamiSelect}
-                  onAirQualitySelect={handleAirQualitySelect}
                 />
 
                 <MapOverlayUI

@@ -1211,12 +1211,24 @@ function MapClusterLayer<
     return 48;
   }, [clusterRadius, sourceFeatureCount]);
 
-  const resolvedHeatmapMaxZoom = useMemo(() => {
+  const heatmapFadeStartZoom = useMemo(() => {
     if (typeof compactAtOrBelowZoom === "number") {
-      return Math.max(4.5, Math.min(6.5, compactAtOrBelowZoom + 1.2));
+      return Math.max(4.2, compactAtOrBelowZoom);
     }
-    return 6.5;
+    return 4.5;
   }, [compactAtOrBelowZoom]);
+
+  const resolvedHeatmapMaxZoom = useMemo(() => {
+    return Math.min(6.4, heatmapFadeStartZoom + 1.9);
+  }, [heatmapFadeStartZoom]);
+
+  const clusterRevealZoom = useMemo(() => {
+    return Math.max(7.05, resolvedHeatmapMaxZoom + 0.95);
+  }, [resolvedHeatmapMaxZoom]);
+
+  const pointRevealZoom = useMemo(() => {
+    return Math.max(8.35, clusterRevealZoom + 1.3);
+  }, [clusterRevealZoom]);
 
   const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
   const pointLabelExpression = useMemo(() => {
@@ -1289,16 +1301,16 @@ function MapClusterLayer<
         ["linear"],
         ["zoom"],
         0,
-        0.5,
+        0.55,
         resolvedHeatmapMaxZoom,
-        1.1,
+        1.25,
       ]);
       map.setPaintProperty(heatmapLayerId, "heatmap-radius", [
         "interpolate",
         ["linear"],
         ["zoom"],
         0,
-        Math.max(12, resolvedClusterRadius * 0.16),
+        Math.max(8, resolvedClusterRadius * 0.16),
         resolvedHeatmapMaxZoom,
         Math.max(28, resolvedClusterRadius * 0.45),
       ]);
@@ -1306,12 +1318,12 @@ function MapClusterLayer<
         "interpolate",
         ["linear"],
         ["zoom"],
-        0,
-        0.95,
-        resolvedHeatmapMaxZoom - 0.5,
-        0.7,
-        resolvedHeatmapMaxZoom,
-        0.06,
+        heatmapFadeStartZoom,
+        0.78,
+        resolvedHeatmapMaxZoom + 0.2,
+        0.78,
+        clusterRevealZoom + 0.2,
+        0.08,
       ]);
     }
 
@@ -1328,19 +1340,19 @@ function MapClusterLayer<
         "interpolate",
         ["linear"],
         ["zoom"],
-        Math.max(3.5, resolvedHeatmapMaxZoom - 1),
+        clusterRevealZoom,
         [
           "interpolate",
           ["linear"],
           ["get", "point_count"],
           2,
-          Math.max(12, resolvedClusterRadius * 0.28),
+          Math.max(7, resolvedClusterRadius * 0.18),
           10,
-          Math.max(16, resolvedClusterRadius * 0.42),
+          Math.max(9, resolvedClusterRadius * 0.24),
           50,
-          Math.max(20, resolvedClusterRadius * 0.56),
+          Math.max(11, resolvedClusterRadius * 0.3),
           100,
-          Math.max(24, resolvedClusterRadius * 0.64),
+          Math.max(13, resolvedClusterRadius * 0.34),
         ],
         resolvedClusterMaxZoom,
         [
@@ -1348,15 +1360,29 @@ function MapClusterLayer<
           ["linear"],
           ["get", "point_count"],
           2,
-          Math.max(14, resolvedClusterRadius * 0.36),
+          Math.max(9, resolvedClusterRadius * 0.24),
           10,
-          Math.max(18, resolvedClusterRadius * 0.5),
+          Math.max(11, resolvedClusterRadius * 0.3),
           50,
-          Math.max(24, resolvedClusterRadius * 0.64),
+          Math.max(13, resolvedClusterRadius * 0.36),
           100,
-          Math.max(28, resolvedClusterRadius * 0.74),
+          Math.max(15, resolvedClusterRadius * 0.42),
         ],
       ]);
+      map.setPaintProperty(clusterCircleLayerId, "circle-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        clusterRevealZoom,
+        0,
+        clusterRevealZoom + 0.55,
+        0.28,
+        clusterRevealZoom + 1.1,
+        0.9,
+      ]);
+      map.setPaintProperty(clusterCircleLayerId, "circle-stroke-width", 1.75);
+      map.setPaintProperty(clusterCircleLayerId, "circle-stroke-color", "rgba(255, 255, 255, 0.94)");
+      map.setPaintProperty(clusterCircleLayerId, "circle-blur", 0.18);
     }
 
     if (map.getLayer(clusterCountLayerId)) {
@@ -1369,10 +1395,19 @@ function MapClusterLayer<
         "interpolate",
         ["linear"],
         ["zoom"],
-        resolvedClusterMaxZoom,
-        Math.max(4.5, resolvedClusterRadius * 0.14),
-        resolvedClusterMaxZoom + 2,
+        pointRevealZoom,
+        Math.max(3.5, resolvedClusterRadius * 0.12),
+        pointRevealZoom + 1.4,
         Math.max(6, resolvedClusterRadius * 0.22),
+      ]);
+      map.setPaintProperty(pointLayerId, "circle-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        pointRevealZoom,
+        0,
+        pointRevealZoom + 0.9,
+        0.82,
       ]);
     }
 
@@ -1409,9 +1444,12 @@ function MapClusterLayer<
     pointLabelSize,
     pointLabelColor,
     pointLayerId,
+    pointRevealZoom,
     resolvedClusterRadius,
     resolvedClusterMaxZoom,
     resolvedHeatmapMaxZoom,
+    clusterRevealZoom,
+    heatmapFadeStartZoom,
   ]);
 
   const ensureLayers = useCallback(() => {
@@ -1435,12 +1473,12 @@ function MapClusterLayer<
         id: heatmapLayerId,
         type: "heatmap",
         source: sourceId,
-        maxzoom: resolvedHeatmapMaxZoom,
+        maxzoom: clusterRevealZoom + 0.25,
         paint: {
           "heatmap-weight": 1,
-          "heatmap-intensity": 0.5,
-          "heatmap-radius": Math.max(12, resolvedClusterRadius * 0.16),
-          "heatmap-opacity": 0.95,
+          "heatmap-intensity": 0.55,
+          "heatmap-radius": Math.max(8, resolvedClusterRadius * 0.16),
+          "heatmap-opacity": 0.78,
           "heatmap-color": [
             "interpolate",
             ["linear"],
@@ -1468,13 +1506,14 @@ function MapClusterLayer<
         type: "circle",
         source: clusterSourceId,
         filter: ["has", "point_count"],
-        minzoom: Math.max(3.5, resolvedHeatmapMaxZoom - 1),
+        minzoom: clusterRevealZoom,
         paint: {
           "circle-color": clusterColors[1],
           "circle-radius": 18,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "rgba(255, 255, 255, 0.84)",
-          "circle-opacity": 0.95,
+          "circle-stroke-width": 1.75,
+          "circle-stroke-color": "rgba(255, 255, 255, 0.94)",
+          "circle-opacity": 0,
+          "circle-blur": 0.18,
         },
       });
     }
@@ -1485,7 +1524,7 @@ function MapClusterLayer<
         type: "symbol",
         source: clusterSourceId,
         filter: ["has", "point_count"],
-        minzoom: Math.max(3.5, resolvedHeatmapMaxZoom - 0.75),
+        minzoom: clusterRevealZoom + 0.35,
         layout: {
           "text-field": ["get", "point_count_abbreviated"],
           "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
@@ -1505,13 +1544,13 @@ function MapClusterLayer<
         type: "circle",
         source: clusterSourceId,
         filter: ["!", ["has", "point_count"]],
-        minzoom: resolvedClusterMaxZoom,
+        minzoom: pointRevealZoom,
         paint: {
           "circle-color": pointColor,
-          "circle-radius": Math.max(4.5, resolvedClusterRadius * 0.14),
+          "circle-radius": Math.max(3.5, resolvedClusterRadius * 0.12),
           "circle-stroke-width": 1,
           "circle-stroke-color": "rgba(255, 255, 255, 0.88)",
-          "circle-opacity": 0.98,
+          "circle-opacity": 0,
         },
       });
     }
@@ -1522,7 +1561,7 @@ function MapClusterLayer<
         type: "symbol",
         source: clusterSourceId,
         filter: ["!", ["has", "point_count"]],
-        minzoom: resolvedClusterMaxZoom + 0.4,
+        minzoom: pointRevealZoom + 0.35,
         layout: {
           "text-field": pointLabelExpression,
           "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
@@ -1561,9 +1600,11 @@ function MapClusterLayer<
     pointLabelColor,
     pointLabelVisible,
     pointLayerId,
+    pointRevealZoom,
     resolvedClusterMaxZoom,
     resolvedClusterRadius,
     resolvedHeatmapMaxZoom,
+    clusterRevealZoom,
     sourceId,
     syncLayerPaint,
     syncVisibility,
