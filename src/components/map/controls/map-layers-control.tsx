@@ -152,10 +152,10 @@ export function MapLayersControl({
           </button>
         </div>
 
-        <div className="p-4 space-y-5 relative z-10">
+        <div className="p-3 space-y-4 relative z-10">
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Map Type</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-2">
                <MapTypeButton 
                   label="Auto" 
                   icon={<AutoMapSvg />} 
@@ -187,7 +187,7 @@ export function MapLayersControl({
 
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Map Details</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-2">
                <MapTypeButton 
                   label="3D Globe" 
                   icon={<GlobeSvg />} 
@@ -212,10 +212,10 @@ function MapTypeButton({ label, selected, onClick, icon }: { label: string; sele
   return (
     <button 
       onClick={onClick}
-      className="flex flex-col items-center gap-2.5 group w-full focus:outline-none"
+      className="flex flex-col items-center gap-1.5 group w-full focus:outline-none"
     >
       <div className={cn(
-        "w-full aspect-square rounded-[14px] border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background", 
+        "w-full max-w-[110px] aspect-square rounded-[12px] border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background mx-auto", 
         selected ? "border-primary shadow-[0_0_0_2px_rgba(var(--primary),0.2)]" : "border-border/50 group-hover:border-foreground/30 group-hover:shadow-sm"
       )}>
         {icon}
@@ -224,7 +224,7 @@ function MapTypeButton({ label, selected, onClick, icon }: { label: string; sele
         )}
       </div>
       <span className={cn(
-        "text-[11px] tracking-wide transition-colors", 
+        "text-[10px] tracking-wide transition-colors", 
         selected ? "text-primary font-semibold" : "text-muted-foreground font-medium group-hover:text-foreground"
       )}>
         {label}
