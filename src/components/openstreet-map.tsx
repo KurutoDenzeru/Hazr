@@ -575,6 +575,13 @@ export default function GoogleMapsClone() {
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#f59e0b"
                   pointLabelVisible={false}
+                  heatmapColors={[
+                    "#fffbeb",
+                    "#fde68a",
+                    "#fbbf24",
+                    "#f59e0b",
+                    "#d97706",
+                  ]}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
@@ -593,6 +600,13 @@ export default function GoogleMapsClone() {
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#10b981"
                   pointLabelVisible={false}
+                  heatmapColors={[
+                    "#ecfdf5",
+                    "#a7f3d0",
+                    "#34d399",
+                    "#10b981",
+                    "#059669",
+                  ]}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
@@ -611,6 +625,13 @@ export default function GoogleMapsClone() {
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#3b82f6"
                   pointLabelVisible={false}
+                  heatmapColors={[
+                    "#eff6ff",
+                    "#bfdbfe",
+                    "#60a5fa",
+                    "#3b82f6",
+                    "#1d4ed8",
+                  ]}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;

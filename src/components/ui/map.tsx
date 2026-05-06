@@ -31,10 +31,6 @@ import {
   getLocationErrorMessage,
   requestCurrentCoordinates,
 } from "@/lib/browser-geolocation";
-import {
-  containsViewportBounds,
-  type ViewportBounds,
-} from "@/hooks/use-webgpu-visibility";
 import React from "react";
 
 type MapContextValue = {
@@ -1127,48 +1123,29 @@ function MapRoute({
 type MapClusterLayerProps<
   P extends GeoJSON.GeoJsonProperties = GeoJSON.GeoJsonProperties
 > = {
-  /** GeoJSON FeatureCollection data or URL to fetch GeoJSON from */
   data: string | GeoJSON.FeatureCollection<GeoJSON.Point, P>;
-  /** Whether the cluster layer is visible (default: true) */
   visible?: boolean;
-  /** Optional text prefix for cluster count labels */
   labelPrefix?: string;
-  /** Optional label for cluster pills */
   clusterLabel?: string;
-  /** Optional icon for cluster pills */
   clusterIcon?: React.ComponentType<{ className?: string }>;
-  /** Optional property name for unclustered point labels */
   pointLabelField?: string;
-  /** Color for unclustered point labels */
   pointLabelColor?: string;
-  /** Optional label offset for unclustered point labels */
   pointLabelOffset?: [number, number];
-  /** Optional label size for unclustered point labels */
   pointLabelSize?: number;
-  /** Optional label halo color for unclustered point labels */
   pointLabelHaloColor?: string;
-  /** Optional label halo width for unclustered point labels */
   pointLabelHaloWidth?: number;
-  /** Whether unclustered labels are visible (default: true) */
   pointLabelVisible?: boolean;
-  /** Maximum zoom level to cluster points on. Falls back to an adaptive viewport-based value when omitted. */
+  heatmapColors?: [string, string, string, string, string];
   clusterMaxZoom?: number;
-  /** Radius of each cluster when clustering points in pixels. Falls back to an adaptive viewport-based value when omitted. */
   clusterRadius?: number;
-  /** Colors for cluster circles: [small, medium, large] based on point count (default: ["#51bbd6", "#f1f075", "#f28cb1"]) */
   clusterColors?: [string, string, string];
-  /** Point count thresholds for color/size steps: [medium, large] (default: [100, 750]) */
   clusterThresholds?: [number, number];
-  /** Render compact node markers when map zoom is at or below this threshold */
   compactAtOrBelowZoom?: number;
-  /** Color for unclustered individual points (default: "#3b82f6") */
   pointColor?: string;
-  /** Callback when an unclustered point is clicked */
   onPointClick?: (
     feature: GeoJSON.Feature<GeoJSON.Point, P>,
     coordinates: [number, number]
   ) => void;
-  /** Callback when a cluster is clicked. If not provided, zooms into the cluster */
   onClusterClick?: (
     clusterId: number,
     coordinates: [number, number],
@@ -1183,9 +1160,19 @@ function MapClusterLayer<
   visible = true,
   labelPrefix,
   clusterLabel,
-  clusterIcon: ClusterIcon,
-  pointLabelField,
+  pointLabelColor,
+  pointLabelOffset,
+  pointLabelSize,
+  pointLabelHaloColor,
+  pointLabelHaloWidth,
   pointLabelVisible = true,
+  heatmapColors = [
+    "#fff7bc",
+    "#fee391",
+    "#fec44f",
+    "#fe9929",
+    "#d7301f",
+  ],
   clusterMaxZoom,
   clusterRadius,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
@@ -1197,585 +1184,517 @@ function MapClusterLayer<
 }: MapClusterLayerProps<P>) {
   const { map, isLoaded } = useMap();
   const id = useId();
-  const sourceId = `cluster-source-${id}`;
-  const rafRef = useRef<number | null>(null);
-  const collapseTimeoutRef = useRef<number | null>(null);
-  const isMovingRef = useRef(false);
-  const lastSignatureRef = useRef("");
-  const viewportStateRef = useRef<{
-    zoom: number;
-    bounds: ViewportBounds | null;
-  }>({
-    zoom: 0,
-    bounds: null,
-  });
-  const [viewportState, setViewportState] = useState<{
-    zoom: number;
-    bounds: ViewportBounds | null;
-  }>({
-    zoom: 0,
-    bounds: null,
-  });
-  const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
-  const [clusters, setClusters] = useState<
-    GeoJSON.Feature<GeoJSON.Point, P>[]
-  >([]);
-  const [unclusteredPoints, setUnclusteredPoints] = useState<
-    GeoJSON.Feature<GeoJSON.Point, P>[]
-  >([]);
-
-  const clearCollapseTimeout = useCallback(() => {
-    if (typeof window === "undefined") return;
-    if (collapseTimeoutRef.current === null) return;
-    window.clearTimeout(collapseTimeoutRef.current);
-    collapseTimeoutRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      clearCollapseTimeout();
-    };
-  }, [clearCollapseTimeout]);
-
-  const getClusterTone = useCallback(
-    (pointCount: number) => {
-      if (pointCount < clusterThresholds[0]) return clusterColors[0];
-      if (pointCount < clusterThresholds[1]) return clusterColors[1];
-      return clusterColors[2];
-    },
-    [clusterColors, clusterThresholds]
-  );
-
-  const formatCount = useCallback((count: number) => {
-    try {
-      return new Intl.NumberFormat("en", {
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }).format(count);
-    } catch {
-      return `${count}`;
-    }
-  }, []);
-
-  const getPointFeatureKey = useCallback(
-    (feature: GeoJSON.Feature<GeoJSON.Point, P>) => {
-      if (typeof feature.id === "number" || typeof feature.id === "string") {
-        return `feature-${feature.id}`;
-      }
-
-      const properties = feature.properties as GeoJSON.GeoJsonProperties;
-      if (
-        properties &&
-        (typeof properties.id === "number" || typeof properties.id === "string")
-      ) {
-        return `property-${properties.id}`;
-      }
-
-      const coordinates =
-        feature.geometry?.type === "Point"
-          ? (feature.geometry.coordinates as [number, number])
-          : null;
-      if (!coordinates) return "point-unknown";
-
-      return `coordinate-${coordinates[0].toFixed(6)}-${coordinates[1].toFixed(6)}`;
-    },
-    []
-  );
-
-  const syncViewportState = useCallback(() => {
-    if (!map) return;
-
-    const bounds = map.getBounds();
-    const nextViewportState = {
-      zoom: Math.round(map.getZoom() * 2) / 2,
-      bounds: {
-        west: bounds.getWest(),
-        east: bounds.getEast(),
-        south: bounds.getSouth(),
-        north: bounds.getNorth(),
-      },
-    };
-
-    viewportStateRef.current = nextViewportState;
-    setViewportState(nextViewportState);
-  }, [map]);
+  const sourceId = `density-source-${id}`;
+  const clusterSourceId = `density-cluster-source-${id}`;
+  const heatmapLayerId = `density-heatmap-layer-${id}`;
+  const clusterCircleLayerId = `density-cluster-circle-layer-${id}`;
+  const clusterCountLayerId = `density-cluster-count-layer-${id}`;
+  const pointLayerId = `density-point-layer-${id}`;
+  const pointLabelLayerId = `density-point-label-layer-${id}`;
 
   const sourceFeatureCount = useMemo(() => {
     if (typeof data === "string") return 0;
     return data.features.length;
   }, [data]);
 
-  const effectiveClusterMaxZoom = useMemo(() => {
+  const resolvedClusterMaxZoom = useMemo(() => {
     if (typeof clusterMaxZoom === "number") return clusterMaxZoom;
+    if (sourceFeatureCount >= 1000) return 13;
+    if (sourceFeatureCount >= 250) return 12;
+    return 11;
+  }, [clusterMaxZoom, sourceFeatureCount]);
 
-    const zoom = viewportState.zoom;
-    const densityBoost =
-      sourceFeatureCount >= 1000 ? 2 : sourceFeatureCount >= 250 ? 1 : 0;
-    const zoomBoost = zoom >= 12 ? 2 : zoom >= 9 ? 1 : 0;
-    const baseZoom = Math.round(zoom + 2 + densityBoost + zoomBoost);
-    return Math.max(12, Math.min(16, baseZoom));
-  }, [clusterMaxZoom, sourceFeatureCount, viewportState.zoom]);
-
-  const effectiveClusterRadius = useMemo(() => {
+  const resolvedClusterRadius = useMemo(() => {
     if (typeof clusterRadius === "number") return clusterRadius;
+    if (sourceFeatureCount >= 1000) return 60;
+    if (sourceFeatureCount >= 250) return 54;
+    return 48;
+  }, [clusterRadius, sourceFeatureCount]);
 
-    const zoom = viewportState.zoom;
-    const densityBoost =
-      sourceFeatureCount >= 1000 ? 10 : sourceFeatureCount >= 250 ? 6 : 0;
-
-    if (zoom >= 12) return 32 + densityBoost;
-    if (zoom >= 9) return 38 + densityBoost;
-    if (zoom >= 6) return 44 + densityBoost;
-    return 52 + densityBoost;
-  }, [clusterRadius, sourceFeatureCount, viewportState.zoom]);
-
-  // Add source on mount
-  useEffect(() => {
-    if (!isLoaded || !map) return;
-
-    map.addSource(sourceId, {
-      type: "geojson",
-      data,
-      cluster: true,
-      clusterMaxZoom: effectiveClusterMaxZoom,
-      clusterRadius: effectiveClusterRadius,
-    });
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    };
-  }, [effectiveClusterMaxZoom, effectiveClusterRadius, isLoaded, map, data, sourceId]);
-
-  // Update source data when data prop changes (only for non-URL data)
-  useEffect(() => {
-    if (!isLoaded || !map || typeof data === "string") return;
-
-    const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource;
-    if (source) {
-      source.setData(data);
+  const resolvedHeatmapMaxZoom = useMemo(() => {
+    if (typeof compactAtOrBelowZoom === "number") {
+      return Math.max(4.5, Math.min(6.5, compactAtOrBelowZoom + 1.2));
     }
-  }, [isLoaded, map, data, sourceId]);
+    return 6.5;
+  }, [compactAtOrBelowZoom]);
 
-  const refreshClusters = useCallback(() => {
-    if (!map || !isLoaded || !visible || isMovingRef.current) {
-      if (lastSignatureRef.current !== "") {
-        lastSignatureRef.current = "";
-        setClusters([]);
-        setUnclusteredPoints([]);
-      }
-      return;
+  const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
+  const pointLabelExpression = useMemo(() => {
+    if (!pointLabelVisible) return null;
+    return labelPrefix ?? labelText;
+  }, [labelPrefix, labelText, pointLabelVisible]);
+
+  const removeLayerSafe = useCallback(
+    (layerId: string) => {
+      if (!map?.getLayer(layerId)) return;
+      map.removeLayer(layerId);
+    },
+    [map]
+  );
+
+  const removeSourceSafe = useCallback(
+    (source: string) => {
+      if (!map?.getSource(source)) return;
+      map.removeSource(source);
+    },
+    [map]
+  );
+
+  const syncVisibility = useCallback(() => {
+    const layerIds = [
+      heatmapLayerId,
+      clusterCircleLayerId,
+      clusterCountLayerId,
+      pointLayerId,
+      pointLabelLayerId,
+    ];
+
+    for (const layerId of layerIds) {
+      if (!map?.getLayer(layerId)) continue;
+      map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
     }
-    if (!map.getSource(sourceId)) return;
-
-    const features = map.querySourceFeatures(sourceId) as unknown as GeoJSON.Feature<
-      GeoJSON.Point,
-      P
-    >[];
-
-    const uniqueClusters = new globalThis.Map<
-      number,
-      GeoJSON.Feature<GeoJSON.Point, P>
-    >();
-    const uniquePoints = new globalThis.Map<
-      string,
-      GeoJSON.Feature<GeoJSON.Point, P>
-    >();
-
-    for (const feature of features) {
-      if (feature.geometry?.type !== "Point") continue;
-
-      const pointCount = feature.properties?.point_count as number | undefined;
-      const clusterId = feature.properties?.cluster_id as number | undefined;
-      if (
-        typeof pointCount === "number" &&
-        typeof clusterId === "number" &&
-        !uniqueClusters.has(clusterId)
-      ) {
-        uniqueClusters.set(clusterId, feature);
-        continue;
-      }
-
-      const pointKey = getPointFeatureKey(feature);
-      if (uniquePoints.has(pointKey)) continue;
-      uniquePoints.set(pointKey, feature);
-    }
-
-    const viewportSnapshot = viewportStateRef.current;
-    const bounds = viewportSnapshot.bounds;
-    const paddingRatio =
-      viewportSnapshot.zoom >= 12
-        ? 0.06
-        : viewportSnapshot.zoom >= 9
-          ? 0.1
-          : viewportSnapshot.zoom >= 6
-            ? 0.14
-            : 0.18;
-    const cullingBounds = bounds
-      ? (() => {
-          const lonSpan =
-            bounds.east >= bounds.west
-              ? bounds.east - bounds.west
-              : 360 - (bounds.west - bounds.east);
-          const latSpan = bounds.north - bounds.south;
-          const lonPadding = Math.max(0.25, lonSpan * paddingRatio);
-          const latPadding = Math.max(0.25, latSpan * paddingRatio);
-
-          return {
-            west: bounds.west - lonPadding,
-            east: bounds.east + lonPadding,
-            south: bounds.south - latPadding,
-            north: bounds.north + latPadding,
-          };
-        })()
-      : null;
-
-    const nextClusters = Array.from(uniqueClusters.values()).filter((feature) => {
-      const coordinates =
-        feature.geometry?.type === "Point"
-          ? (feature.geometry.coordinates as [number, number])
-          : null;
-      if (!coordinates || !cullingBounds) return false;
-      return containsViewportBounds(cullingBounds, coordinates);
-    });
-    const nextPoints = Array.from(uniquePoints.entries()).filter(([, feature]) => {
-      const coordinates =
-        feature.geometry?.type === "Point"
-          ? (feature.geometry.coordinates as [number, number])
-          : null;
-      if (!coordinates || !cullingBounds) return false;
-      return containsViewportBounds(cullingBounds, coordinates);
-    });
-    const isCompactMode =
-      typeof compactAtOrBelowZoom === "number" &&
-      viewportSnapshot.zoom <= compactAtOrBelowZoom;
-    const clusterSignature = nextClusters
-      .map((feature) => {
-        const clusterId = feature.properties?.cluster_id as number | undefined;
-        const pointCount = feature.properties?.point_count as number | undefined;
-        const coordinates =
-          feature.geometry?.type === "Point"
-            ? (feature.geometry.coordinates as [number, number])
-            : null;
-        if (typeof clusterId !== "number" || typeof pointCount !== "number") {
-          return "";
-        }
-        if (!coordinates) return "";
-        return `${clusterId}:${pointCount}:${coordinates[0].toFixed(4)}:${coordinates[1].toFixed(4)}`;
-      })
-      .sort()
-      .join("|");
-    const pointSignature = nextPoints
-      .map(([key, feature]) => {
-        const coordinates =
-          feature.geometry?.type === "Point"
-            ? (feature.geometry.coordinates as [number, number])
-            : null;
-        if (!coordinates) return key;
-        return `${key}:${coordinates[0].toFixed(4)}:${coordinates[1].toFixed(4)}`;
-      })
-      .sort()
-      .join("|");
-    const modeAwareSignature = `${isCompactMode ? "compact" : "badge"}|clusters:${clusterSignature}|points:${pointSignature}`;
-
-    if (lastSignatureRef.current === modeAwareSignature) return;
-    lastSignatureRef.current = modeAwareSignature;
-    setClusters(nextClusters);
-    setUnclusteredPoints(nextPoints.map(([, feature]) => feature));
   }, [
-    compactAtOrBelowZoom,
-    getPointFeatureKey,
-    isLoaded,
+    clusterCircleLayerId,
+    clusterCountLayerId,
+    heatmapLayerId,
     map,
-    sourceId,
+    pointLabelLayerId,
+    pointLayerId,
     visible,
   ]);
 
-  const scheduleRefresh = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      refreshClusters();
-    });
-  }, [refreshClusters]);
+  const syncLayerPaint = useCallback(() => {
+    if (!map) return;
+
+    if (map.getLayer(heatmapLayerId)) {
+      map.setPaintProperty(heatmapLayerId, "heatmap-color", [
+        "interpolate",
+        ["linear"],
+        ["heatmap-density"],
+        0,
+        "rgba(0, 0, 0, 0)",
+        0.15,
+        heatmapColors[0],
+        0.35,
+        heatmapColors[1],
+        0.55,
+        heatmapColors[2],
+        0.75,
+        heatmapColors[3],
+        1,
+        heatmapColors[4],
+      ]);
+      map.setPaintProperty(heatmapLayerId, "heatmap-intensity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        0.5,
+        resolvedHeatmapMaxZoom,
+        1.1,
+      ]);
+      map.setPaintProperty(heatmapLayerId, "heatmap-radius", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        Math.max(12, resolvedClusterRadius * 0.16),
+        resolvedHeatmapMaxZoom,
+        Math.max(28, resolvedClusterRadius * 0.45),
+      ]);
+      map.setPaintProperty(heatmapLayerId, "heatmap-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        0.95,
+        resolvedHeatmapMaxZoom - 0.5,
+        0.7,
+        resolvedHeatmapMaxZoom,
+        0.06,
+      ]);
+    }
+
+    if (map.getLayer(clusterCircleLayerId)) {
+      map.setPaintProperty(clusterCircleLayerId, "circle-color", [
+        "case",
+        ["<", ["get", "point_count"], clusterThresholds[0]],
+        clusterColors[0],
+        ["<", ["get", "point_count"], clusterThresholds[1]],
+        clusterColors[1],
+        clusterColors[2],
+      ]);
+      map.setPaintProperty(clusterCircleLayerId, "circle-radius", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        Math.max(3.5, resolvedHeatmapMaxZoom - 1),
+        [
+          "interpolate",
+          ["linear"],
+          ["get", "point_count"],
+          2,
+          Math.max(12, resolvedClusterRadius * 0.28),
+          10,
+          Math.max(16, resolvedClusterRadius * 0.42),
+          50,
+          Math.max(20, resolvedClusterRadius * 0.56),
+          100,
+          Math.max(24, resolvedClusterRadius * 0.64),
+        ],
+        resolvedClusterMaxZoom,
+        [
+          "interpolate",
+          ["linear"],
+          ["get", "point_count"],
+          2,
+          Math.max(14, resolvedClusterRadius * 0.36),
+          10,
+          Math.max(18, resolvedClusterRadius * 0.5),
+          50,
+          Math.max(24, resolvedClusterRadius * 0.64),
+          100,
+          Math.max(28, resolvedClusterRadius * 0.74),
+        ],
+      ]);
+    }
+
+    if (map.getLayer(clusterCountLayerId)) {
+      map.setPaintProperty(clusterCountLayerId, "text-color", "white");
+    }
+
+    if (map.getLayer(pointLayerId)) {
+      map.setPaintProperty(pointLayerId, "circle-color", pointColor);
+      map.setPaintProperty(pointLayerId, "circle-radius", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        resolvedClusterMaxZoom,
+        Math.max(4.5, resolvedClusterRadius * 0.14),
+        resolvedClusterMaxZoom + 2,
+        Math.max(6, resolvedClusterRadius * 0.22),
+      ]);
+    }
+
+    if (map.getLayer(pointLabelLayerId) && pointLabelExpression) {
+      map.setLayoutProperty(pointLabelLayerId, "text-field", pointLabelExpression);
+      map.setPaintProperty(pointLabelLayerId, "text-color", pointLabelColor ?? "white");
+      map.setPaintProperty(
+        pointLabelLayerId,
+        "text-halo-color",
+        pointLabelHaloColor ?? "rgba(0, 0, 0, 0.7)"
+      );
+      map.setPaintProperty(
+        pointLabelLayerId,
+        "text-halo-width",
+        pointLabelHaloWidth ?? 1.25
+      );
+      if (typeof pointLabelSize === "number") {
+        map.setLayoutProperty(pointLabelLayerId, "text-size", pointLabelSize);
+      }
+    }
+  }, [
+    clusterCircleLayerId,
+    clusterColors,
+    clusterCountLayerId,
+    clusterThresholds,
+    heatmapColors,
+    heatmapLayerId,
+    map,
+    pointColor,
+    pointLabelExpression,
+    pointLabelHaloColor,
+    pointLabelHaloWidth,
+    pointLabelLayerId,
+    pointLabelSize,
+    pointLabelColor,
+    pointLayerId,
+    resolvedClusterRadius,
+    resolvedClusterMaxZoom,
+    resolvedHeatmapMaxZoom,
+  ]);
+
+  const ensureLayers = useCallback(() => {
+    if (!map || !isLoaded) return;
+
+    if (!map.getSource(sourceId)) {
+      map.addSource(sourceId, { type: "geojson", data });
+    }
+    if (!map.getSource(clusterSourceId)) {
+      map.addSource(clusterSourceId, {
+        type: "geojson",
+        data,
+        cluster: true,
+        clusterMaxZoom: resolvedClusterMaxZoom,
+        clusterRadius: resolvedClusterRadius,
+      });
+    }
+
+    if (!map.getLayer(heatmapLayerId)) {
+      map.addLayer({
+        id: heatmapLayerId,
+        type: "heatmap",
+        source: sourceId,
+        maxzoom: resolvedHeatmapMaxZoom,
+        paint: {
+          "heatmap-weight": 1,
+          "heatmap-intensity": 0.5,
+          "heatmap-radius": Math.max(12, resolvedClusterRadius * 0.16),
+          "heatmap-opacity": 0.95,
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0, 0, 0, 0)",
+            0.15,
+            heatmapColors[0],
+            0.35,
+            heatmapColors[1],
+            0.55,
+            heatmapColors[2],
+            0.75,
+            heatmapColors[3],
+            1,
+            heatmapColors[4],
+          ],
+        },
+      });
+    }
+
+    if (!map.getLayer(clusterCircleLayerId)) {
+      map.addLayer({
+        id: clusterCircleLayerId,
+        type: "circle",
+        source: clusterSourceId,
+        filter: ["has", "point_count"],
+        minzoom: Math.max(3.5, resolvedHeatmapMaxZoom - 1),
+        paint: {
+          "circle-color": clusterColors[1],
+          "circle-radius": 18,
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "rgba(255, 255, 255, 0.84)",
+          "circle-opacity": 0.95,
+        },
+      });
+    }
+
+    if (!map.getLayer(clusterCountLayerId)) {
+      map.addLayer({
+        id: clusterCountLayerId,
+        type: "symbol",
+        source: clusterSourceId,
+        filter: ["has", "point_count"],
+        minzoom: Math.max(3.5, resolvedHeatmapMaxZoom - 0.75),
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "white",
+          "text-halo-color": "rgba(0, 0, 0, 0.55)",
+          "text-halo-width": 1.2,
+        },
+      });
+    }
+
+    if (!map.getLayer(pointLayerId)) {
+      map.addLayer({
+        id: pointLayerId,
+        type: "circle",
+        source: clusterSourceId,
+        filter: ["!", ["has", "point_count"]],
+        minzoom: resolvedClusterMaxZoom,
+        paint: {
+          "circle-color": pointColor,
+          "circle-radius": Math.max(4.5, resolvedClusterRadius * 0.14),
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "rgba(255, 255, 255, 0.88)",
+          "circle-opacity": 0.98,
+        },
+      });
+    }
+
+    if (pointLabelVisible && !map.getLayer(pointLabelLayerId) && pointLabelExpression) {
+      map.addLayer({
+        id: pointLabelLayerId,
+        type: "symbol",
+        source: clusterSourceId,
+        filter: ["!", ["has", "point_count"]],
+        minzoom: resolvedClusterMaxZoom + 0.4,
+        layout: {
+          "text-field": pointLabelExpression,
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": pointLabelSize ?? 11,
+          "text-offset": pointLabelOffset ?? [0, 1.15],
+          "text-anchor": "top",
+          "text-optional": true,
+        },
+        paint: {
+          "text-color": pointLabelColor ?? "white",
+          "text-halo-color": pointLabelHaloColor ?? "rgba(0, 0, 0, 0.7)",
+          "text-halo-width": pointLabelHaloWidth ?? 1.25,
+        },
+      });
+    }
+
+    syncLayerPaint();
+    syncVisibility();
+  }, [
+    clusterCircleLayerId,
+    clusterColors,
+    clusterCountLayerId,
+    clusterSourceId,
+    data,
+    heatmapColors,
+    heatmapLayerId,
+    isLoaded,
+    map,
+    pointColor,
+    pointLabelExpression,
+    pointLabelHaloColor,
+    pointLabelHaloWidth,
+    pointLabelLayerId,
+    pointLabelOffset,
+    pointLabelSize,
+    pointLabelColor,
+    pointLabelVisible,
+    pointLayerId,
+    resolvedClusterMaxZoom,
+    resolvedClusterRadius,
+    resolvedHeatmapMaxZoom,
+    sourceId,
+    syncLayerPaint,
+    syncVisibility,
+  ]);
 
   useEffect(() => {
     if (!map || !isLoaded) return;
+    ensureLayers();
 
-    const handleMoveStart = () => {
-      isMovingRef.current = true;
-    };
-    const handleMoveSettled = () => {
-      isMovingRef.current = false;
-      syncViewportState();
-      scheduleRefresh();
+    const handleStyleData = () => {
+      ensureLayers();
     };
 
-    syncViewportState();
-    scheduleRefresh();
-    map.on("movestart", handleMoveStart);
-    map.on("zoomstart", handleMoveStart);
-    map.on("moveend", handleMoveSettled);
-    map.on("zoomend", handleMoveSettled);
-    map.on("idle", scheduleRefresh);
-    map.on("resize", syncViewportState);
+    map.on("styledata", handleStyleData);
 
     return () => {
-      map.off("movestart", handleMoveStart);
-      map.off("zoomstart", handleMoveStart);
-      map.off("moveend", handleMoveSettled);
-      map.off("zoomend", handleMoveSettled);
-      map.off("idle", scheduleRefresh);
-      map.off("resize", syncViewportState);
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      map.off("styledata", handleStyleData);
+      removeLayerSafe(pointLabelLayerId);
+      removeLayerSafe(pointLayerId);
+      removeLayerSafe(clusterCountLayerId);
+      removeLayerSafe(clusterCircleLayerId);
+      removeLayerSafe(heatmapLayerId);
+      removeSourceSafe(clusterSourceId);
+      removeSourceSafe(sourceId);
     };
-  }, [isLoaded, map, scheduleRefresh, syncViewportState]);
+  }, [
+    clusterCircleLayerId,
+    clusterCountLayerId,
+    clusterSourceId,
+    ensureLayers,
+    heatmapLayerId,
+    isLoaded,
+    map,
+    pointLabelLayerId,
+    pointLayerId,
+    removeLayerSafe,
+    removeSourceSafe,
+    sourceId,
+  ]);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!isLoaded || !map || typeof data === "string") return;
 
-  const labelText = clusterLabel ?? labelPrefix ?? "Cluster";
-  const isCompactMode =
-    typeof compactAtOrBelowZoom === "number" &&
-    (map?.getZoom() ?? Number.POSITIVE_INFINITY) <= compactAtOrBelowZoom;
-  const resolvedPointTone = pointColor;
+    const rawSource = map.getSource(sourceId) as MapLibreGL.GeoJSONSource | undefined;
+    const clusterSource = map.getSource(clusterSourceId) as
+      | MapLibreGL.GeoJSONSource
+      | undefined;
 
-  return (
-    <>
-      {clusters.map((feature) => {
-        const clusterId = feature.properties?.cluster_id as number | undefined;
-        if (typeof clusterId !== "number") return null;
-        const pointCount = feature.properties?.point_count as number | undefined;
-        if (typeof pointCount !== "number") return null;
-        const coordinates =
-          feature.geometry?.type === "Point"
-            ? (feature.geometry.coordinates as [number, number])
-            : null;
-        if (!coordinates) return null;
-        const tone = getClusterTone(pointCount);
-        const countLabel = formatCount(pointCount);
-        const compactNodeSize =
-          pointCount < clusterThresholds[0]
-            ? 12
-            : pointCount < clusterThresholds[1]
-              ? 15
-              : 18;
-        const isExpanded = expandedClusterId === clusterId;
+    rawSource?.setData(data);
+    clusterSource?.setData(data);
+  }, [clusterSourceId, data, isLoaded, map, sourceId]);
 
-        const handleClusterClick = async () => {
-          if (!map) return;
-          if (!isExpanded) {
-            setExpandedClusterId(clusterId);
-            clearCollapseTimeout();
-            if (typeof window !== "undefined") {
-              collapseTimeoutRef.current = window.setTimeout(() => {
-                setExpandedClusterId((current) =>
-                  current === clusterId ? null : current
-                );
-              }, 1600);
-            }
-            return;
-          }
+  useEffect(() => {
+    if (!isLoaded || !map) return;
 
-          setExpandedClusterId(null);
-          clearCollapseTimeout();
+    syncVisibility();
+  }, [isLoaded, map, syncVisibility, visible]);
 
-          if (onClusterClick) {
-            onClusterClick(clusterId, coordinates, pointCount);
-            return;
-          }
-          const source = map.getSource(sourceId) as MapLibreGL.GeoJSONSource;
-          const zoom = await source.getClusterExpansionZoom(clusterId);
-          map.easeTo({ center: coordinates, zoom });
-        };
+  useEffect(() => {
+    if (!isLoaded || !map) return;
 
-        return (
-          <MapMarker
-            key={`cluster-${clusterId}`}
-            longitude={coordinates[0]}
-            latitude={coordinates[1]}
-          >
-            <MarkerContent>
-              {isCompactMode ? (
-                <button
-                  type="button"
-                  onClick={handleClusterClick}
-                  aria-label={`${labelText} cluster: ${pointCount}`}
-                  title={`${labelText}: ${pointCount}`}
-                  className={cn(
-                    "group relative rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_0_18px_rgba(0,0,0,0.28)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
-                    "hover:scale-110"
-                  )}
-                  style={{
-                    width: `${compactNodeSize}px`,
-                    height: `${compactNodeSize}px`,
-                    minWidth: `${compactNodeSize}px`,
-                    minHeight: `${compactNodeSize}px`,
-                    backgroundColor: tone,
-                  }}
-                >
-                  {ClusterIcon && compactNodeSize >= 14 ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-1/2 top-1/2 inline-flex size-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90"
-                      style={{ color: tone }}
-                    >
-                      <ClusterIcon className="size-2.5" />
-                    </span>
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
-                    />
-                  )}
-                  <span
-                    className={cn(
-                      "pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-all duration-200",
-                      isExpanded ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-                    )}
-                  >
-                    {labelText} {countLabel}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleClusterClick}
-                  aria-label={`${labelText} cluster: ${pointCount}`}
-                  className={cn(
-                    "group relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-                    "hover:scale-105"
-                  )}
-                  style={{
-                    backgroundColor: tone,
-                  }}
-                >
-                  <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                    {ClusterIcon ? (
-                      <ClusterIcon className="size-3.5" />
-                    ) : (
-                      <span className="text-[10px] font-bold" style={{ color: tone }}>
-                        {labelPrefix ?? "C"}
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className={cn(
-                      "truncate whitespace-nowrap overflow-hidden transition-all duration-250",
-                      isExpanded ? "ml-1 max-w-28 opacity-100" : "ml-0 max-w-0 opacity-0"
-                    )}
-                  >
-                    {labelText} {countLabel}
-                  </span>
-                </button>
-              )}
-            </MarkerContent>
-          </MapMarker>
-        );
-      })}
-      {unclusteredPoints.map((feature) => {
-        const coordinates =
-          feature.geometry?.type === "Point"
-            ? (feature.geometry.coordinates as [number, number])
-            : null;
-        if (!coordinates) return null;
+    syncLayerPaint();
+  }, [isLoaded, map, syncLayerPaint]);
 
-        const pointKey = getPointFeatureKey(feature);
-        const rawPointLabel =
-          typeof pointLabelField === "string"
-            ? feature.properties?.[pointLabelField]
-            : null;
-        const pointLabel =
-          rawPointLabel === null || rawPointLabel === undefined
-            ? labelText
-            : `${rawPointLabel}`;
+  useEffect(() => {
+    if (!isLoaded || !map) return;
+    if (!map.getLayer(clusterCircleLayerId) && !map.getLayer(pointLayerId)) return;
 
-        const handlePointPress = () => {
-          if (!onPointClick) return;
-          onPointClick(feature, coordinates);
-        };
+    const setPointer = () => {
+      map.getCanvas().style.cursor = "pointer";
+    };
+    const clearPointer = () => {
+      map.getCanvas().style.cursor = "";
+    };
+    const handleClusterClick = async (event: MapLibreGL.MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
 
-        if (isCompactMode) {
-          return (
-            <MapMarker
-              key={`point-${pointKey}`}
-              longitude={coordinates[0]}
-              latitude={coordinates[1]}
-            >
-              <MarkerContent>
-                <button
-                  type="button"
-                  onClick={handlePointPress}
-                  aria-label={`${labelText} node: ${pointLabel}`}
-                  title={pointLabel}
-                  className={cn(
-                    "group relative rounded-full border border-white/55 shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_0_14px_rgba(0,0,0,0.28)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
-                    "hover:scale-110"
-                  )}
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    minWidth: "12px",
-                    minHeight: "12px",
-                    backgroundColor: resolvedPointTone,
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/95"
-                  />
-                </button>
-              </MarkerContent>
-            </MapMarker>
-          );
-        }
+      const clusterId = feature.properties?.cluster_id as number | undefined;
+      const pointCount = feature.properties?.point_count as number | undefined;
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? (feature.geometry.coordinates as [number, number])
+          : null;
 
-        return (
-          <MapMarker
-            key={`point-${pointKey}`}
-            longitude={coordinates[0]}
-            latitude={coordinates[1]}
-          >
-            <MarkerContent>
-              <button
-                type="button"
-                onClick={handlePointPress}
-                aria-label={`${labelText} node: ${pointLabel}`}
-                title={pointLabel}
-                className={cn(
-                  "group relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[12px] font-semibold text-white backdrop-blur transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-                  "hover:scale-105"
-                )}
-                style={{
-                  backgroundColor: resolvedPointTone,
-                }}
-              >
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
-                  {ClusterIcon ? (
-                    <ClusterIcon className="size-3.5" />
-                  ) : (
-                    <span
-                      className="text-[10px] font-bold"
-                      style={{ color: resolvedPointTone }}
-                    >
-                      {labelPrefix ?? "N"}
-                    </span>
-                  )}
-                </span>
-                {pointLabelVisible ? (
-                  <span className="ml-1 max-w-28 truncate whitespace-nowrap">
-                    {pointLabel}
-                  </span>
-                ) : null}
-              </button>
-            </MarkerContent>
-          </MapMarker>
-        );
-      })}
-    </>
-  );
+      if (typeof clusterId !== "number" || typeof pointCount !== "number" || !coordinates) {
+        return;
+      }
+
+      if (onClusterClick) {
+        onClusterClick(clusterId, coordinates, pointCount);
+        return;
+      }
+
+      const source = map.getSource(clusterSourceId) as MapLibreGL.GeoJSONSource | undefined;
+      if (!source) return;
+
+      const zoom = await source.getClusterExpansionZoom(clusterId);
+      map.easeTo({ center: coordinates, zoom });
+    };
+    const handlePointClick = (event: MapLibreGL.MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      if (!feature || !onPointClick) return;
+
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? (feature.geometry.coordinates as [number, number])
+          : null;
+      if (!coordinates) return;
+
+      onPointClick(feature as unknown as GeoJSON.Feature<GeoJSON.Point, P>, coordinates);
+    };
+
+    map.on("click", clusterCircleLayerId, handleClusterClick);
+    map.on("mouseenter", clusterCircleLayerId, setPointer);
+    map.on("mouseleave", clusterCircleLayerId, clearPointer);
+    map.on("click", pointLayerId, handlePointClick);
+    map.on("mouseenter", pointLayerId, setPointer);
+    map.on("mouseleave", pointLayerId, clearPointer);
+
+    return () => {
+      map.off("click", clusterCircleLayerId, handleClusterClick);
+      map.off("mouseenter", clusterCircleLayerId, setPointer);
+      map.off("mouseleave", clusterCircleLayerId, clearPointer);
+      map.off("click", pointLayerId, handlePointClick);
+      map.off("mouseenter", pointLayerId, setPointer);
+      map.off("mouseleave", pointLayerId, clearPointer);
+    };
+  }, [clusterCircleLayerId, clusterSourceId, isLoaded, map, onClusterClick, onPointClick, pointLayerId]);
+
+  return null;
 }
 
 export {
