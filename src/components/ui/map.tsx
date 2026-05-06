@@ -31,6 +31,10 @@ import {
   getLocationErrorMessage,
   requestCurrentCoordinates,
 } from "@/lib/browser-geolocation";
+import {
+  containsViewportBounds,
+  type ViewportBounds,
+} from "@/hooks/use-webgpu-visibility";
 import React from "react";
 
 type MapContextValue = {
@@ -1147,9 +1151,9 @@ type MapClusterLayerProps<
   pointLabelHaloWidth?: number;
   /** Whether unclustered labels are visible (default: true) */
   pointLabelVisible?: boolean;
-  /** Maximum zoom level to cluster points on (default: 14) */
+  /** Maximum zoom level to cluster points on. Falls back to an adaptive viewport-based value when omitted. */
   clusterMaxZoom?: number;
-  /** Radius of each cluster when clustering points in pixels (default: 50) */
+  /** Radius of each cluster when clustering points in pixels. Falls back to an adaptive viewport-based value when omitted. */
   clusterRadius?: number;
   /** Colors for cluster circles: [small, medium, large] based on point count (default: ["#51bbd6", "#f1f075", "#f28cb1"]) */
   clusterColors?: [string, string, string];
@@ -1182,8 +1186,8 @@ function MapClusterLayer<
   clusterIcon: ClusterIcon,
   pointLabelField,
   pointLabelVisible = true,
-  clusterMaxZoom = 14,
-  clusterRadius = 50,
+  clusterMaxZoom,
+  clusterRadius,
   clusterColors = ["#51bbd6", "#f1f075", "#f28cb1"],
   clusterThresholds = [100, 750],
   compactAtOrBelowZoom,
@@ -1198,6 +1202,20 @@ function MapClusterLayer<
   const collapseTimeoutRef = useRef<number | null>(null);
   const isMovingRef = useRef(false);
   const lastSignatureRef = useRef("");
+  const viewportStateRef = useRef<{
+    zoom: number;
+    bounds: ViewportBounds | null;
+  }>({
+    zoom: 0,
+    bounds: null,
+  });
+  const [viewportState, setViewportState] = useState<{
+    zoom: number;
+    bounds: ViewportBounds | null;
+  }>({
+    zoom: 0,
+    bounds: null,
+  });
   const [expandedClusterId, setExpandedClusterId] = useState<number | null>(null);
   const [clusters, setClusters] = useState<
     GeoJSON.Feature<GeoJSON.Point, P>[]
@@ -1264,6 +1282,53 @@ function MapClusterLayer<
     []
   );
 
+  const syncViewportState = useCallback(() => {
+    if (!map) return;
+
+    const bounds = map.getBounds();
+    const nextViewportState = {
+      zoom: Math.round(map.getZoom() * 2) / 2,
+      bounds: {
+        west: bounds.getWest(),
+        east: bounds.getEast(),
+        south: bounds.getSouth(),
+        north: bounds.getNorth(),
+      },
+    };
+
+    viewportStateRef.current = nextViewportState;
+    setViewportState(nextViewportState);
+  }, [map]);
+
+  const sourceFeatureCount = useMemo(() => {
+    if (typeof data === "string") return 0;
+    return data.features.length;
+  }, [data]);
+
+  const effectiveClusterMaxZoom = useMemo(() => {
+    if (typeof clusterMaxZoom === "number") return clusterMaxZoom;
+
+    const zoom = viewportState.zoom;
+    const densityBoost =
+      sourceFeatureCount >= 1000 ? 2 : sourceFeatureCount >= 250 ? 1 : 0;
+    const zoomBoost = zoom >= 12 ? 2 : zoom >= 9 ? 1 : 0;
+    const baseZoom = Math.round(zoom + 2 + densityBoost + zoomBoost);
+    return Math.max(12, Math.min(16, baseZoom));
+  }, [clusterMaxZoom, sourceFeatureCount, viewportState.zoom]);
+
+  const effectiveClusterRadius = useMemo(() => {
+    if (typeof clusterRadius === "number") return clusterRadius;
+
+    const zoom = viewportState.zoom;
+    const densityBoost =
+      sourceFeatureCount >= 1000 ? 10 : sourceFeatureCount >= 250 ? 6 : 0;
+
+    if (zoom >= 12) return 32 + densityBoost;
+    if (zoom >= 9) return 38 + densityBoost;
+    if (zoom >= 6) return 44 + densityBoost;
+    return 52 + densityBoost;
+  }, [clusterRadius, sourceFeatureCount, viewportState.zoom]);
+
   // Add source on mount
   useEffect(() => {
     if (!isLoaded || !map) return;
@@ -1272,8 +1337,8 @@ function MapClusterLayer<
       type: "geojson",
       data,
       cluster: true,
-      clusterMaxZoom,
-      clusterRadius,
+      clusterMaxZoom: effectiveClusterMaxZoom,
+      clusterRadius: effectiveClusterRadius,
     });
 
     return () => {
@@ -1282,7 +1347,7 @@ function MapClusterLayer<
       }
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     };
-  }, [isLoaded, map, data, clusterMaxZoom, clusterRadius, sourceId]);
+  }, [effectiveClusterMaxZoom, effectiveClusterRadius, isLoaded, map, data, sourceId]);
 
   // Update source data when data prop changes (only for non-URL data)
   useEffect(() => {
@@ -1338,11 +1403,54 @@ function MapClusterLayer<
       uniquePoints.set(pointKey, feature);
     }
 
-    const nextClusters = Array.from(uniqueClusters.values());
-    const nextPoints = Array.from(uniquePoints.entries());
+    const viewportSnapshot = viewportStateRef.current;
+    const bounds = viewportSnapshot.bounds;
+    const paddingRatio =
+      viewportSnapshot.zoom >= 12
+        ? 0.06
+        : viewportSnapshot.zoom >= 9
+          ? 0.1
+          : viewportSnapshot.zoom >= 6
+            ? 0.14
+            : 0.18;
+    const cullingBounds = bounds
+      ? (() => {
+          const lonSpan =
+            bounds.east >= bounds.west
+              ? bounds.east - bounds.west
+              : 360 - (bounds.west - bounds.east);
+          const latSpan = bounds.north - bounds.south;
+          const lonPadding = Math.max(0.25, lonSpan * paddingRatio);
+          const latPadding = Math.max(0.25, latSpan * paddingRatio);
+
+          return {
+            west: bounds.west - lonPadding,
+            east: bounds.east + lonPadding,
+            south: bounds.south - latPadding,
+            north: bounds.north + latPadding,
+          };
+        })()
+      : null;
+
+    const nextClusters = Array.from(uniqueClusters.values()).filter((feature) => {
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? (feature.geometry.coordinates as [number, number])
+          : null;
+      if (!coordinates || !cullingBounds) return false;
+      return containsViewportBounds(cullingBounds, coordinates);
+    });
+    const nextPoints = Array.from(uniquePoints.entries()).filter(([, feature]) => {
+      const coordinates =
+        feature.geometry?.type === "Point"
+          ? (feature.geometry.coordinates as [number, number])
+          : null;
+      if (!coordinates || !cullingBounds) return false;
+      return containsViewportBounds(cullingBounds, coordinates);
+    });
     const isCompactMode =
       typeof compactAtOrBelowZoom === "number" &&
-      map.getZoom() <= compactAtOrBelowZoom;
+      viewportSnapshot.zoom <= compactAtOrBelowZoom;
     const clusterSignature = nextClusters
       .map((feature) => {
         const clusterId = feature.properties?.cluster_id as number | undefined;
@@ -1400,15 +1508,18 @@ function MapClusterLayer<
     };
     const handleMoveSettled = () => {
       isMovingRef.current = false;
+      syncViewportState();
       scheduleRefresh();
     };
 
+    syncViewportState();
     scheduleRefresh();
     map.on("movestart", handleMoveStart);
     map.on("zoomstart", handleMoveStart);
     map.on("moveend", handleMoveSettled);
     map.on("zoomend", handleMoveSettled);
     map.on("idle", scheduleRefresh);
+    map.on("resize", syncViewportState);
 
     return () => {
       map.off("movestart", handleMoveStart);
@@ -1416,11 +1527,12 @@ function MapClusterLayer<
       map.off("moveend", handleMoveSettled);
       map.off("zoomend", handleMoveSettled);
       map.off("idle", scheduleRefresh);
+      map.off("resize", syncViewportState);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [isLoaded, map, scheduleRefresh]);
+  }, [isLoaded, map, scheduleRefresh, syncViewportState]);
 
   if (!visible) return null;
 

@@ -351,16 +351,13 @@ export default function GoogleMapsClone() {
     [handleUserInteraction, clearEarthquakeSelection]
   );
 
-  const globalClusterMaxZoom = appSettings.globalClusterMaxZoom;
-  const globalCompactNodeZoom = .2;
+  const globalCompactNodeZoom = 4.2;
   const seismicCompactNodeZoom = 3.2;
   const seismicDetailMinZoom = 6.8;
   const isZoomedOutNodeMode = viewState.zoom <= seismicCompactNodeZoom;
   const shouldRenderSeismicMarkers =
     layerVisibility.earthquakes &&
     (isZoomedOutNodeMode || viewState.zoom >= seismicDetailMinZoom);
-  const shouldShowGlobalClusters =
-    viewState.zoom > globalCompactNodeZoom && viewState.zoom <= globalClusterMaxZoom;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -571,16 +568,14 @@ export default function GoogleMapsClone() {
 
                 <MapClusterLayer
                   data={eonetGeojson}
-                  visible={layerVisibility.eonet && shouldShowGlobalClusters}
+                  visible={layerVisibility.eonet}
                   labelPrefix="E"
                   clusterLabel="Signals"
                   clusterIcon={Activity}
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#f59e0b"
                   pointLabelVisible={false}
-                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#fbbf24", "#f59e0b", "#d97706"]}
-                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = eonetState.events.find((event) => event.id === id);
@@ -591,16 +586,14 @@ export default function GoogleMapsClone() {
                 />
                 <MapClusterLayer
                   data={airQualityGeojson}
-                  visible={layerVisibility.airQuality && shouldShowGlobalClusters}
+                  visible={layerVisibility.airQuality}
                   labelPrefix="AQ"
                   clusterLabel="Air"
                   clusterIcon={Wind}
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#10b981"
                   pointLabelVisible={false}
-                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#34d399", "#10b981", "#059669"]}
-                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = airQualityState.sites.find((site) => site.id === id);
@@ -611,16 +604,14 @@ export default function GoogleMapsClone() {
                 />
                 <MapClusterLayer
                   data={tsunamiGeojson}
-                  visible={layerVisibility.tsunami && shouldShowGlobalClusters}
+                  visible={layerVisibility.tsunami}
                   labelPrefix="T"
                   clusterLabel="Tsunami"
                   clusterIcon={Waves}
                   compactAtOrBelowZoom={globalCompactNodeZoom}
                   pointColor="#3b82f6"
                   pointLabelVisible={false}
-                  clusterMaxZoom={globalClusterMaxZoom}
                   clusterColors={["#60a5fa", "#3b82f6", "#1d4ed8"]}
-                  clusterRadius={appSettings.globalClusterRadius}
                   onPointClick={(feature) => {
                     const id = feature.properties?.id as string | undefined;
                     const match = tsunamiState.alerts.find((alert) => alert.id === id);

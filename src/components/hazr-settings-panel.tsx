@@ -170,50 +170,6 @@ function HazrSettingsPanel({
                 }
               />
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-cluster-radius`}>Global Cluster Radius</Label>
-                <span className="text-xs text-muted-foreground">
-                  {settings.globalClusterRadius}px
-                </span>
-              </div>
-              <Slider
-                id={`${settingsId}-cluster-radius`}
-                min={30}
-                max={80}
-                step={5}
-                value={[settings.globalClusterRadius]}
-                onValueChange={(value) =>
-                  updateSettings({
-                    globalClusterRadius: clampToStep(value[0] ?? 45, 30, 80, 5),
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-cluster-max-zoom`}>
-                  Cluster Max Zoom
-                </Label>
-                <span className="text-xs text-muted-foreground">
-                  Z{settings.globalClusterMaxZoom}
-                </span>
-              </div>
-              <Slider
-                id={`${settingsId}-cluster-max-zoom`}
-                min={4}
-                max={9}
-                step={1}
-                value={[settings.globalClusterMaxZoom]}
-                onValueChange={(value) =>
-                  updateSettings({
-                    globalClusterMaxZoom: clampToStep(value[0] ?? 6, 4, 9, 1),
-                  })
-                }
-              />
-            </div>
           </div>
         </TabsContent>
 
@@ -344,8 +300,8 @@ function HazrSettingsDialog({
             Hazr Settings
           </DialogTitle>
           <DialogDescription>
-            Configure weather units, source visibility, marker clustering, and
-            dataset depth across desktop and mobile.
+            Configure weather units, source visibility, and dataset depth across
+            desktop and mobile.
           </DialogDescription>
         </DialogHeader>
 
