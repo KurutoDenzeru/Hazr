@@ -215,7 +215,7 @@ function MapTypeButton({ label, selected, onClick, icon }: { label: string; sele
       className="flex flex-col items-center gap-1.5 group w-full focus:outline-none"
     >
       <div className={cn(
-        "w-full max-w-[110px] aspect-square rounded-[12px] border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background mx-auto", 
+        "w-full max-w-[80px] aspect-square rounded-[10px] border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background mx-auto", 
         selected ? "border-primary shadow-[0_0_0_2px_rgba(var(--primary),0.2)]" : "border-border/50 group-hover:border-foreground/30 group-hover:shadow-sm"
       )}>
         {icon}
