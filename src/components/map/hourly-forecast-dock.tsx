@@ -30,7 +30,8 @@ const toDisplayTemperature = (value: number, unit: TemperatureUnit) => {
 
 const formatHour = (date: Date, timeFormat: TimeFormat): string =>
   date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     hour12: timeFormat === "12h",
   });
 
@@ -220,9 +221,9 @@ const HourlyForecastDock = ({
           step={1}
           value={[safeIndex]}
           onValueChange={handleSliderChange}
-          className="**:data-[slot=slider-range]:transition-[width] **:data-[slot=slider-range]:duration-250 **:data-[slot=slider-range]:ease-out **:data-[slot=slider-thumb]:transition-transform **:data-[slot=slider-thumb]:duration-250 **:data-[slot=slider-thumb]:ease-out"
+          className="**:data-[slot=slider-range]:transition-all **:data-[slot=slider-range]:duration-500 **:data-[slot=slider-range]:ease-in-out **:data-[slot=slider-thumb]:transition-transform **:data-[slot=slider-thumb]:duration-500 **:data-[slot=slider-thumb]:ease-in-out"
         />
-        <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-muted-foreground sm:grid-cols-6 sm:gap-2.5 lg:grid-cols-12">
+        <div className="mt-3 flex gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] scroll-smooth">
           {visibleHours.map((hour, index) => (
             <button
               key={hour.time.toISOString()}
@@ -237,7 +238,7 @@ const HourlyForecastDock = ({
               }}
               tabIndex={0}
               className={cn(
-                "rounded-md px-1.5 py-1 text-center transition-colors",
+                "rounded-md px-2 py-1 text-center transition-colors whitespace-nowrap",
                 index === safeIndex && "font-medium text-foreground",
                 index !== safeIndex && "hover:bg-background/30",
                 compact
@@ -245,7 +246,7 @@ const HourlyForecastDock = ({
                   : index === safeIndex && "bg-background/45 border border-white/15",
               )}
             >
-              {index === 0 ? "Now" : formatHour(hour.time, timeFormat)}
+              {formatHour(hour.time, timeFormat)}
             </button>
           ))}
         </div>

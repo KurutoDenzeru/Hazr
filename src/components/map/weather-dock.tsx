@@ -59,7 +59,7 @@ const formatTemperature = (value: number, unit: TemperatureUnit) => {
 // Format time for display
 const formatTime = (date: Date, timeFormat: TimeFormat): string => {
   return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
+    hour: "2-digit",
     minute: "2-digit",
     hour12: timeFormat === "12h",
   });
@@ -297,11 +297,11 @@ export const WeatherDock = ({
           {/* Weather stats strip */}
           <div
             data-vaul-no-drag
-            className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+            className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] scroll-smooth"
           >
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     Feels
                   </span>
@@ -316,7 +316,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     Wind
                   </span>
@@ -336,7 +336,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     Humid
                   </span>
@@ -351,7 +351,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     {current.visibility !== undefined ? "Visibility" : "Cloud"}
                   </span>
@@ -376,7 +376,7 @@ export const WeatherDock = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     UV
                   </span>
@@ -400,7 +400,7 @@ export const WeatherDock = ({
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                   <span className="text-xs font-semibold text-muted-foreground">
                     Chance
                   </span>
@@ -436,12 +436,12 @@ export const WeatherDock = ({
             </p>
             <div
               data-vaul-no-drag
-              className="flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+              className="flex snap-x snap-mandatory gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-1 no-scrollbar touch-pan-x overscroll-x-contain [-webkit-overflow-scrolling:touch] scroll-smooth"
             >
               {daily.slice(0, 7).map((day) => (
                 <Tooltip key={day.date.toISOString()}>
                   <TooltipTrigger asChild>
-                    <div className="flex min-w-[4.6rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25">
+                    <div className="flex min-w-[5.5rem] flex-none cursor-pointer snap-start flex-col items-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2 py-2 transition-colors hover:bg-muted/45 dark:bg-muted/10 dark:hover:bg-muted/25 whitespace-nowrap">
                       <span className="text-xs font-semibold text-muted-foreground">
                         {day.date.toDateString() === new Date().toDateString()
                           ? "Today"
