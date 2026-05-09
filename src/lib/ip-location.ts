@@ -141,14 +141,14 @@ export const resolveIpLocation = async (
     try {
     const providers = [
       {
-        key: "ipwhois",
-        url: "https://ipwho.is/",
-        parser: parseIpWhoIs,
-      },
-      {
         key: "ipapi",
         url: "https://ipapi.co/json/",
         parser: parseIpApi,
+      },
+      {
+        key: "ipwhois",
+        url: "/api/ipwhois/",
+        parser: parseIpWhoIs,
       },
     ];
 

@@ -10,6 +10,8 @@ export type DataLayerVisibility = {
   tsunami: boolean;
 };
 
+export type MapStyle = "auto" | "light" | "dark" | "voyager";
+
 export type AppSettings = {
   temperatureUnit: TemperatureUnit;
   timeFormat: TimeFormat;
@@ -17,6 +19,7 @@ export type AppSettings = {
   openAqLimit: number;
   eonetLimit: number;
   earthquakeMagnitude: EarthquakeMagnitude;
+  mapStyle: MapStyle;
 };
 
 export const APP_SETTINGS_STORAGE_KEY = "hazr-app-settings-v2";
@@ -29,6 +32,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   openAqLimit: 200,
   eonetLimit: 200,
   earthquakeMagnitude: "all",
+  mapStyle: "auto",
 };
 
 export const DEFAULT_LAYER_VISIBILITY: DataLayerVisibility = {

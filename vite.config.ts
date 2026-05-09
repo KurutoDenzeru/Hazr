@@ -13,6 +13,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (pathName) => pathName.replace(/^\/api\/openaq/, "/v3"),
       },
+      "/api/ipwhois": {
+        target: "https://ipwho.is",
+        changeOrigin: true,
+        rewrite: (pathName) => pathName.replace(/^\/api\/ipwhois/, ""),
+      },
     },
   },
   resolve: {

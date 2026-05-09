@@ -30,17 +30,12 @@ import type {
 } from "@/types/api";
 import { getMagnitudeColor } from "@/types/api";
 import {
-  AirQualityFlyTo,
-  EarthquakeFlyTo,
-  EonetFlyTo,
-  MapOverlayUI,
-  MapStateSync,
-  MapViewController,
-  SignalOverlay,
-  TsunamiFlyTo,
-  useIsTablet,
   type MapViewState,
 } from "@/components/map/openstreet-map-helpers";
+import { MapStateSync, MapViewController, EarthquakeFlyTo, EonetFlyTo, TsunamiFlyTo, AirQualityFlyTo } from "@/components/map/controls/map-controllers";
+import { MapOverlayUI } from "@/components/map/controls/map-overlay-ui";
+import { SignalOverlay } from "@/components/map/overlays/signal-overlay";
+import { useIsTablet } from "@/hooks/use-responsive";
 
 const DEFAULT_COUNTRY_ZOOM = 6;
 const DEFAULT_FALLBACK_CENTER: [number, number] = [-122.4194, 37.7749];
@@ -451,6 +446,20 @@ export default function GoogleMapsClone() {
                 center={viewState.center}
                 zoom={viewState.zoom}
                 scrollZoom={true}
+                styles={{
+                  light:
+                    appSettings.mapStyle === "voyager"
+                      ? "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                      : appSettings.mapStyle === "dark"
+                      ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                      : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                  dark:
+                    appSettings.mapStyle === "voyager"
+                      ? "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+                      : appSettings.mapStyle === "light"
+                      ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+                      : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+                }}
               >
                 <MapViewController
                   viewState={viewState}

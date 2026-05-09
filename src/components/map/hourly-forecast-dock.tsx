@@ -124,7 +124,7 @@ const HourlyForecastDock = ({
       className={cn(
         compact
           ? "w-full rounded-md border border-border/60 bg-background px-3 py-3 transition-all duration-200 ease-out"
-          : "w-full max-w-3xl rounded-2xl border border-white/15 bg-background/45 px-3 py-3 backdrop-blur-2xl supports-backdrop-filter:bg-background/35 transition-all duration-240 ease-out will-change-transform sm:px-6 sm:py-5",
+          : "w-full max-w-3xl rounded-2xl border border-border/50 bg-background/85 px-3 py-3 backdrop-blur-2xl supports-backdrop-filter:bg-background/85 shadow-lg transition-all duration-240 ease-out will-change-transform sm:px-6 sm:py-5",
         isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
         className,
       )}
