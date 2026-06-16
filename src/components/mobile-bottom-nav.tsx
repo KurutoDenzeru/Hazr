@@ -19,7 +19,7 @@ const MobileBottomNav = ({ items, className }: MobileBottomNavProps) => {
     <nav
       aria-label="Mobile navigation"
       className={cn(
-        "md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xl shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl pb-[calc(env(safe-area-inset-bottom)+0.75rem)]",
+        "md:hidden pointer-events-auto mx-2 mb-2 grid grid-cols-4 gap-1 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-xs shadow-black/5 supports-backdrop-filter:bg-background/60 supports-backdrop-filter:backdrop-blur-xl pb-[calc(env(safe-area-inset-bottom)+0.75rem)]",
         className,
       )}
     >

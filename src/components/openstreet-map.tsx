@@ -441,7 +441,7 @@ export default function GoogleMapsClone() {
 
         <SidebarInset>
           <main className="flex-1 flex flex-col p-1.5 bg-muted/20 min-w-0">
-            <div className="relative flex-1 bg-background rounded-md border border-border/50 shadow-xl overflow-hidden group">
+            <div className="relative flex-1 bg-background rounded-md border border-border/50 shadow-xs overflow-hidden group">
               <MapComponent
                 center={viewState.center}
                 zoom={viewState.zoom}
@@ -495,7 +495,7 @@ export default function GoogleMapsClone() {
                         />
                         <div
                           className={cn(
-                            "relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-lg",
+                            "relative size-4 rounded-full bg-blue-600 border-2 border-white shadow-xs",
                             isLocateAnimating && "motion-safe:animate-bounce",
                           )}
                         />
