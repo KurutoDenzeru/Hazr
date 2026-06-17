@@ -305,7 +305,7 @@ const GlobalActivity = ({
     const coordinateLabel = `${formatCoordinate(site.coordinates[1], "N", "S")} ${formatCoordinate(site.coordinates[0], "E", "W")}`;
     const locationLooksCoordinate = isCoordinateOnlyLabel(site.location);
     const friendlyTitle = locationLooksCoordinate
-      ? site.locationName?.trim() || locationHint || coordinateLabel
+      ? site.locationName?.trim() || locationHint || site.location
       : site.location;
     const subtitle = locationHint && locationHint !== friendlyTitle ? locationHint : undefined;
 
