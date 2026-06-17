@@ -364,6 +364,15 @@ export default function GoogleMapsClone() {
   const seismicDetailMinZoom = 8.4;
   const shouldRenderSeismicMarkers =
     layerVisibility.earthquakes && viewState.zoom >= seismicDetailMinZoom;
+  const eonetDetailMinZoom = 7;
+  const airQualityDetailMinZoom = 8;
+  const tsunamiDetailMinZoom = 6;
+  const shouldRenderEonetMarkers =
+    layerVisibility.eonet && viewState.zoom >= eonetDetailMinZoom;
+  const shouldRenderAirQualityMarkers =
+    layerVisibility.airQuality && viewState.zoom >= airQualityDetailMinZoom;
+  const shouldRenderTsunamiMarkers =
+    layerVisibility.tsunami && viewState.zoom >= tsunamiDetailMinZoom;
 
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
@@ -553,6 +562,90 @@ export default function GoogleMapsClone() {
                     );
                   })}
 
+
+                {/* EONET Event Markers */}
+                {shouldRenderEonetMarkers &&
+                  eonetState.events.map((event) => (
+                    <MapMarker
+                      key={event.id}
+                      longitude={event.coordinates[0]}
+                      latitude={event.coordinates[1]}
+                    >
+                      <MarkerContent>
+                        <button
+                          type="button"
+                          onClick={() => handleEonetSelect(event)}
+                          className="relative flex items-center justify-center cursor-pointer"
+                          aria-label={`EONET event: ${event.title}`}
+                        >
+                          <div className="relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-all duration-250 bg-amber-500">
+                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                              <Activity className="size-3.5 text-amber-500" />
+                            </span>
+                            <span className="ml-1 max-w-24 overflow-hidden whitespace-nowrap opacity-100">
+                              {event.category}
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
+
+                {/* OpenAQ Site Markers */}
+                {shouldRenderAirQualityMarkers &&
+                  airQualityState.sites.map((site) => (
+                    <MapMarker
+                      key={site.id}
+                      longitude={site.coordinates[0]}
+                      latitude={site.coordinates[1]}
+                    >
+                      <MarkerContent>
+                        <button
+                          type="button"
+                          onClick={() => handleAirQualitySelect(site)}
+                          className="relative flex items-center justify-center cursor-pointer"
+                          aria-label={`OpenAQ: ${site.location}`}
+                        >
+                          <div className="relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-all duration-250 bg-emerald-500">
+                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                              <Wind className="size-3.5 text-emerald-500" />
+                            </span>
+                            <span className="ml-1 max-w-24 overflow-hidden whitespace-nowrap opacity-100">
+                              {site.parameter.toUpperCase()} {Number.isFinite(site.value) ? site.value.toFixed(1) : site.value}{site.unit}
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
+
+                {/* Tsunami Alert Markers */}
+                {shouldRenderTsunamiMarkers &&
+                  tsunamiState.alerts.map((alert) => (
+                    <MapMarker
+                      key={alert.id}
+                      longitude={alert.coordinates[0]}
+                      latitude={alert.coordinates[1]}
+                    >
+                      <MarkerContent>
+                        <button
+                          type="button"
+                          onClick={() => handleTsunamiSelect(alert)}
+                          className="relative flex items-center justify-center cursor-pointer"
+                          aria-label={`Tsunami: ${alert.headline}`}
+                        >
+                          <div className="relative flex items-center rounded-full border border-white/15 px-1.5 py-1 text-[10px] font-bold text-white backdrop-blur transition-all duration-250 bg-blue-500">
+                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-white/90">
+                              <Waves className="size-3.5 text-blue-500" />
+                            </span>
+                            <span className="ml-1 max-w-24 overflow-hidden whitespace-nowrap opacity-100">
+                              {alert.severity}
+                            </span>
+                          </div>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
                 <MapClusterLayer
                   data={earthquakeGeojson}
                   visible={layerVisibility.earthquakes && viewState.zoom < seismicDetailMinZoom}
