@@ -212,6 +212,7 @@ export function MapOverlayUI({
   const { is3D, toggle3D, isGlobe, toggleGlobe } = useMap3DMode(setIsMap3DMode, setIsMapGlobeMode);
   const isMobile = useIsMobile();
   const [quakePage, setQuakePage] = React.useState(1);
+  const [menuTab, setMenuTab] = React.useState("settings");
   const quakePageSize = 8;
   const totalQuakePages = Math.max(1, Math.ceil(earthquakes.length / quakePageSize));
   const paginatedEarthquakes = React.useMemo(() => {
@@ -231,6 +232,12 @@ export function MapOverlayUI({
     if (isMobile) return;
     setActiveMobileDrawer(null);
   }, [isMobile]);
+
+  React.useEffect(() => {
+    if (activeMobileDrawer === null) {
+      setMenuTab("settings");
+    }
+  }, [activeMobileDrawer]);
 
   const activateDrawer = React.useCallback((drawer: "menu" | "quakes" | "weather" | "global") => {
     setActiveMobileDrawer(drawer);
@@ -305,17 +312,17 @@ export function MapOverlayUI({
             {activeMobileDrawer === "menu" ? (
               <>
                 <MobileDrawerHeader
-                  icon={SlidersHorizontal}
+                  icon={menuTab === "settings" ? SlidersHorizontal : Map}
                   iconToneClassName="bg-tone-info-bg text-tone-info-fg"
-                  title="Menu"
-                  description="Settings and layer controls"
+                  title={menuTab === "settings" ? "Menu" : "About"}
+                  description={menuTab === "settings" ? "Settings and layer controls" : "About Hazr"}
                   onClose={closeDrawer}
                 />
                 <div
                   data-vaul-no-drag
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-3"
                 >
-                  <Tabs defaultValue="settings" className="w-full">
+                  <Tabs value={menuTab} onValueChange={setMenuTab} className="w-full">
                     <TabsList className="w-full">
                       <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
                       <TabsTrigger value="about" className="flex-1">About</TabsTrigger>
