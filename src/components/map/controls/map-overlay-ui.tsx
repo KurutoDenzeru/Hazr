@@ -39,6 +39,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { GlobalActivity } from "@/components/global-activity";
 import { HazrSettingsPanel } from "@/components/hazr-settings-panel";
 import { HazrAboutContent } from "@/components/hazr-about-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   ProcessedAirQualitySite,
   ProcessedEarthquake,
@@ -314,25 +315,35 @@ export function MapOverlayUI({
                   data-vaul-no-drag
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-3"
                 >
-                  <div className="rounded-md border border-border/60 bg-muted/15 p-3">
-                    <HazrSettingsPanel
-                      settings={appSettings}
-                      onSettingsChange={onAppSettingsChange}
-                      layerVisibility={layerVisibility}
-                      onLayerVisibilityChange={onLayerVisibilityChange}
-                      onResetDefaults={onResetDefaults}
-                      showInlineReset
-                    />
-                  </div>
-                  <div className="mt-3 rounded-md border border-border/60 bg-muted/15 p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="inline-flex items-center justify-center rounded-md bg-tone-info-bg text-tone-info-fg">
-                        <Map className="size-5" />
-                      </span>
-                      <h3 className="text-sm font-semibold">About Hazr</h3>
-                    </div>
-                    <HazrAboutContent />
-                  </div>
+                  <Tabs defaultValue="settings" className="w-full">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
+                      <TabsTrigger value="about" className="flex-1">About</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="settings" className="mt-3">
+                      <div className="rounded-md border border-border/60 bg-muted/15 p-3">
+                        <HazrSettingsPanel
+                          settings={appSettings}
+                          onSettingsChange={onAppSettingsChange}
+                          layerVisibility={layerVisibility}
+                          onLayerVisibilityChange={onLayerVisibilityChange}
+                          onResetDefaults={onResetDefaults}
+                          showInlineReset
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="about" className="mt-3">
+                      <div className="rounded-md border border-border/60 bg-muted/15 p-3">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="inline-flex items-center justify-center rounded-md bg-tone-info-bg text-tone-info-fg">
+                            <Map className="size-5" />
+                          </span>
+                          <h3 className="text-sm font-semibold">About Hazr</h3>
+                        </div>
+                        <HazrAboutContent />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </>
             ) : null}
