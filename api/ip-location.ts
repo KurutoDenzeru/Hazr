@@ -1,8 +1,14 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const IP_API_URL =
-  "http://ip-api.com/json/?fields=query,status,country,countryCode,region,regionName,city,timezone,isp,org,lat,lon";
-const IPWHOIS_URL = "https://ipwho.is/";
+const getClientIp = (req: VercelRequest): string | null => {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
+  if (Array.isArray(forwarded)) return forwarded[0]?.trim() ?? null;
+  const realIp = req.headers["x-real-ip"];
+  if (typeof realIp === "string") return realIp;
+  return null;
+};
+
 const TIMEOUT_MS = 4000;
 
 type NormalizedResponse = {
@@ -72,9 +78,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // Try ip-api.com first
+  // Extract client IP from Vercel forwarded headers
+  const clientIp = getClientIp(req);
+
+  // Try ip-api.com first (supports /json/{IP} for specific IP lookup)
   try {
-    const response = await fetchWithTimeout(IP_API_URL, TIMEOUT_MS);
+    const url = clientIp
+      ? `http://ip-api.com/json/${clientIp}?fields=query,status,country,countryCode,region,regionName,city,timezone,isp,org,lat,lon`
+      : "http://ip-api.com/json/?fields=query,status,country,countryCode,region,regionName,city,timezone,isp,org,lat,lon";
+    const response = await fetchWithTimeout(url, TIMEOUT_MS);
     if (response.ok) {
       const data = (await response.json()) as Record<string, unknown>;
       const normalized = normalizeIpApi(data);
@@ -86,9 +98,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // fall through
   }
 
-  // Fallback: ipwho.is
+  // Fallback: ipwho.is (supports /{IP} for specific IP lookup)
   try {
-    const response = await fetchWithTimeout(IPWHOIS_URL, TIMEOUT_MS);
+    const url = clientIp ? `https://ipwho.is/${clientIp}` : "https://ipwho.is/";
+    const response = await fetchWithTimeout(url, TIMEOUT_MS);
     if (response.ok) {
       const data = (await response.json()) as Record<string, unknown>;
       const normalized = normalizeIpWhoIs(data);
