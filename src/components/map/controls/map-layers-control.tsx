@@ -141,7 +141,7 @@ export function MapLayersControl({
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none" />
         
-        <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/40 bg-muted/20 relative z-10">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-muted/20 relative z-10">
           <h2 className="text-[13px] font-semibold text-foreground tracking-wide">Map details</h2>
           <button 
             onClick={() => setIsOpen(false)} 
@@ -152,9 +152,9 @@ export function MapLayersControl({
           </button>
         </div>
 
-        <div className="p-2.5 space-y-3 relative z-10">
+        <div className="p-2 space-y-2 relative z-10">
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Map Type</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Map Type</h3>
             <div className="grid grid-cols-2 gap-1.5">
                <MapTypeButton 
                   label="Auto" 
@@ -183,10 +183,9 @@ export function MapLayersControl({
             </div>
           </div>
 
-          <div className="h-px bg-border/40 w-full" />
 
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Map Details</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Map Details</h3>
             <div className="grid grid-cols-2 gap-1.5">
                <MapTypeButton 
                   label="3D Globe" 
@@ -224,7 +223,7 @@ function MapTypeButton({ label, selected, onClick, icon }: { label: string; sele
         )}
       </div>
       <span className={cn(
-        "text-[9px] tracking-wide transition-colors",
+        "text-sm tracking-wide transition-colors",
         selected ? "text-primary font-semibold" : "text-muted-foreground font-medium group-hover:text-foreground"
       )}>
         {label}
