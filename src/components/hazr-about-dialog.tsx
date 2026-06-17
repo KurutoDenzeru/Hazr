@@ -140,7 +140,7 @@ function HazrAboutDialog({ open, onOpenChange }: HazrAboutDialogProps) {
       <DialogContent className="max-w-lg gap-5 p-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Map className="size-5 text-blue-500" />
+            <Map className="size-5" />
             About Hazr
           </DialogTitle>
         </DialogHeader>
