@@ -178,11 +178,14 @@ const getTsunamiSeverityBadgeClass = (severity: string): string => {
   if (normalized.includes("extreme") || normalized.includes("severe")) {
     return "bg-tone-danger-bg text-tone-danger-fg";
   }
-  if (normalized.includes("major")) {
-    return "bg-tone-earthquake-bg text-tone-earthquake-fg";
+  if (normalized.includes("major") || normalized.includes("warning")) {
+    return "bg-tone-warning-bg text-tone-warning-fg";
   }
   if (normalized.includes("moderate")) {
-    return "bg-tone-warning-bg text-tone-warning-fg";
+    return "bg-tone-earthquake-bg text-tone-earthquake-fg";
+  }
+  if (normalized.includes("advisory")) {
+    return "bg-tone-eonet-bg text-tone-eonet-fg";
   }
   return "bg-tone-tsunami-bg text-tone-tsunami-fg";
 };
@@ -302,7 +305,7 @@ const GlobalActivity = ({
     const coordinateLabel = `${formatCoordinate(site.coordinates[1], "N", "S")} ${formatCoordinate(site.coordinates[0], "E", "W")}`;
     const locationLooksCoordinate = isCoordinateOnlyLabel(site.location);
     const friendlyTitle = locationLooksCoordinate
-      ? site.locationName?.trim() || locationHint || "OpenAQ station"
+      ? site.locationName?.trim() || locationHint || coordinateLabel
       : site.location;
     const subtitle = locationHint && locationHint !== friendlyTitle ? locationHint : undefined;
 
@@ -345,8 +348,7 @@ const GlobalActivity = ({
 
   const tsunamiItems: SignalHistoryItem[] = tsunamiState.alerts.map((alert) => ({
     id: alert.id,
-    title: alert.headline,
-    subtitle: "NWS tsunami bulletin",
+    title: alert.headline.replace(/^\[[^\]]+\]\s*/, ""),
     url: onTsunamiSelect ? undefined : alert.url,
     onClick: onTsunamiSelect ? () => onTsunamiSelect(alert) : undefined,
     badges: toSignalBadges([
@@ -362,10 +364,9 @@ const GlobalActivity = ({
           "bg-tone-info-bg text-tone-info-fg",
       },
       {
-        label: "NWS source",
-        icon: Waves,
-        className:
-          "bg-tone-tsunami-bg text-tone-tsunami-fg",
+        label: `${formatCoordinate(alert.coordinates[1], "N", "S")} ${formatCoordinate(alert.coordinates[0], "E", "W")}`,
+        icon: MapPin,
+        className: "bg-tone-meta-bg text-tone-meta-fg",
       },
     ]),
   }));

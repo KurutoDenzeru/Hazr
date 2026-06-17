@@ -117,6 +117,11 @@ const EarthquakeItem = ({
           ),
         }
       : null,
+    {
+      label: `${Math.abs(earthquake.coordinates[1]).toFixed(1)}°${earthquake.coordinates[1] >= 0 ? "N" : "S"} ${Math.abs(earthquake.coordinates[0]).toFixed(1)}°${earthquake.coordinates[0] >= 0 ? "E" : "W"}`,
+      icon: MapPin,
+      className: "bg-tone-meta-bg text-tone-meta-fg",
+    },
   ].filter(Boolean) as Array<{
     label: string;
     icon: React.ComponentType<{ className?: string }>;
@@ -149,10 +154,6 @@ const EarthquakeItem = ({
               </p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
             </div>
-          <div className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground/85">
-            <MapPin className="size-3.5" />
-            <span className="truncate">USGS event</span>
-          </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {detailBadges.map((badge) => (
               <div
