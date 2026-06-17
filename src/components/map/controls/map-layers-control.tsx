@@ -4,6 +4,7 @@ import { Layers, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppSettings } from "@/types/settings";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 const LightMapSvg = () => (
   <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -183,9 +184,9 @@ export function MapLayersControl({
             </div>
           </div>
 
-
-          <div>
+          <div className="pt-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Map Details</h3>
+            <Separator className="mb-2" />
             <div className="grid grid-cols-2 gap-1.5">
                <MapTypeButton 
                   label="3D Globe" 
