@@ -138,7 +138,7 @@ export function MapLayersControl({
         side="top"
         align="start"
         sideOffset={16}
-        className="w-[280px] p-0 rounded-[20px] border border-border/40 bg-background/85 backdrop-blur-3xl shadow-xs z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
+        className="w-[240px] p-0 rounded-[20px] border border-border/40 bg-background/85 backdrop-blur-3xl shadow-xs z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none" />
         
