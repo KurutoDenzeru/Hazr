@@ -25,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { EarthquakeMagnitude } from "@/types/api";
 import type {
@@ -54,10 +54,6 @@ type HazrSettingsDialogProps = HazrSettingsPanelProps & {
   onResetDefaults: () => void;
 };
 
-const clampToStep = (value: number, min: number, max: number, step: number) => {
-  const clamped = Math.max(min, Math.min(max, value));
-  return Math.round(clamped / step) * step;
-};
 
 const SourceToggleRow = ({
   id,
@@ -120,41 +116,35 @@ function HazrSettingsPanel({
         </p>
         <div className="mt-1.5 rounded-lg border border-border/60 bg-muted/15 p-3">
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${settingsId}-temperature-unit`}>Temperature Unit</Label>
-              <Select
+            <div className="space-y-1.5">
+              <Label>Temperature Unit</Label>
+              <Tabs
                 value={settings.temperatureUnit}
-                onValueChange={(value: TemperatureUnit) =>
+                onValueChange={(value) =>
                   updateSettings({ temperatureUnit: value as TemperatureUnit })
                 }
               >
-                <SelectTrigger id={`${settingsId}-temperature-unit`} className="w-36">
-                  <SelectValue placeholder="Temperature unit" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="celsius">Celsius (°C)</SelectItem>
-                  <SelectItem value="fahrenheit">Fahrenheit (°F)</SelectItem>
-                  <SelectItem value="kelvin">Kelvin (K)</SelectItem>
-                </SelectContent>
-              </Select>
+                <TabsList className="w-full">
+                  <TabsTrigger value="celsius" className="flex-1">°C</TabsTrigger>
+                  <TabsTrigger value="fahrenheit" className="flex-1">°F</TabsTrigger>
+                  <TabsTrigger value="kelvin" className="flex-1">K</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${settingsId}-time-format`}>Time Format</Label>
-              <Select
+            <div className="space-y-1.5">
+              <Label>Time Format</Label>
+              <Tabs
                 value={settings.timeFormat}
-                onValueChange={(value: TimeFormat) =>
-                  updateSettings({ timeFormat: value })
+                onValueChange={(value) =>
+                  updateSettings({ timeFormat: value as TimeFormat })
                 }
               >
-                <SelectTrigger id={`${settingsId}-time-format`} className="w-36">
-                  <SelectValue placeholder="Time format" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="12h">12-hour</SelectItem>
-                  <SelectItem value="24h">24-hour</SelectItem>
-                </SelectContent>
-              </Select>
+                <TabsList className="w-full">
+                  <TabsTrigger value="12h" className="flex-1">12-hour</TabsTrigger>
+                  <TabsTrigger value="24h" className="flex-1">24-hour</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/70 px-3 py-2.5">
@@ -206,44 +196,48 @@ function HazrSettingsPanel({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-openaq-limit`}>OpenAQ Site Limit</Label>
-                <span className="text-xs text-muted-foreground">
-                  {settings.openAqLimit}
-                </span>
-              </div>
-              <Slider
-                id={`${settingsId}-openaq-limit`}
-                min={50}
-                max={300}
-                step={50}
-                value={[settings.openAqLimit]}
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor={`${settingsId}-openaq-limit`}>OpenAQ Site Limit</Label>
+              <Select
+                value={String(settings.openAqLimit)}
                 onValueChange={(value) =>
-                  updateSettings({
-                    openAqLimit: clampToStep(value[0] ?? 200, 50, 300, 50),
-                  })
+                  updateSettings({ openAqLimit: Number(value) })
                 }
-              />
+              >
+                <SelectTrigger id={`${settingsId}-openaq-limit`} className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="150">150</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="250">250</SelectItem>
+                  <SelectItem value="300">300</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-eonet-limit`}>NASA EONET Event Limit</Label>
-                <span className="text-xs text-muted-foreground">{settings.eonetLimit}</span>
-              </div>
-              <Slider
-                id={`${settingsId}-eonet-limit`}
-                min={50}
-                max={300}
-                step={50}
-                value={[settings.eonetLimit]}
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor={`${settingsId}-eonet-limit`}>NASA EONET Event Limit</Label>
+              <Select
+                value={String(settings.eonetLimit)}
                 onValueChange={(value) =>
-                  updateSettings({
-                    eonetLimit: clampToStep(value[0] ?? 200, 50, 300, 50),
-                  })
+                  updateSettings({ eonetLimit: Number(value) })
                 }
-              />
+              >
+                <SelectTrigger id={`${settingsId}-eonet-limit`} className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="150">150</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="250">250</SelectItem>
+                  <SelectItem value="300">300</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
