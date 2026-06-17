@@ -649,7 +649,7 @@ export default function GoogleMapsClone() {
                               <Waves className="size-3.5 text-blue-500" />
                             </span>
                             <span className="ml-1 max-w-24 overflow-hidden whitespace-nowrap opacity-100">
-                              {alert.severity}
+                              {`Tsunami ${alert.severity}`}
                             </span>
                           </div>
                         </button>
