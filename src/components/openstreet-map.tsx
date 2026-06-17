@@ -374,6 +374,16 @@ export default function GoogleMapsClone() {
   const shouldRenderTsunamiMarkers =
     layerVisibility.tsunami && viewState.zoom >= tsunamiDetailMinZoom;
 
+  const isValidLngLat = React.useCallback((coords: [number, number]) => {
+    return (
+      Array.isArray(coords) &&
+      coords.length >= 2 &&
+      Number.isFinite(coords[0]) &&
+      Number.isFinite(coords[1]) &&
+      Math.abs(coords[1]) <= 90
+    );
+  }, []);
+
   const isDefaultCenter = React.useCallback((center: [number, number]) => {
     return (
       Math.abs(center[0] - DEFAULT_FALLBACK_CENTER[0]) < 0.01 &&
@@ -515,7 +525,7 @@ export default function GoogleMapsClone() {
 
                 {/* Earthquake Markers */}
                 {shouldRenderSeismicMarkers &&
-                  earthquakes.map((eq) => {
+                  earthquakes.filter((eq) => isValidLngLat(eq.coordinates)).map((eq) => {
                     const magnitudeColor = getMagnitudeColor(eq.magnitude);
                     const isActive = activeQuakePulseId === eq.id;
 
@@ -565,7 +575,7 @@ export default function GoogleMapsClone() {
 
                 {/* EONET Event Markers */}
                 {shouldRenderEonetMarkers &&
-                  eonetState.events.map((event) => (
+                  eonetState.events.filter((event) => isValidLngLat(event.coordinates)).map((event) => (
                     <MapMarker
                       key={event.id}
                       longitude={event.coordinates[0]}
@@ -593,7 +603,7 @@ export default function GoogleMapsClone() {
 
                 {/* OpenAQ Site Markers */}
                 {shouldRenderAirQualityMarkers &&
-                  airQualityState.sites.map((site) => (
+                  airQualityState.sites.filter((site) => isValidLngLat(site.coordinates)).map((site) => (
                     <MapMarker
                       key={site.id}
                       longitude={site.coordinates[0]}
@@ -621,7 +631,7 @@ export default function GoogleMapsClone() {
 
                 {/* Tsunami Alert Markers */}
                 {shouldRenderTsunamiMarkers &&
-                  tsunamiState.alerts.map((alert) => (
+                  tsunamiState.alerts.filter((alert) => isValidLngLat(alert.coordinates)).map((alert) => (
                     <MapMarker
                       key={alert.id}
                       longitude={alert.coordinates[0]}
