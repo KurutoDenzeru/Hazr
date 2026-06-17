@@ -619,6 +619,11 @@ export function SignalOverlay({
           onClose={onCloseEvent}
           badges={eventBadges}
           details={eventDetails}
+          footerAction={{
+            label: "View on NASA EONET",
+            url: activeEvent.url,
+            ariaLabel: "View EONET event details",
+          }}
         />
       ) : null}
 
@@ -633,6 +638,11 @@ export function SignalOverlay({
           onClose={onCloseEvent}
           badges={tsunamiBadges}
           details={tsunamiDetails}
+          footerAction={activeTsunami.url ? {
+            label: "View Source",
+            url: activeTsunami.url,
+            ariaLabel: "View NWS tsunami source",
+          } : undefined}
         />
       ) : null}
 
@@ -647,6 +657,11 @@ export function SignalOverlay({
           onClose={onCloseEvent}
           badges={airQualityBadges}
           details={airQualityDetails}
+          footerAction={activeAirQuality.sourceUrl ? {
+            label: "View Source",
+            url: activeAirQuality.sourceUrl,
+            ariaLabel: "View OpenAQ source",
+          } : undefined}
         />
       ) : null}
     </div>,
