@@ -137,11 +137,11 @@ export function MapLayersControl({
         side="top"
         align="start"
         sideOffset={16}
-        className="w-[320px] p-0 rounded-[20px] border border-border/40 bg-background/85 backdrop-blur-3xl shadow-xs z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
+        className="w-[280px] p-0 rounded-[20px] border border-border/40 bg-background/85 backdrop-blur-3xl shadow-xs z-50 pointer-events-auto supports-backdrop-filter:bg-background/60 overflow-hidden relative"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent dark:from-white/5 dark:to-transparent pointer-events-none" />
         
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/20 relative z-10">
+        <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/40 bg-muted/20 relative z-10">
           <h2 className="text-[13px] font-semibold text-foreground tracking-wide">Map details</h2>
           <button 
             onClick={() => setIsOpen(false)} 
@@ -152,10 +152,10 @@ export function MapLayersControl({
           </button>
         </div>
 
-        <div className="p-3 space-y-4 relative z-10">
+        <div className="p-2.5 space-y-3 relative z-10">
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Map Type</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Map Type</h3>
+            <div className="grid grid-cols-2 gap-1.5">
                <MapTypeButton 
                   label="Auto" 
                   icon={<AutoMapSvg />} 
@@ -186,8 +186,8 @@ export function MapLayersControl({
           <div className="h-px bg-border/40 w-full" />
 
           <div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Map Details</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Map Details</h3>
+            <div className="grid grid-cols-2 gap-1.5">
                <MapTypeButton 
                   label="3D Globe" 
                   icon={<GlobeSvg />} 
@@ -212,19 +212,19 @@ function MapTypeButton({ label, selected, onClick, icon }: { label: string; sele
   return (
     <button 
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 group w-full focus:outline-none"
+      className="flex flex-col items-center gap-1 group w-full focus:outline-none"
     >
       <div className={cn(
-        "w-full max-w-[80px] aspect-square rounded-[10px] border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background mx-auto", 
+        "w-full max-w-[56px] aspect-square rounded-lg border-2 flex items-center justify-center overflow-hidden transition-all duration-300 relative bg-background mx-auto",
         selected ? "border-primary shadow-[0_0_0_2px_rgba(var(--primary),0.2)]" : "border-border/50 group-hover:border-foreground/30 group-hover:shadow-sm"
       )}>
         {icon}
         {selected && (
-          <div className="absolute top-1.5 right-1.5 size-2.5 bg-primary rounded-full border-2 border-background shadow-sm z-10" />
+          <div className="absolute top-1 right-1 size-2 bg-primary rounded-full border-2 border-background shadow-sm z-10" />
         )}
       </div>
       <span className={cn(
-        "text-[10px] tracking-wide transition-colors", 
+        "text-[9px] tracking-wide transition-colors",
         selected ? "text-primary font-semibold" : "text-muted-foreground font-medium group-hover:text-foreground"
       )}>
         {label}
