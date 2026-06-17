@@ -103,8 +103,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("fire")) {
     return {
       icon: Flame,
-      className:
-        "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
+      className: "bg-tone-earthquake-bg text-tone-earthquake-fg",
       label: "Wildfire",
     };
   }
@@ -112,8 +111,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("storm")) {
     return {
       icon: CloudRain,
-      className:
-        "bg-blue-500/20 text-blue-700 dark:bg-blue-500/30 dark:text-blue-200",
+      className: "bg-tone-info-bg text-tone-info-fg",
       label: "Storms",
     };
   }
@@ -121,8 +119,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("flood")) {
     return {
       icon: Waves,
-      className:
-        "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+      className: "bg-tone-tsunami-bg text-tone-tsunami-fg",
       label: "Floods",
     };
   }
@@ -130,8 +127,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("drought")) {
     return {
       icon: Sun,
-      className:
-        "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      className: "bg-tone-eonet-bg text-tone-eonet-fg",
       label: "Drought",
     };
   }
@@ -139,8 +135,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("ice")) {
     return {
       icon: Snowflake,
-      className:
-        "bg-slate-500/20 text-slate-700 dark:bg-slate-500/30 dark:text-slate-200",
+      className: "bg-tone-meta-bg text-tone-meta-fg",
       label: "Iceberg",
     };
   }
@@ -148,8 +143,7 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("volcano")) {
     return {
       icon: Mountain,
-      className:
-        "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
+      className: "bg-tone-danger-bg text-tone-danger-fg",
       label: "Volcanoes",
     };
   }
@@ -157,16 +151,14 @@ const getEonetCategoryVisual = (category: string) => {
   if (normalized.includes("dust")) {
     return {
       icon: Wind,
-      className:
-        "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
+      className: "bg-tone-warning-bg text-tone-warning-fg",
       label: "Dust",
     };
   }
 
   return {
     icon: Globe2,
-    className:
-      "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+    className: "bg-tone-eonet-bg text-tone-eonet-fg",
     label: category,
   };
 };
@@ -184,15 +176,15 @@ const getTsunamiSeverityRank = (severity: string): number => {
 const getTsunamiSeverityBadgeClass = (severity: string): string => {
   const normalized = severity.toLowerCase();
   if (normalized.includes("extreme") || normalized.includes("severe")) {
-    return "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200";
+    return "bg-tone-danger-bg text-tone-danger-fg";
   }
   if (normalized.includes("major")) {
-    return "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200";
+    return "bg-tone-earthquake-bg text-tone-earthquake-fg";
   }
   if (normalized.includes("moderate")) {
-    return "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200";
+    return "bg-tone-warning-bg text-tone-warning-fg";
   }
-  return "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200";
+  return "bg-tone-tsunami-bg text-tone-tsunami-fg";
 };
 
 const formatTime = (date: Date): string => {
@@ -292,13 +284,13 @@ const GlobalActivity = ({
           label: formatRelativeTime(event.date),
           icon: Clock3,
           className:
-            "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+            "bg-tone-info-bg text-tone-info-fg",
         },
         {
           label: `${formatCoordinate(event.coordinates[1], "N", "S")} ${formatCoordinate(event.coordinates[0], "E", "W")}`,
           icon: MapPin,
           className:
-            "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+            "bg-tone-meta-bg text-tone-meta-fg",
         },
       ]),
     };
@@ -325,26 +317,26 @@ const GlobalActivity = ({
           label: `${site.parameter.toUpperCase()} ${value} ${site.unit}`,
           icon: Gauge,
           className:
-            "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
+            "bg-tone-airquality-bg text-tone-airquality-fg",
         },
         {
           label: site.measuredAt ? formatRelativeTime(site.measuredAt) : "Time unknown",
           icon: Clock3,
           className:
-            "bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/30 dark:text-cyan-200",
+            "bg-tone-tsunami-bg text-tone-tsunami-fg",
         },
         {
           label: coordinateLabel,
           icon: MapPin,
           className:
-            "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+            "bg-tone-meta-bg text-tone-meta-fg",
         },
         site.coveragePercent !== null && site.coveragePercent !== undefined
           ? {
               label: `Coverage ${site.coveragePercent.toFixed(0)}%`,
               icon: Activity,
               className:
-                "bg-lime-500/20 text-lime-700 dark:bg-lime-500/30 dark:text-lime-200",
+                "bg-tone-airquality-bg text-tone-airquality-fg",
             }
           : null,
       ]),
@@ -367,13 +359,13 @@ const GlobalActivity = ({
         label: alert.sent ? formatRelativeTime(alert.sent) : "Time unknown",
         icon: Clock3,
         className:
-          "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+          "bg-tone-info-bg text-tone-info-fg",
       },
       {
         label: "NWS source",
         icon: Waves,
         className:
-          "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+          "bg-tone-tsunami-bg text-tone-tsunami-fg",
       },
     ]),
   }));
@@ -412,7 +404,7 @@ const GlobalActivity = ({
             <MiniSignal
               label="NASA EONET Live Signals"
               icon={Globe2}
-              toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+              toneClassName="bg-tone-eonet-bg text-tone-eonet-fg"
               onClick={() => onOpenSection?.("global-live-events")}
               isLoading={eonetState.isLoading}
               detail={
@@ -428,7 +420,7 @@ const GlobalActivity = ({
             <MiniSignal
               label="OpenAQ"
               icon={Wind}
-              toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+              toneClassName="bg-tone-airquality-bg text-tone-airquality-fg"
               onClick={() => onOpenSection?.("global-openaq")}
               isLoading={airQualityState.isLoading}
               detail={
@@ -445,7 +437,7 @@ const GlobalActivity = ({
             <MiniSignal
               label="NWS Tsunami Alerts"
               icon={Waves}
-              toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+              toneClassName="bg-tone-tsunami-bg text-tone-tsunami-fg"
               onClick={() => onOpenSection?.("global-tsunami")}
               isLoading={tsunamiState.isLoading}
               detail={
@@ -486,8 +478,8 @@ const GlobalActivity = ({
                 lastUpdated={eonetState.lastUpdated}
                 onRefresh={eonetState.refetch}
                 items={eventItems}
-                toneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
-                itemToneClassName="bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200"
+                toneClassName="bg-tone-eonet-bg text-tone-eonet-fg"
+                itemToneClassName="bg-tone-eonet-bg text-tone-eonet-fg"
               />
             </div>
           ) : null}
@@ -509,8 +501,8 @@ const GlobalActivity = ({
                 lastUpdated={airQualityState.lastUpdated}
                 onRefresh={airQualityState.refetch}
                 items={airItems}
-                toneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
-                itemToneClassName="bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200"
+                toneClassName="bg-tone-airquality-bg text-tone-airquality-fg"
+                itemToneClassName="bg-tone-airquality-bg text-tone-airquality-fg"
               />
             </div>
           ) : null}
@@ -532,8 +524,8 @@ const GlobalActivity = ({
                 lastUpdated={tsunamiState.lastUpdated}
                 onRefresh={tsunamiState.refetch}
                 items={tsunamiItems}
-                toneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
-                itemToneClassName="bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200"
+                toneClassName="bg-tone-tsunami-bg text-tone-tsunami-fg"
+                itemToneClassName="bg-tone-tsunami-bg text-tone-tsunami-fg"
               />
             </div>
           ) : null}

@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import {
-  Activity,
-  Layers3,
   SlidersHorizontal,
-  Sparkles,
   RotateCw,
   X,
 } from "lucide-react";
@@ -28,9 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { EarthquakeMagnitude } from "@/types/api";
 import type {
@@ -58,10 +54,6 @@ type HazrSettingsDialogProps = HazrSettingsPanelProps & {
   onResetDefaults: () => void;
 };
 
-const clampToStep = (value: number, min: number, max: number, step: number) => {
-  const clamped = Math.max(min, Math.min(max, value));
-  return Math.round(clamped / step) * step;
-};
 
 const SourceToggleRow = ({
   id,
@@ -116,60 +108,43 @@ function HazrSettingsPanel({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <Tabs defaultValue="display" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="display">
-            <Sparkles className="size-4" />
-            Display
-          </TabsTrigger>
-          <TabsTrigger value="data">
-            <Activity className="size-4" />
-            Data
-          </TabsTrigger>
-          <TabsTrigger value="layers">
-            <Layers3 className="size-4" />
-            Layers
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="display" className="space-y-3 pt-2">
-          <div className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${settingsId}-temperature-unit`}>Temperature Unit</Label>
-              <Select
+    <div className={cn("space-y-5", className)}>
+      {/* Display section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Display
+        </p>
+        <div className="mt-1.5 rounded-lg border border-border/60 bg-muted/15 p-3">
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Temperature Unit</Label>
+              <Tabs
                 value={settings.temperatureUnit}
-                onValueChange={(value: TemperatureUnit) =>
+                onValueChange={(value) =>
                   updateSettings({ temperatureUnit: value as TemperatureUnit })
                 }
               >
-                <SelectTrigger id={`${settingsId}-temperature-unit`} className="w-36">
-                  <SelectValue placeholder="Temperature unit" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="celsius">Celsius (°C)</SelectItem>
-                  <SelectItem value="fahrenheit">Fahrenheit (°F)</SelectItem>
-                  <SelectItem value="kelvin">Kelvin (K)</SelectItem>
-                </SelectContent>
-              </Select>
+                <TabsList className="w-full">
+                  <TabsTrigger value="celsius" className="flex-1">°C</TabsTrigger>
+                  <TabsTrigger value="fahrenheit" className="flex-1">°F</TabsTrigger>
+                  <TabsTrigger value="kelvin" className="flex-1">K</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor={`${settingsId}-time-format`}>Time Format</Label>
-              <Select
+            <div className="space-y-1.5">
+              <Label>Time Format</Label>
+              <Tabs
                 value={settings.timeFormat}
-                onValueChange={(value: TimeFormat) =>
-                  updateSettings({ timeFormat: value })
+                onValueChange={(value) =>
+                  updateSettings({ timeFormat: value as TimeFormat })
                 }
               >
-                <SelectTrigger id={`${settingsId}-time-format`} className="w-36">
-                  <SelectValue placeholder="Time format" />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="12h">12-hour</SelectItem>
-                  <SelectItem value="24h">24-hour</SelectItem>
-                </SelectContent>
-              </Select>
+                <TabsList className="w-full">
+                  <TabsTrigger value="12h" className="flex-1">12-hour</TabsTrigger>
+                  <TabsTrigger value="24h" className="flex-1">24-hour</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/70 px-3 py-2.5">
@@ -190,10 +165,16 @@ function HazrSettingsPanel({
               />
             </div>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="data" className="space-y-3 pt-2">
-          <div className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3">
+      {/* Data section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Data
+        </p>
+        <div className="mt-1.5 rounded-lg border border-border/60 bg-muted/15 p-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor={`${settingsId}-usgs-magnitude`}>USGS Feed Magnitude</Label>
               <Select
@@ -215,49 +196,59 @@ function HazrSettingsPanel({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-openaq-limit`}>OpenAQ Site Limit</Label>
-                <span className="text-xs text-muted-foreground">
-                  {settings.openAqLimit}
-                </span>
-              </div>
-              <Slider
-                id={`${settingsId}-openaq-limit`}
-                min={50}
-                max={300}
-                step={50}
-                value={[settings.openAqLimit]}
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor={`${settingsId}-openaq-limit`}>OpenAQ Site Limit</Label>
+              <Select
+                value={String(settings.openAqLimit)}
                 onValueChange={(value) =>
-                  updateSettings({
-                    openAqLimit: clampToStep(value[0] ?? 200, 50, 300, 50),
-                  })
+                  updateSettings({ openAqLimit: Number(value) })
                 }
-              />
+              >
+                <SelectTrigger id={`${settingsId}-openaq-limit`} className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="150">150</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="250">250</SelectItem>
+                  <SelectItem value="300">300</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${settingsId}-eonet-limit`}>NASA EONET Event Limit</Label>
-                <span className="text-xs text-muted-foreground">{settings.eonetLimit}</span>
-              </div>
-              <Slider
-                id={`${settingsId}-eonet-limit`}
-                min={50}
-                max={300}
-                step={50}
-                value={[settings.eonetLimit]}
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor={`${settingsId}-eonet-limit`}>NASA EONET Event Limit</Label>
+              <Select
+                value={String(settings.eonetLimit)}
                 onValueChange={(value) =>
-                  updateSettings({
-                    eonetLimit: clampToStep(value[0] ?? 200, 50, 300, 50),
-                  })
+                  updateSettings({ eonetLimit: Number(value) })
                 }
-              />
+              >
+                <SelectTrigger id={`${settingsId}-eonet-limit`} className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="150">150</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="250">250</SelectItem>
+                  <SelectItem value="300">300</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="layers" className="space-y-2 pt-2">
+      {/* Sources section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Sources
+        </p>
+        <div className="mt-1.5 space-y-2">
           <SourceToggleRow
             id={`${settingsId}-earthquakes`}
             label="USGS Earthquakes"
@@ -286,10 +277,11 @@ function HazrSettingsPanel({
             checked={layerVisibility.tsunami}
             onCheckedChange={(checked) => updateLayerVisibility("tsunami", checked)}
           />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
+
       {showInlineReset && onResetDefaults ? (
-        <div className="pt-2">
+        <div className="pt-1">
           <Button variant="outline" className="w-full" onClick={onResetDefaults}>
             Reset Defaults
           </Button>

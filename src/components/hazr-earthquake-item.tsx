@@ -79,30 +79,30 @@ const EarthquakeItem = ({
     {
       label: `Magnitude ${earthquake.magnitude.toFixed(1)}`,
       icon: Gauge,
-      className: "bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200",
+      className: "bg-tone-info-bg text-tone-info-fg",
     },
     {
       label: `Depth ${earthquake.depth.toFixed(1)}km`,
       icon: Ruler,
-      className: "bg-slate-500/15 text-slate-700 dark:bg-slate-500/25 dark:text-slate-200",
+      className: "bg-tone-meta-bg text-tone-meta-fg",
     },
     {
       label: `${formatRelativeTime(earthquake.time)}`,
       icon: Clock,
-      className: "bg-amber-500/20 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200",
+      className: "bg-tone-warning-bg text-tone-warning-fg",
     },
     earthquake.mmi !== null
       ? {
           label: `MMI ${earthquake.mmi.toFixed(1)}`,
           icon: Gauge,
-          className: "bg-violet-500/20 text-violet-700 dark:bg-violet-500/30 dark:text-violet-200",
+          className: "bg-tone-info-bg text-tone-info-fg",
         }
       : null,
     earthquake.tsunami
       ? {
           label: "Tsunami",
           icon: Waves,
-          className: "bg-sky-500/20 text-sky-700 dark:bg-sky-500/30 dark:text-sky-200",
+          className: "bg-tone-tsunami-bg text-tone-tsunami-fg",
         }
       : null,
     earthquake.alert
@@ -110,10 +110,10 @@ const EarthquakeItem = ({
           label: `Alert ${earthquake.alert}`,
           icon: AlertTriangle,
           className: cn(
-            "bg-red-500/20 text-red-700 dark:bg-red-500/30 dark:text-red-200",
-            earthquake.alert === "yellow" && "bg-yellow-500/20 text-yellow-700 dark:bg-yellow-500/30 dark:text-yellow-200",
-            earthquake.alert === "orange" && "bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200",
-            earthquake.alert === "green" && "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/30 dark:text-emerald-200",
+            "bg-tone-danger-bg text-tone-danger-fg",
+            earthquake.alert === "yellow" && "bg-tone-warning-bg text-tone-warning-fg",
+            earthquake.alert === "orange" && "bg-tone-earthquake-bg text-tone-earthquake-fg",
+            earthquake.alert === "green" && "bg-tone-airquality-bg text-tone-airquality-fg",
           ),
         }
       : null,
