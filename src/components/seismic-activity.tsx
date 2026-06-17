@@ -106,7 +106,7 @@ export const SeismicActivity = ({
             className="flex size-12 items-center justify-center rounded-md transition-colors hover:bg-muted/70"
             aria-label="USGS earthquakes"
           >
-            <div className="flex size-9 items-center justify-center rounded-md bg-orange-500/20 text-orange-700 dark:bg-orange-500/30 dark:text-orange-200">
+            <div className="flex size-9 items-center justify-center rounded-md bg-tone-earthquake-bg text-tone-earthquake-fg">
               {isLoading ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
@@ -140,7 +140,7 @@ export const SeismicActivity = ({
         {/* Header */}
         <div className="my-2 flex items-center justify-between px-0">
           <div className="flex items-center gap-2">
-            <div className="rounded-md border border-orange-500/35 bg-orange-500/10 p-2.5 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300">
+            <div className="rounded-md border border-tone-earthquake/35 bg-tone-earthquake-bg p-2.5 text-tone-earthquake-fg">
               <Mountain className="size-5" />
             </div>
             <div>

@@ -126,11 +126,11 @@ function MobileDrawerHeader({
         <div className="flex min-w-0 items-center gap-2.5">
           <div
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-md border border-white/20",
+              "flex size-8 shrink-0 items-center justify-center rounded-md",
               iconToneClassName,
             )}
           >
-            <Icon className="size-4 text-white" />
+            <Icon className="size-4" />
           </div>
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">{title}</h3>
@@ -305,7 +305,7 @@ export function MapOverlayUI({
               <>
                 <MobileDrawerHeader
                   icon={SlidersHorizontal}
-                  iconToneClassName="bg-slate-500"
+                  iconToneClassName="bg-tone-info-bg text-tone-info-fg"
                   title="Menu"
                   description="Settings and layer controls"
                   onClose={closeDrawer}
@@ -326,7 +326,7 @@ export function MapOverlayUI({
                   </div>
                   <div className="mt-3 rounded-md border border-border/60 bg-muted/15 p-3">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="inline-flex items-center justify-center rounded-md bg-blue-500/15 text-white">
+                      <span className="inline-flex items-center justify-center rounded-md bg-tone-info-bg text-tone-info-fg">
                         <Map className="size-5" />
                       </span>
                       <h3 className="text-sm font-semibold">About Hazr</h3>
@@ -341,7 +341,7 @@ export function MapOverlayUI({
               <>
                 <MobileDrawerHeader
                   icon={Activity}
-                  iconToneClassName="bg-red-500"
+                  iconToneClassName="bg-tone-earthquake-bg text-tone-earthquake-fg"
                   title="Live Earthquakes"
                   description={`${earthquakes.length} in the last 24h`}
                   onClose={closeDrawer}
@@ -447,7 +447,7 @@ export function MapOverlayUI({
               <>
                 <MobileDrawerHeader
                   icon={Globe2}
-                  iconToneClassName="bg-amber-500"
+                  iconToneClassName="bg-tone-eonet-bg text-tone-eonet-fg"
                   title="Global Signals"
                   description="NASA EONET, OpenAQ, and NWS Tsunami alerts"
                   onClose={closeDrawer}
@@ -497,7 +497,7 @@ export function MapOverlayUI({
               <>
                 <MobileDrawerHeader
                   icon={Cloud}
-                  iconToneClassName="bg-sky-500"
+                  iconToneClassName="bg-tone-tsunami-bg text-tone-tsunami-fg"
                   title="Weather"
                   description="Local conditions and hourly outlook"
                   onClose={closeDrawer}

@@ -548,13 +548,13 @@ export const UV_RISK_INFO: Record<UVRiskLevel, { label: string; color: string; d
 
 // Get magnitude color based on Richter scale
 export const getMagnitudeColor = (magnitude: number): string => {
-  if (magnitude < 2) return "#22c55e"; // green-500 - micro
-  if (magnitude < 4) return "#eab308"; // yellow-500 - minor
-  if (magnitude < 5) return "#f97316"; // orange-500 - light
-  if (magnitude < 6) return "#ef4444"; // red-500 - moderate
-  if (magnitude < 7) return "#dc2626"; // red-600 - strong
-  if (magnitude < 8) return "#b91c1c"; // red-700 - major
-  return "#7f1d1d"; // red-900 - great
+  if (magnitude < 2) return "#788c5d"; // sage green — micro
+  if (magnitude < 4) return "#c4a749"; // warm gold — minor
+  if (magnitude < 5) return "#d97757"; // muted orange — light
+  if (magnitude < 6) return "#c45c42"; // muted red-orange — moderate
+  if (magnitude < 7) return "#a84832"; // deep terra cotta — strong
+  if (magnitude < 8) return "#8b3a28"; // dark brown-red — major
+  return "#6b2d1f"; // deep umber — great
 };
 
 // Get magnitude label

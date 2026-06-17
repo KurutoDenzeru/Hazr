@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import {
-  Activity,
-  Layers3,
   SlidersHorizontal,
-  Sparkles,
   RotateCw,
   X,
 } from "lucide-react";
@@ -28,9 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { EarthquakeMagnitude } from "@/types/api";
 import type {
@@ -116,25 +112,14 @@ function HazrSettingsPanel({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <Tabs defaultValue="display" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="display">
-            <Sparkles className="size-4" />
-            Display
-          </TabsTrigger>
-          <TabsTrigger value="data">
-            <Activity className="size-4" />
-            Data
-          </TabsTrigger>
-          <TabsTrigger value="layers">
-            <Layers3 className="size-4" />
-            Layers
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="display" className="space-y-3 pt-2">
-          <div className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3">
+    <div className={cn("space-y-5", className)}>
+      {/* Display section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Display
+        </p>
+        <div className="mt-1.5 rounded-lg border border-border/60 bg-muted/15 p-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor={`${settingsId}-temperature-unit`}>Temperature Unit</Label>
               <Select
@@ -190,10 +175,16 @@ function HazrSettingsPanel({
               />
             </div>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="data" className="space-y-3 pt-2">
-          <div className="grid gap-3 rounded-md border border-border/60 bg-muted/20 p-3">
+      {/* Data section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Data
+        </p>
+        <div className="mt-1.5 rounded-lg border border-border/60 bg-muted/15 p-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor={`${settingsId}-usgs-magnitude`}>USGS Feed Magnitude</Label>
               <Select
@@ -255,9 +246,15 @@ function HazrSettingsPanel({
               />
             </div>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="layers" className="space-y-2 pt-2">
+      {/* Sources section */}
+      <div>
+        <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+          Sources
+        </p>
+        <div className="mt-1.5 space-y-2">
           <SourceToggleRow
             id={`${settingsId}-earthquakes`}
             label="USGS Earthquakes"
@@ -286,10 +283,11 @@ function HazrSettingsPanel({
             checked={layerVisibility.tsunami}
             onCheckedChange={(checked) => updateLayerVisibility("tsunami", checked)}
           />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
+
       {showInlineReset && onResetDefaults ? (
-        <div className="pt-2">
+        <div className="pt-1">
           <Button variant="outline" className="w-full" onClick={onResetDefaults}>
             Reset Defaults
           </Button>
