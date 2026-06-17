@@ -121,7 +121,7 @@ function MobileDrawerHeader({
   onClose: () => void;
 }) {
   return (
-    <div className="border-b border-border/60 px-4 pb-3 pt-2">
+    <div className="border-b border-border/60 px-4 pb-4 pt-2">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div
