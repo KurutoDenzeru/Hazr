@@ -1,6 +1,6 @@
 type IpLocationMeta = {
   ip?: string;
-  provider?: "ipapi" | "ipwhois" | "ipinfo";
+  provider?: "ip-location";
   country?: string;
   countryCode?: string;
   region?: string;
@@ -70,54 +70,25 @@ const fetchWithTimeout = async (
   }
 };
 
-const parseIpApi = (data: Record<string, unknown>): IpLocationResult | null => {
-  const latitude = Number(data?.latitude);
-  const longitude = Number(data?.longitude);
+const parseIpApiCom = (data: Record<string, unknown>): IpLocationResult | null => {
+  if (data?.status === "fail") return null;
+
+  const latitude = Number(data?.lat);
+  const longitude = Number(data?.lon);
   if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
 
   const coords: [number, number] = [longitude, latitude];
   if (!isValidCoords(coords)) return null;
 
   const meta: IpLocationMeta = {
-    ip: data?.ip as string | undefined,
-    provider: "ipapi",
-    country: data?.country_name as string | undefined,
-    countryCode: data?.country_code as string | undefined,
+    ip: data?.query as string | undefined,
+    provider: "ip-location",
+    country: data?.country as string | undefined,
+    countryCode: data?.countryCode as string | undefined,
     region: data?.region as string | undefined,
     city: data?.city as string | undefined,
     timezone: data?.timezone as string | undefined,
-    isp: (data?.org as string | undefined) ?? (data?.asn as string | undefined),
-    languages: data?.languages as string | undefined,
-    currency: data?.currency as string | undefined,
-  };
-
-  return { coords, meta, source: "ip" };
-};
-
-const parseIpWhoIs = (data: Record<string, unknown>): IpLocationResult | null => {
-  if (data?.success === false) return null;
-
-  const latitude = Number(data?.latitude);
-  const longitude = Number(data?.longitude);
-  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
-
-  const coords: [number, number] = [longitude, latitude];
-  if (!isValidCoords(coords)) return null;
-
-  const timezoneData = data?.timezone as { id?: string } | undefined;
-  const connectionData = data?.connection as { isp?: string } | undefined;
-  const currencyData = data?.currency as { code?: string } | undefined;
-
-  const meta: IpLocationMeta = {
-    ip: data?.ip as string | undefined,
-    provider: "ipwhois",
-    country: data?.country as string | undefined,
-    countryCode: data?.country_code as string | undefined,
-    region: data?.region as string | undefined,
-    city: data?.city as string | undefined,
-    timezone: timezoneData?.id,
-    isp: connectionData?.isp,
-    currency: currencyData?.code,
+    isp: (data?.isp as string | undefined) ?? (data?.org as string | undefined),
   };
 
   return { coords, meta, source: "ip" };
@@ -141,14 +112,9 @@ export const resolveIpLocation = async (
     try {
     const providers = [
       {
-        key: "ipapi",
-        url: "https://ipapi.co/json/",
-        parser: parseIpApi,
-      },
-      {
-        key: "ipwhois",
-        url: "/api/ipwhois/",
-        parser: parseIpWhoIs,
+        key: "ip-location",
+        url: "/api/ip-location",
+        parser: parseIpApiCom,
       },
     ];
 

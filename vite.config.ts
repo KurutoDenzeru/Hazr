@@ -13,10 +13,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (pathName) => pathName.replace(/^\/api\/openaq/, "/v3"),
       },
-      "/api/ipwhois": {
-        target: "https://ipwho.is",
+      "/api/ip-location": {
+        target: "http://ip-api.com",
         changeOrigin: true,
-        rewrite: (pathName) => pathName.replace(/^\/api\/ipwhois/, ""),
+        rewrite: () => "/json/?fields=query,status,country,countryCode,region,regionName,city,timezone,isp,org,lat,lon",
       },
     },
   },
