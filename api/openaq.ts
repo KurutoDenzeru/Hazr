@@ -12,11 +12,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  // Extract path after /api/openaq
-  const rawUrl = req.url ?? "";
-  const pathStart = rawUrl.indexOf("/api/openaq");
-  const subPath = pathStart >= 0 ? rawUrl.slice(pathStart + "/api/openaq".length) : rawUrl;
-  const targetUrl = `${OPENAQ_BASE}${subPath}`;
+  // Rewrite preserves original path in req.url: /api/openaq/parameters/2/latest?limit=200
+  const url = new URL(req.url ?? "/", `https://${req.headers.host ?? "localhost"}`);
+  const subPath = url.pathname.replace(/^\/api\/openaq\/?/, "");
+  const targetUrl = `${OPENAQ_BASE}/${subPath}${url.search}`;
 
   const headers: Record<string, string> = {};
   const apiKey = req.headers["x-api-key"];
