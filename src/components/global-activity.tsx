@@ -190,6 +190,15 @@ const getTsunamiSeverityBadgeClass = (severity: string): string => {
   return "bg-tone-tsunami-bg text-tone-tsunami-fg";
 };
 
+const abbreviateTsunamiSeverity = (severity: string): string => {
+  switch (severity) {
+    case "Warning": return "Warn";
+    case "Information": return "Info";
+    case "Advisory": return "Advis";
+    default: return severity;
+  }
+};
+
 const formatTime = (date: Date): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -344,7 +353,7 @@ const GlobalActivity = ({
           : null,
       ]),
     };
-  });
+    });
 
   const tsunamiItems: SignalHistoryItem[] = tsunamiState.alerts.map((alert) => ({
     id: alert.id,
@@ -353,7 +362,7 @@ const GlobalActivity = ({
     onClick: onTsunamiSelect ? () => onTsunamiSelect(alert) : undefined,
     badges: toSignalBadges([
       {
-        label: `Tsunami ${alert.severity}`,
+        label: `Tsunami ${abbreviateTsunamiSeverity(alert.severity)}`,
         icon: AlertTriangle,
         className: getTsunamiSeverityBadgeClass(alert.severity),
       },
