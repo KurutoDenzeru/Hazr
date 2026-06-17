@@ -353,7 +353,7 @@ const GlobalActivity = ({
     onClick: onTsunamiSelect ? () => onTsunamiSelect(alert) : undefined,
     badges: toSignalBadges([
       {
-        label: alert.severity,
+        label: `Tsunami ${alert.severity}`,
         icon: AlertTriangle,
         className: getTsunamiSeverityBadgeClass(alert.severity),
       },
@@ -451,7 +451,7 @@ const GlobalActivity = ({
               subDetail={
                 tsunamiState.isLoading || !highestTsunamiSeverity
                   ? undefined
-                  : `Highest severity: ${highestTsunamiSeverity}`
+                  : `Highest severity: Tsunami ${highestTsunamiSeverity}`
               }
             />
           ) : null}
