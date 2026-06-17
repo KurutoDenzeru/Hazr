@@ -312,7 +312,7 @@ export function MapOverlayUI({
                 />
                 <div
                   data-vaul-no-drag
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-3"
                 >
                   <div className="rounded-md border border-border/60 bg-muted/15 p-3">
                     <HazrSettingsPanel
@@ -346,7 +346,7 @@ export function MapOverlayUI({
                   description={`${earthquakes.length} in the last 24h`}
                   onClose={closeDrawer}
                 />
-                <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+                <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-3">
                   {!layerVisibility.earthquakes ? (
                     <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-border/60 bg-muted/15 px-3 py-6 text-center text-sm text-muted-foreground">
                       USGS earthquakes are hidden in settings.
@@ -454,7 +454,7 @@ export function MapOverlayUI({
                 />
                 <div
                   data-vaul-no-drag
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-3"
                 >
                   <div className="min-w-0 rounded-md border border-border/60 bg-muted/15 p-2">
                     {!layerVisibility.eonet &&
@@ -504,7 +504,7 @@ export function MapOverlayUI({
                 />
                 <div
                   data-vaul-no-drag
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-3"
                 >
                   <div className="min-w-0 space-y-3 rounded-md border border-border/60 bg-muted/15 p-2">
                   <WeatherDock
