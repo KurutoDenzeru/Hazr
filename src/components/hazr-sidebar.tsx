@@ -14,10 +14,12 @@ import {
   HazrMenuPanel,
   type HazrMenuFocusTarget,
 } from "@/components/hazr-menu-panel"
+import { HazrSidebarFooter } from "@/components/hazr-sidebar-footer"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarTrigger,
   useSidebar,
@@ -187,8 +189,6 @@ function HazrSidebar({
 
       <SidebarContent className="overflow-y-auto scrollbar-hide">
         <HazrMenuPanel
-          onSettingsSelect={onSettingsSelect}
-          onAboutSelect={onAboutSelect}
           collapsed={!isOpen}
           focusTarget={focusTarget}
           onFocusTargetHandled={handleFocusTargetHandled}
@@ -207,6 +207,14 @@ function HazrSidebar({
           tsunamiState={tsunamiState}
         />
       </SidebarContent>
+
+      <SidebarFooter>
+        <HazrSidebarFooter
+          collapsed={!isOpen}
+          onSettingsSelect={onSettingsSelect}
+          onAboutSelect={onAboutSelect}
+        />
+      </SidebarFooter>
     </Sidebar>
   )
 }

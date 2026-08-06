@@ -1,17 +1,10 @@
 "use client";
 
 import React from "react";
-import { Info, Settings2 } from "lucide-react";
 
 import { WeatherDock } from "@/components/map/weather-dock";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import type {
@@ -31,8 +24,6 @@ export type HazrMenuFocusTarget =
   | "global-tsunami";
 
 type HazrMenuPanelProps = {
-  onSettingsSelect?: () => void;
-  onAboutSelect?: () => void;
   collapsed?: boolean;
   focusTarget?: HazrMenuFocusTarget | null;
   onFocusTargetHandled?: () => void;
@@ -73,8 +64,6 @@ import { SeismicActivity } from "@/components/seismic-activity";
 import { GlobalActivity } from "@/components/global-activity";
 
 function HazrMenuPanel({
-  onSettingsSelect,
-  onAboutSelect,
   collapsed = false,
   focusTarget = null,
   onFocusTargetHandled,
@@ -150,9 +139,6 @@ function HazrMenuPanel({
       onFocusTargetHandled?.();
     }
   }, [collapsed, focusTarget, onFocusTargetHandled]);
-
-  const handleSettingsClick = () => onSettingsSelect?.();
-  const handleAboutClick = () => onAboutSelect?.();
 
   const shouldShowSeismic = layerVisibility.earthquakes;
   const shouldShowGlobalSignals =
@@ -263,67 +249,6 @@ function HazrMenuPanel({
           </>
         ) : null}
 
-        {shouldShowSeismic || shouldShowGlobalSignals ? (
-          <Separator className={cn(collapsed ? "my-2" : "my-2")} />
-        ) : null}
-        
-        {/* Settings */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="size-12 justify-center rounded-md px-0 text-muted-foreground hover:bg-muted/70"
-                onClick={handleSettingsClick}
-                aria-label="Settings"
-              >
-                <Settings2 className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Settings</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Button
-            variant="ghost"
-            size="default"
-            className="w-full justify-start gap-3 rounded-md text-foreground/90 hover:bg-muted/70 hover:text-foreground"
-            onClick={handleSettingsClick}
-            aria-label="Settings"
-          >
-            <Settings2 className="size-4" />
-            <span className="truncate">Settings</span>
-          </Button>
-        )}
-
-        {/* About */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="mt-1 size-12 justify-center rounded-md px-0 text-muted-foreground hover:bg-muted/70"
-                onClick={handleAboutClick}
-                aria-label="About Hazr"
-              >
-                <Info className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">About Hazr</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Button
-            variant="ghost"
-            size="default"
-            className="mt-1 w-full justify-start gap-3 rounded-md text-foreground/90 hover:bg-muted/70 hover:text-foreground"
-            onClick={handleAboutClick}
-            aria-label="About Hazr"
-          >
-            <Info className="size-4" />
-            <span className="truncate">About</span>
-          </Button>
-        )}
       </div>
     </TooltipProvider>
   );
